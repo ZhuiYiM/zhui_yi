@@ -1,0 +1,1329 @@
+<template>
+  <div :class="['personal-center', { 'mobile': isMobile }]">
+    <!-- 统一组件 -->
+    <UnifiedNav 
+      :is-mobile="isMobile" 
+      current-page="personalcenter"
+      :show-sidebar="!isMobile"
+      :show-mobile-nav="isMobile"
+      :show-user-info="true"
+      :user-info="userInfo"
+    />
+
+    <!-- 主要内容区域 -->
+    <main :class="['main-content', { 'full-width': isMobile }]">
+      <!-- 头部 -->
+      <header class="header">
+        <h1 v-if="isMobile">个人中心</h1>
+        <!-- 搜索栏已移除 -->
+      </header>
+
+      <!-- 用户信息区域 -->
+      <section class="user-info-section">
+        <div class="user-header">
+          <img :src="userInfo.avatar" alt="用户头像" class="user-avatar">
+          <div class="user-details">
+            <h2>{{ userInfo.name }}</h2>
+            <p>学号: {{ userInfo.studentId }}</p>
+            <p>部门: {{ userInfo.college }}</p>
+          </div>
+        </div>
+
+        <div class="user-actions">
+          <button @click="editProfile">编辑资料</button>
+          <button @click="openSettings">⚙️ 设置</button>
+          <button @click="accountManagement">账号管理</button>
+        </div>
+      </section>
+
+      <!-- 认证功能区域 -->
+      <section class="auth-section">
+        <div class="section-header">
+          <h2>认证中心</h2>
+          <button class="refresh-btn" @click="refreshAuthStatus">🔄 刷新</button>
+        </div>
+
+        <div class="auth-status">
+          <div class="status-item-container">
+            <div class="status-item" :class="{ 'verified': userInfo.isVerified }">
+              <div class="status-icon">
+                <span v-if="userInfo.isVerified">✅</span>
+                <span v-else>❌</span>
+              </div>
+              <div class="status-info">
+                <h3>身份认证</h3>
+                <p v-if="userInfo.isVerified">已通过</p>
+                <p v-else>未通过</p>
+                <p class="status-detail" v-if="!userInfo.isVerified">(学号未设置)</p>
+              </div>
+              <button @click="goToVerification('identity')" class="auth-btn">
+                {{ userInfo.isVerified ? '重新认证' : '立即认证' }}
+              </button>
+            </div>
+            
+            <div class="status-item" :class="{ 'verified': userInfo.isRealNameVerified }">
+              <div class="status-icon">
+                <span v-if="userInfo.isRealNameVerified">✅</span>
+                <span v-else>❌</span>
+              </div>
+              <div class="status-info">
+                <h3>实名认证</h3>
+                <p v-if="userInfo.isRealNameVerified">已通过</p>
+                <p v-else>未通过</p>
+                <p class="status-detail" v-if="!userInfo.isRealNameVerified">(真实姓名未设置)</p>
+              </div>
+              <button @click="goToVerification('realname')" class="auth-btn">
+                {{ userInfo.isRealNameVerified ? '重新认证' : '立即认证' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 我的订单区域 -->
+      <section class="orders-section">
+        <div class="section-header">
+          <h2>我的订单</h2>
+          <div class="header-actions">
+            <button class="refresh-btn" @click="refreshOrders">🔄 刷新</button>
+            <button v-if="!isMobile" class="view-more-btn" @click="viewAllOrders">查看全部</button>
+            <span v-else class="view-more" @click="viewAllOrders">查看更多 ></span>
+          </div>
+        </div>
+
+        <div class="orders-grid">
+          <div
+              v-for="(order, index) in recentOrders"
+              :key="'order-' + index"
+              class="order-item"
+              @click="viewOrderDetail(order.id)"
+          >
+            <div class="order-header">
+              <span class="order-id">#{{ order.id }}</span>
+              <span class="order-status" :class="order.status">{{ order.statusText }}</span>
+            </div>
+            <div class="order-content">
+              <img :src="order.image" :alt="order.title" class="order-image">
+              <div class="order-info">
+                <h3>{{ order.title }}</h3>
+                <p class="order-price">¥{{ order.price }}</p>
+                <p class="order-date">{{ order.date }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 我的话题区域 -->
+      <section class="topics-section">
+        <div class="section-header">
+          <h2>我的话题</h2>
+          <div class="header-actions">
+            <button class="refresh-btn" @click="refreshTopics">🔄 刷新</button>
+            <button v-if="!isMobile" class="view-more-btn" @click="viewAllTopics">查看全部</button>
+            <span v-else class="view-more" @click="viewAllTopics">查看更多 ></span>
+          </div>
+        </div>
+
+        <div class="topics-list">
+          <div
+              v-for="(topic, index) in userTopics"
+              :key="'topic-' + index"
+              class="topic-item"
+              @click="viewTopicDetail(topic.id)"
+          >
+            <h3>{{ topic.title }}</h3>
+            <p class="topic-content">{{ topic.content }}</p>
+            <div class="topic-meta">
+              <span class="topic-time">{{ topic.time }}</span>
+              <span class="topic-stats">👍 {{ topic.likes }} | 💬 {{ topic.comments }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 桌面端底部版权信息 -->
+      <footer v-if="!isMobile" class="desktop-footer">
+        <p>© 2023 校园信息平台 | 服务学生，连接校园</p>
+      </footer>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router'; // 添加路由导入
+import { userAPI } from '@/api/user';
+import { useAuthStore } from '@/stores/auth';
+import { ElMessage, ElMessageBox } from 'element-plus'; // 添加 Element Plus 组件导入
+import UnifiedNav from '@/components/common/UnifiedNav.vue';
+
+const router = useRouter(); // 创建路由实例
+const authStore = useAuthStore();
+
+// 设备检测相关
+const isMobile = ref(false);
+
+// 加载状态
+const isLoading = ref(false);
+
+// 更新设备检测状态
+const updateDeviceDetection = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
+onMounted(() => {
+  updateDeviceDetection();
+  window.addEventListener('resize', updateDeviceDetection);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDeviceDetection);
+});
+
+// 用户信息
+const userInfo = ref({
+  name: '',
+  studentId: '',
+  college: '',
+  avatar: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
+  isVerified: false,
+  isRealNameVerified: false,
+  realName: ''
+});
+
+// 获取用户信息
+const fetchUserInfo = () => {
+  try {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log('从localStorage获取的用户数据:', userData);
+    
+    // 更新用户信息
+    userInfo.value = {
+      name: userData.nickname || userData.username || userData.name || '未知用户',
+      studentId: userData.studentId || userData.student_id || '未设置',
+      college: userData.college || userData.department || '未设置',
+      avatar: userData.avatar || userData.avatarUrl || 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
+      isVerified: !!userData.studentId, // 通过学号是否存在判断身份认证
+      isRealNameVerified: !!(userData.realName || userData.name), // 通过真实姓名是否存在判断实名认证
+      realName: userData.realName || userData.name || ''
+    };
+    
+    console.log('更新后的用户信息:', userInfo.value);
+  } catch (error) {
+    console.error('获取用户信息失败:', error);
+    // 使用默认值
+    userInfo.value = {
+      name: '未知用户',
+      studentId: '未设置',
+      college: '未设置',
+      avatar: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
+      isVerified: false,
+      isRealNameVerified: false,
+      realName: ''
+    };
+  }
+};
+
+// 最近订单数据
+const recentOrders = ref([
+  {
+    id: '2023001',
+    title: '高数教材',
+    price: 45,
+    date: '2023-05-20',
+    status: 'pending',
+    statusText: '待处理',
+    image: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=教材'
+  },
+  {
+    id: '2023002',
+    title: '无线鼠标',
+    price: 89,
+    date: '2023-05-18',
+    status: 'shipping',
+    statusText: '配送中',
+    image: 'https://placehold.co/100x100/667eea/FFFFFF?text=鼠标'
+  },
+  {
+    id: '2023003',
+    title: '代取快递',
+    price: 5,
+    date: '2023-05-15',
+    status: 'completed',
+    statusText: '已完成',
+    image: 'https://placehold.co/100x100/FF6B6B/FFFFFF?text=快递'
+  },
+  {
+    id: '2023004',
+    title: '拼车去火车站',
+    price: 30,
+    date: '2023-05-05',
+    status: 'completed',
+    statusText: '已完成',
+    image: 'https://placehold.co/100x100/9B59B6/FFFFFF?text=拼车'
+  },
+  {
+    id: '2023005',
+    title: '运动鞋',
+    price: 299,
+    date: '2023-05-03',
+    status: 'completed',
+    statusText: '已完成',
+    image: 'https://placehold.co/100x100/E67E22/FFFFFF?text=运动鞋'
+  },
+  {
+    id: '2023006',
+    title: '笔记本电脑包',
+    price: 89,
+    date: '2023-05-01',
+    status: 'processing',
+    statusText: '处理中',
+    image: 'https://placehold.co/100x100/34495E/FFFFFF?text=电脑包'
+  }
+]);
+
+// 用户话题数据
+const userTopics = ref([
+  {
+    id: 1,
+    title: '编程大赛心得分享',
+    content: '参加了学校编程大赛，学到了很多算法知识，分享一下经验...',
+    time: '2023-05-15 15:30',
+    likes: 12,
+    comments: 5
+  },
+  {
+    id: 2,
+    title: '食堂美食推荐',
+    content: '推荐一家超好吃的食堂窗口，位置在第三食堂二楼...',
+    time: '2023-05-10 18:45',
+    likes: 8,
+    comments: 2
+  },
+  {
+    id: 3,
+    title: '图书馆学习经验',
+    content: '分享一下图书馆的学习环境和占座经验...',
+    time: '2023-05-08 10:20',
+    likes: 15,
+    comments: 8
+  }
+]);
+
+// 编辑个人资料
+const editProfile = () => {
+  console.log('编辑个人资料');
+  // 跳转到个人信息编辑页面
+  router.push('/personalinformation');
+};
+
+// 账号管理
+const accountManagement = () => {
+  console.log('跳转到账号管理页面');
+  router.push('/account/settings');
+};
+
+// 跳转到认证页面
+const goToVerification = (type) => {
+  console.log(`跳转到${type}认证页面`);
+  router.push({
+    path: '/account/verification',
+    query: { type: type }
+  });
+};
+
+
+
+// 登出功能
+const logout = async () => {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+
+    // 执行退出登录
+    await authStore.logout();
+    ElMessage.success('已退出登录');
+    
+    // 跳转到首页
+    router.push('/');
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('退出登录失败');
+    }
+  }
+};
+
+// 身份认证
+const toggleVerification = async () => {
+  try {
+    if (userInfo.value.isVerified) {
+      // 取消认证
+      await userAPI.applyIdentityVerification({ action: 'cancel' });
+      userInfo.value.isVerified = false;
+      ElMessage.success('已取消身份认证');
+    } else {
+      // 申请认证
+      // 这里应该打开认证申请表单
+      ElMessage.info('身份认证申请功能开发中');
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败');
+  }
+};
+
+// 刷新认证状态
+const refreshAuthStatus = async () => {
+  try {
+    isLoading.value = true;
+    // 获取最新的用户信息
+    const freshUserData = await userAPI.getCurrentUser();
+    
+    // 更新用户信息和认证状态
+    const updatedUserInfo = {
+      ...userInfo.value,
+      ...freshUserData,
+      isVerified: !!freshUserData.studentId, // 通过学号是否存在判断身份认证
+      isRealNameVerified: !!(freshUserData.realName || freshUserData.name) // 通过真实姓名是否存在判断实名认证
+    };
+    
+    userInfo.value = updatedUserInfo;
+    
+    // 更新localStorage
+    localStorage.setItem('user', JSON.stringify(updatedUserInfo));
+    
+    ElMessage.success('认证状态已刷新');
+  } catch (error) {
+    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 实名认证
+const toggleRealNameVerification = async () => {
+  try {
+    if (userInfo.value.isRealNameVerified) {
+      // 取消认证
+      await userAPI.applyRealNameVerification({ action: 'cancel' });
+      userInfo.value.isRealNameVerified = false;
+      ElMessage.success('已取消实名认证');
+    } else {
+      // 申请认证
+      ElMessage.info('实名认证申请功能开发中');
+    }
+  } catch (error) {
+    ElMessage.error(error.message || '操作失败');
+  }
+};
+
+// 刷新订单列表
+const refreshOrders = async () => {
+  try {
+    isLoading.value = true;
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 这里应该调用实际的 API 获取最新订单数据
+    // const response = await userAPI.getUserOrders();
+    // recentOrders.value = response.data.orders;
+    
+    ElMessage.success('订单列表已刷新');
+  } catch (error) {
+    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 订单功能
+const viewAllOrders = () => {
+  console.log('查看全部订单');
+  // 实际项目中可以跳转到订单页面
+};
+
+const viewOrderDetail = (orderId) => {
+  console.log(`查看订单详情: ${orderId}`);
+  // 实际项目中可以跳转到订单详情页面
+};
+
+// 话题功能
+const viewAllTopics = () => {
+  console.log('查看全部话题');
+  // 实际项目中可以跳转到话题页面
+};
+
+const viewTopicDetail = (topicId) => {
+  console.log(`查看话题详情: ${topicId}`);
+  // 实际项目中可以跳转到话题详情页面
+};
+
+// 刷新话题列表
+const refreshTopics = async () => {
+  try {
+    isLoading.value = true;
+    // 模拟 API 调用
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // 这里应该调用实际的 API 获取最新话题数据
+    // const response = await userAPI.getUserTopics();
+    // userTopics.value = response.data.topics;
+    
+    ElMessage.success('话题列表已刷新');
+  } catch (error) {
+    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// 用户操作
+const openSettings = () => {
+  console.log('打开设置');
+  // 实际项目中可以跳转到设置页面
+};
+
+// 导航相关
+const goToPage = (page) => {
+  console.log(`跳转到${page}页面`);
+  switch(page) {
+    case 'home':
+      router.push('/');
+      break;
+    case 'map':  // 跳转到地图导引
+      router.push('/map');
+      break;
+    case 'trade':  // 跳转到交易中心
+      router.push('/mall');
+      break;
+    case 'topic':  // 跳转到话题墙
+      router.push('/topicwall');
+      break;
+    case 'message':  // 跳转到消息中心
+      router.push('/message');
+      break;
+    case 'profile':  // 这是当前页面，可以刷新或滚动到顶部
+      router.push('/personalcenter');
+      break;
+    case 'settings':  // 跳转到设置页面
+      console.log('跳转到设置页面');
+      break;
+    default:
+      console.log(`未知页面: ${page}`);
+  }
+};
+
+// 页面初始化
+onMounted(async () => {
+  console.log('个人中心页面已挂载');
+  fetchUserInfo();
+  console.log('用户信息初始化完成');
+});
+</script>
+
+<style scoped>
+.personal-center {
+  min-height: 100vh;
+  background-color: #f0f2f5;
+  display: grid;
+  grid-template-columns: 210px 1fr; /* 增加侧边栏宽度 */
+  grid-template-areas: "sidebar main";
+}
+
+.personal-center.mobile {
+  grid-template-columns: 1fr;
+  grid-template-areas: "main";
+  padding-bottom: 80px; /* 为移动底部导航留出空间 */
+}
+
+/* 统一导航栏样式 */
+.nav-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-menu li {
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+  color: #666;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.nav-menu li:hover {
+  background-color: #f0f7ff;
+  color: #4A90E2;
+  transform: translateX(5px);
+}
+
+.nav-menu li.active {
+  background-color: #4A90E2;
+  color: white;
+  font-weight: 600;
+}
+
+.nav-menu span:first-child {
+  font-size: 1.2rem;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* 用户信息区域样式 */
+.user-info {
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: #f8f9fa;
+}
+
+.user-avatar img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #4A90E2;
+}
+
+.user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.username {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-id {
+  color: #666;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 侧边栏样式优化 */
+.sidebar {
+  grid-area: sidebar;
+  background-color: white;
+  padding: 20px;
+  border-right: 1px solid #e0e0e0;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 1001;
+  width: 200px;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+}
+
+.logo h1 {
+  color: #4A90E2;
+  margin: 0 0 25px 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 移动端底部导航样式统一 */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 12px 15px;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+  z-index: 1000;
+}
+
+.mobile-nav .nav-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+}
+
+.mobile-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.mobile-nav .nav-item:hover {
+  background: #f0f7ff;
+}
+
+.mobile-nav .nav-item.active {
+  background: #e3f2fd;
+}
+
+.mobile-nav .nav-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #e3f2fd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+  transition: all 0.3s ease;
+}
+
+.mobile-nav .nav-item.active .nav-icon {
+  background: #4A90E2;
+  color: white;
+  transform: scale(1.1);
+}
+
+.mobile-nav .nav-text {
+  font-size: 0.7rem;
+  color: #666;
+  transition: all 0.3s ease;
+}
+
+.mobile-nav .nav-item.active .nav-text {
+  color: #4A90E2;
+  font-weight: 500;
+}
+
+/* 响应式调整 */
+@media (max-width: 480px) {
+  .mobile-nav .nav-grid {
+    gap: 2px;
+  }
+  
+  .mobile-nav .nav-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+  
+  .mobile-nav .nav-text {
+    font-size: 0.6rem;
+  }
+}
+
+/* 移动端用户信息样式 */
+.mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid #eee;
+}
+
+.user-avatar-small img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid #4A90E2;
+}
+
+.user-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.username-small {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-id-small {
+  color: #666;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logout-btn-small {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.logout-btn-small:hover {
+  background-color: #c82333;
+}
+
+/* 桌面端底部样式 - 现在位于main-content内部 */
+.desktop-footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 15px;
+  margin-top: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 15px;
+  flex-shrink: 0;
+}
+
+.search-bar input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #e1e5f2;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-bar button {
+  padding: 10px 15px;
+  background-color: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.search-bar button:hover {
+  background-color: #764ba2;
+}
+
+/* 用户信息区域样式 */
+.user-info-section {
+  background: white;
+  margin: 15px;
+  padding: 25px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.user-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #e3f2fd;
+}
+
+.user-details {
+  flex: 1;
+}
+
+.user-details h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.user-details p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.user-actions {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  justify-content: center;
+}
+
+.user-actions button {
+  padding: 10px 20px;
+  border: 2px solid #e1e5f2;
+  border-radius: 8px;
+  background-color: white;
+  color: #667eea;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  max-width: 150px;
+}
+
+.user-actions button:hover {
+  background-color: #667eea;
+  color: white;
+}
+
+/* 认证功能区域样式 */
+.auth-section {
+  background: white;
+  margin: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.auth-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.auth-section h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.refresh-btn {
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.refresh-btn:hover {
+  background-color: #357abd;
+  transform: scale(1.05);
+}
+
+.refresh-btn:active {
+  transform: scale(0.95);
+}
+
+.auth-status {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.status-item-container {
+  display: flex;
+  gap: 15px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  padding: 12px; /* 减小内边距 */
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  flex: 1; /* 使两个认证项平分空间 */
+  min-width: 0; /* 防止flex项目溢出 */
+}
+
+.status-item.verified {
+  border-color: #50C878;
+  background-color: #f0fff4;
+}
+
+.status-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.status-icon {
+  font-size: 1.5rem; /* 减小图标大小 */
+  margin-right: 10px; /* 减小右边距 */
+  flex-shrink: 0; /* 防止图标被压缩 */
+}
+
+.status-info {
+  flex: 1; /* 占据剩余空间 */
+  min-width: 0; /* 允许内容换行 */
+}
+
+.status-info h3 {
+  margin: 0 0 3px 0; /* 减小间距 */
+  font-size: 0.9rem; /* 减小字体 */
+  color: #333;
+  white-space: nowrap; /* 防止标题换行 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-info p {
+  margin: 0;
+  font-size: 0.8rem; /* 减小字体 */
+  color: #666;
+}
+
+.status-detail {
+  font-size: 0.7rem;
+  color: #999;
+  margin-top: 2px;
+}
+
+.auth-btn {
+  padding: 6px 10px; /* 减小按钮内边距 */
+  border: 2px solid #e1e5f2;
+  border-radius: 6px; /* 减小圆角 */
+  background-color: white;
+  color: #667eea;
+  font-size: 0.8rem; /* 减小字体 */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0; /* 防止按钮被压缩 */
+}
+
+.auth-btn:hover {
+  background-color: #667eea;
+  color: white;
+}
+
+/* 订单区域样式 */
+.orders-section {
+  background: white;
+  margin: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.orders-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orders-section h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.view-more {
+  color: #4A90E2;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.view-more-btn {
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* 调整最小宽度适应移动端 */
+  gap: 15px;
+}
+
+.order-item {
+  border: 1px solid #e1e5f2;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s;
+  height: fit-content; /* 使订单项高度自适应内容 */
+}
+
+.order-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px; /* 减小内边距 */
+  background-color: #f8f9fa;
+}
+
+.order-id {
+  font-weight: bold;
+  color: #333;
+  font-size: 0.9rem; /* 减小字体 */
+}
+
+.order-status {
+  padding: 3px 6px; /* 减小内边距 */
+  border-radius: 12px;
+  font-size: 0.7rem; /* 减小字体 */
+}
+
+.order-status.completed {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.order-status.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.order-status.canceled {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.order-content {
+  display: flex;
+  padding: 12px; /* 减小内边距 */
+  gap: 10px; /* 减小间距 */
+}
+
+.order-image {
+  width: 60px; /* 减小图片宽度 */
+  height: 60px; /* 减小图片高度 */
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.order-info {
+  flex: 1;
+}
+
+.order-info h3 {
+  margin: 0 0 5px 0; /* 减小间距 */
+  font-size: 0.9rem; /* 减小字体 */
+  color: #333;
+}
+
+.order-price {
+  margin: 0 0 3px 0; /* 减小间距 */
+  font-size: 1rem; /* 减小字体 */
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.order-date {
+  margin: 0;
+  font-size: 0.7rem; /* 减小字体 */
+  color: #777;
+}
+
+/* 话题区域样式 */
+.topics-section {
+  background: white;
+  margin: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.topics-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.topics-section h2 {
+  margin: 0 0 15px 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.topics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.topic-item {
+  padding: 15px;
+  border: 1px solid #e1e5f2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.topic-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.topic-item h3 {
+  margin: 0 0 10px 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.topic-content {
+  margin: 0 0 10px 0;
+  color: #666;
+  line-height: 1.5;
+}
+
+.topic-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+/* 响应式设计 - 移动端样式 */
+@media (max-width: 767px) {
+  .personal-center {
+    padding-bottom: 70px; /* 为移动底部导航留出空间 */
+  }
+  
+  .sidebar {
+    display: none;
+  }
+  
+  .main-content {
+    margin-left: 0;
+    padding: 15px;
+  }
+  
+  .header {
+    padding: 15px 20px;
+    align-items: stretch;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .section {
+    margin: 15px 10px;
+    padding: 15px;
+  }
+  
+  .user-header {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .user-avatar {
+    width: 80px;
+    height: 80px;
+    margin-right: 0;
+    margin-bottom: 15px;
+  }
+  
+  .user-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .user-actions button {
+    width: 100%;
+  }
+  
+  .status-item-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .status-item {
+    flex-direction: row;
+    align-items: center;
+    padding: 15px;
+  }
+  
+  .status-icon {
+    margin-right: 15px;
+    margin-bottom: 0;
+  }
+  
+  .orders-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .order-item {
+    padding: 15px;
+  }
+  
+  .topics-list {
+    padding: 10px;
+  }
+  
+  .topic-item {
+    padding: 15px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .header-actions {
+    align-self: flex-end;
+  }
+}
+
+/* 桌面端样式 */
+@media (min-width: 768px) {
+  .mobile-nav {
+    display: none;
+  }
+  
+  .main-content {
+    grid-area: main;
+    padding: 0;
+    overflow-y: auto;
+    margin-left: 210px; /* 与侧边栏宽度一致 */
+  }
+}
+</style>

@@ -125,12 +125,18 @@
                 v-for="post in posts"
                 :key="post.id"
                 class="topic-card"
+                @click="showTopicDetail(post)"
               >
                 <div class="post-header">
                   <div class="author-info">
-                    <img :src="post.author.avatar || defaultAvatar" :alt="post.author.name" class="author-avatar">
+                    <img 
+                      :src="post.author.avatar || defaultAvatar" 
+                      :alt="post.author.name" 
+                      class="author-avatar"
+                      @click.stop="showAuthorInfo(post.author.id)"
+                    >
                     <div class="author-details">
-                      <span class="author-name">{{ post.author.name }}</span>
+                      <span class="author-name" @click.stop="showAuthorInfo(post.author.id)">{{ post.author.name }}</span>
                       <span class="post-time">{{ formatTime(post.createdAt) }}</span>
                     </div>
                   </div>
@@ -284,6 +290,7 @@
             rows="5"
           ></textarea>
 
+          <!-- 图片上传 -->
           <div class="post-media">
             <div class="image-preview">
               <img
@@ -302,33 +309,35 @@
               </button>
             </div>
 
-            <div class="tag-input">
-              <input
-                v-model="tagInput"
-                type="text"
-                placeholder="添加标签 (回车确认)"
-                @keyup.enter="addTag"
-              >
-              <div class="selected-tags">
-                <span
-                  v-for="(tag, index) in postTags"
-                  :key="index"
-                  class="selected-tag"
-                >
-                  #{{ tag }}
-                  <button @click="removeTag(index)" class="remove-tag">×</button>
-                </span>
-              </div>
-            </div>
+            <!-- 四级标签选择器 -->
+            <TagSelector
+              ref="tagSelectorRef"
+              v-model="selectedPostTags"
+              :auto-select-level1="true"
+              :userId="currentUser?.id"
+              @change="handleTagChange"
+            />
           </div>
         </div>
 
         <div class="modal-footer">
           <button @click="closeModal" class="cancel-btn">取消</button>
-          <button @click="publishPost" class="submit-btn">发布</button>
+          <button @click="publishPost" class="submit-btn" :disabled="!canPublish">
+            {{ publishing ? '发布中...' : '发布' }}
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- 用户信息弹窗 -->
+    <UserInfoModal
+      v-if="showUserModal"
+      :visible="showUserModal"
+      :userId="selectedUserId"
+      :current-user-id="currentUser?.id"
+      @close="showUserModal = false"
+      @action="handleUserAction"
+    />
 
     <!-- 图片预览模态框 -->
     <div v-if="showImagePreview" class="modal-overlay" @click="closeImagePreview">
@@ -345,7 +354,9 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
-import { topicAPI } from '@/api/topic';
+import TagSelector from '@/components/topic/TagSelector.vue';
+import UserInfoModal from '@/components/topic/UserInfoModal.vue';
+import { topicAPI, tagAPI } from '@/api/topic';
 
 const router = useRouter();
 
@@ -384,8 +395,20 @@ const sortOptions = [
 const newPostContent = ref('');
 const quickPostContent = ref('');
 const postImages = ref([]);
-const postTags = ref([]);
+const selectedPostTags = ref({
+  level1: null,
+  level2: [],
+  level3: [],
+  level4: []
+});
 const tagInput = ref('');
+const publishing = ref(false);
+const canPublish = ref(true);
+const tagSelectorRef = ref(null);
+
+// 用户信息弹窗
+const showUserModal = ref(false);
+const selectedUserId = ref(null);
 
 // 分页数据
 const currentPage = ref(1);
@@ -598,6 +621,11 @@ const sharePost = (post) => {
   }
 };
 
+// 显示话题详情
+const showTopicDetail = (post) => {
+  router.push(`/topic/${post.id}`);
+};
+
 const previewImage = (imageUrl) => {
   previewImageUrl.value = imageUrl;
   showImagePreview.value = true;
@@ -635,23 +663,95 @@ const removeTag = (index) => {
   postTags.value.splice(index, 1);
 };
 
+// 处理标签变化
+const handleTagChange = (tagsData) => {
+  console.log('标签已选择:', tagsData);
+  // 验证是否可以发布
+  canPublish.value = !!(tagsData.level1 && tagsData.level2?.length > 0);
+};
+
+// 发布话题
 const publishPost = async () => {
+  // 验证内容
   if (!newPostContent.value.trim()) {
     ElMessage.warning('请输入话题内容');
     return;
   }
 
-  const topicData = {
-    content: newPostContent.value,
-    tags: [...postTags.value],
-    images: [...postImages.value]
-  };
+  // 验证标签
+  if (!tagSelectorRef.value?.validate()) {
+    canPublish.value = false;
+    return;
+  }
 
+  publishing.value = true;
+  
   try {
-    await publishTopic(topicData);
-    closeModal();
+    // 获取选中的标签
+    const selectedTags = tagSelectorRef.value?.getSelectedTags();
+    
+    // 构建请求数据
+    const topicData = {
+      content: newPostContent.value,
+      images: postImages.value,
+      tags: {
+        level1: selectedTags.level1?.code || null,
+        level2: selectedTags.level2.map(t => t.code),
+        level3: selectedTags.level3.map(t => t.code),
+        level4: selectedTags.level4.map(t => t.code)
+      },
+      anonymous: false
+    };
+
+    console.log('📤 发布话题，数据:', topicData);
+    
+    const response = await topicAPI.createTopic(topicData);
+    
+    if (response.data) {
+      ElMessage.success('发布成功!');
+      closeModal();
+      await fetchTopics();
+    }
   } catch (error) {
-    console.error('发布失败:', error);
+    console.error('❌ 发布失败:', error);
+    if (error.response?.data?.message) {
+      ElMessage.error(error.response.data.message);
+    } else {
+      ElMessage.error('发布失败，请稍后重试');
+    }
+  } finally {
+    publishing.value = false;
+  }
+};
+
+// 点击作者头像显示用户信息
+const showAuthorInfo = (authorId) => {
+  selectedUserId.value = authorId;
+  showUserModal.value = true;
+};
+
+// 处理用户操作
+const handleUserAction = (action) => {
+  console.log('用户操作:', action);
+  switch (action) {
+    case 'follow':
+      ElMessage.info('关注功能开发中...');
+      break;
+    case 'message':
+      ElMessage.info('消息功能开发中...');
+      break;
+    case 'view-profile':
+      ElMessage.info('个人主页开发中...');
+      break;
+    case 'posts':
+      ElMessage.info('查看 TA 的话题开发中...');
+      break;
+    case 'followers':
+      ElMessage.info('查看粉丝列表开发中...');
+      break;
+    case 'following':
+      ElMessage.info('查看关注列表开发中...');
+      break;
   }
 };
 
@@ -1966,5 +2066,53 @@ onUnmounted(() => {
   .nav-text {
     font-size: 0.6rem;
   }
+}
+
+/* 话题卡片点击效果 */
+.topic-card {
+  cursor: pointer;
+  transition: all 0.3s;
+  
+  &:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+}
+
+/* 作者头像和姓名点击效果 */
+.author-avatar,
+.author-name {
+  cursor: pointer;
+  transition: opacity 0.3s;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+/* 发布模态框中的标签选择器 */
+.publish-modal .tag-selector-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #c0c4cc;
+    }
+  }
+}
+
+/* 发布按钮禁用状态 */
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

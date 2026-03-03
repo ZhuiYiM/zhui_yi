@@ -423,15 +423,46 @@ const fetchTopics = async () => {
       search: searchQuery.value
     };
     
+    console.log('📡 请求话题列表，参数:', params);
     const response = await topicAPI.getTopics(params);
-    if (response.data) {
-      posts.value = response.data.topics || [];
-      totalPosts.value = response.data.total || 0;
-      stats.value.totalPosts = response.data.totalPosts || 0;
-      stats.value.todayPosts = response.data.todayPosts || 0;
+    console.log('📥 响应数据:', response);
+    
+    // 后端返回的数据已经在拦截器中解包到 data 层
+    if (response) {
+      // 兼容两种数据结构
+      const topicsData = response.data || response;
+      const rawTopics = topicsData.topics || [];
+      
+      // 转换字段名以匹配前端模板
+      posts.value = rawTopics.map(topic => ({
+        id: topic.id,
+        content: topic.content,
+        images: topic.images || [],
+        tags: topic.tags || [],
+        likes: topic.likesCount || 0,
+        comments: topic.commentsCount || 0,
+        shares: topic.viewsCount || 0,
+        isLiked: false, // 默认未点赞
+        isTop: topic.isTop || 0,
+        isEssence: topic.isEssence || 0,
+        createdAt: topic.createdAt,
+        author: {
+          id: topic.author.id,
+          name: topic.author.realName || topic.author.username || '匿名用户',
+          username: topic.author.username,
+          studentId: topic.author.studentId,
+          avatar: topic.author.avatarUrl || ''
+        }
+      }));
+      
+      totalPosts.value = topicsData.total || 0;
+      stats.value.totalPosts = topicsData.totalPosts || 0;
+      stats.value.todayPosts = topicsData.todayPosts || 0;
+      
+      console.log('✅ 话题数据已加载:', posts.value.length, '条');
     }
   } catch (error) {
-    console.error('获取话题列表失败:', error);
+    console.error('❌ 获取话题列表失败:', error);
     ElMessage.error('获取话题失败，请稍后重试');
   } finally {
     loading.value = false;

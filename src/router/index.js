@@ -11,6 +11,9 @@ import AccountVerification from "../components/user/AccountVerification.vue";
 import Map from "../components/user/Map.vue";
 import Message from "../components/user/Message.vue"; // 添加 Map 组件的导入
 
+// 懒加载组件
+const TopicDetail = () => import('../components/topic/TopicDetail.vue');
+
 const routes = [
     {
         path: '/',
@@ -70,6 +73,12 @@ const routes = [
         name: 'Message',
         component: Message,
         meta: { requiresAuth: true }
+    },
+    {
+        path: '/topic/:id',
+        name: 'TopicDetail',
+        component: TopicDetail,
+        meta: { requiresAuth: false }  // 话题详情页游客也可访问
     },
     {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由

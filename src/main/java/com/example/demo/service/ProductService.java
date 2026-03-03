@@ -15,6 +15,7 @@ public interface ProductService extends IService<Product> {
     Result getProductById(Integer productId, Integer userId);
     Result updateProductStatus(Integer productId, Integer status, HttpServletRequest request);
     Result updateProduct(Integer productId, ProductDTO productDTO, HttpServletRequest request);
-    Result deleteProduct(Integer productId, Integer userId);
+    Result deleteProduct(Integer productId, HttpServletRequest request);
     Result searchProducts(String keyword, Integer page, Integer size);
+    Result getCategories();
 }

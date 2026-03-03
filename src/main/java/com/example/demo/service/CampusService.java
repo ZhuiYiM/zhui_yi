@@ -8,4 +8,6 @@ public interface CampusService extends IService<Campus> {
     Result getCampuses();
     Result getLocationsByCampusId(Integer campusId);
     Result getLocationById(Integer locationId);
+    Result getCampusById(Integer campusId);
+    Result searchLocations(String keyword, Integer campusId);
 }

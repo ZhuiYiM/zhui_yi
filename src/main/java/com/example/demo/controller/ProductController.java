@@ -60,13 +60,34 @@ public class ProductController {
         return productService.updateProductStatus(id, status, request);
     }
 
-    // 从Token中提取用户ID的辅助方法
+    // 从 Token 中提取用户 ID 的辅助方法
     private Integer extractUserIdFromToken(String token) {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        // 这里应该根据实际实现来获取用户ID
-        // 暂时返回null表示未登录用户
+        // 这里应该根据实际实现来获取用户 ID
+        // 暂时返回 null 表示未登录用户
         return null;
+    }
+
+    // 获取商品分类
+    @GetMapping("/categories")
+    public Result getCategories() {
+        return productService.getCategories();
+    }
+
+    // 编辑商品
+    @PutMapping("/{id}")
+    public Result updateProduct(@PathVariable Integer id,
+                                @RequestBody ProductDTO productDTO,
+                                HttpServletRequest request) {
+        return productService.updateProduct(id, productDTO, request);
+    }
+
+    // 删除商品
+    @DeleteMapping("/{id}")
+    public Result deleteProduct(@PathVariable Integer id,
+                                HttpServletRequest request) {
+        return productService.deleteProduct(id, request);
     }
 }

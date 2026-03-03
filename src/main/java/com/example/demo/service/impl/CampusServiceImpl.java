@@ -45,4 +45,29 @@ public class CampusServiceImpl extends ServiceImpl<CampusMapper, Campus> impleme
         }
         return Result.success(location);
     }
+
+    @Override
+    public Result getCampusById(Integer campusId) {
+        Campus campus = this.getById(campusId);
+        if (campus == null) {
+            return Result.error("校区不存在");
+        }
+        return Result.success(campus);
+    }
+
+    @Override
+    public Result searchLocations(String keyword, Integer campusId) {
+        QueryWrapper<Location> wrapper = new QueryWrapper<>();
+        
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.and(w -> w.like("name", keyword).or().like("description", keyword));
+        }
+        
+        if (campusId != null) {
+            wrapper.eq("campus_id", campusId);
+        }
+
+        java.util.List<Location> locations = locationMapper.selectList(wrapper);
+        return Result.success(locations);
+    }
 }

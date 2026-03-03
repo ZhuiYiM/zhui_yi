@@ -5,4 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileUploadService {
     Result uploadImage(MultipartFile file, Integer userId);
+    Result uploadImages(MultipartFile[] files, Integer userId);
+    Result deleteFile(String fileUrl, Integer userId);
 }

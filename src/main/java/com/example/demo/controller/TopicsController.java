@@ -203,17 +203,63 @@ public class TopicsController {
         return topicsService.getUserCollections(userId, page, size);
     }
 
-    // 辅助方法：从请求中提取用户ID
+    /**
+     * 搜索话题
+     * GET /api/topics/search?q=关键词&page=1&size=10
+     */
+    @GetMapping("/search")
+    public ApiResult searchTopics(@RequestParam String q,
+                                  @RequestParam(defaultValue = "1") Integer page,
+                                  @RequestParam(defaultValue = "10") Integer size) {
+        TopicQueryDTO queryDTO = new TopicQueryDTO();
+        queryDTO.setSearch(q);
+        queryDTO.setPage(page);
+        queryDTO.setSize(size);
+        queryDTO.setSort("latest");
+        return topicsService.getTopics(queryDTO);
+    }
+
+    /**
+     * 根据标签获取话题
+     * GET /api/topics/tag/:tag?page=1&size=10
+     */
+    @GetMapping("/tag/{tag}")
+    public ApiResult getTopicsByTag(@PathVariable String tag,
+                                    @RequestParam(defaultValue = "1") Integer page,
+                                    @RequestParam(defaultValue = "10") Integer size) {
+        TopicQueryDTO queryDTO = new TopicQueryDTO();
+        queryDTO.setTag(tag);
+        queryDTO.setPage(page);
+        queryDTO.setSize(size);
+        queryDTO.setSort("latest");
+        return topicsService.getTopics(queryDTO);
+    }
+
+    /**
+     * 获取用户发布的话题
+     * GET /api/users/:userId/topics?page=1&size=10&sort=latest
+     */
+    @GetMapping("/users/{userId}")
+    public ApiResult getUserTopics(@PathVariable Long userId,
+                                   @RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "10") Integer size,
+                                   @RequestParam(defaultValue = "latest") String sort) {
+        TopicQueryDTO queryDTO = new TopicQueryDTO();
+        queryDTO.setUserId(userId);
+        queryDTO.setPage(page);
+        queryDTO.setSize(size);
+        queryDTO.setSort(sort);
+        return topicsService.getTopics(queryDTO);
+    }
+
+    /**
+     * 从请求中提取用户 ID 的辅助方法
+     */
     private Long extractUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
         }
-        Integer userIdInt = jwtUtil.getUserIdFromToken(token);
-        if (userIdInt != null) {
-            return userIdInt.longValue();
-        } else {
-            return 0L;
-        }
+        return jwtUtil.getUserIdFromToken(token) != null ? jwtUtil.getUserIdFromToken(token).longValue() : 0L;
     }
 }

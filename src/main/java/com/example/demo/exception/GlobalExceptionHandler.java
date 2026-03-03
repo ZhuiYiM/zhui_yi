@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -86,7 +87,18 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public ApiResult handleBusinessException(BusinessException e) {
-        log.warn("业务异常: {}", e.getMessage());
+        log.warn("业务异常：{}", e.getMessage());
         return ApiResult.error(e.getCode(), e.getMessage());
+    }
+
+    /**
+     * 处理静态资源未找到异常（前后端分离架构下，前端路由不应由后端处理）
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResult handleNoResourceFoundException(NoResourceFoundException e) {
+        // 记录日志但不抛出错误，因为这是正常的前端路由请求
+        log.debug("前端路由请求，由前端处理：{}", e.getResourcePath());
+        return ApiResult.error(404, "资源未找到，请检查前端路由配置");
     }
 }

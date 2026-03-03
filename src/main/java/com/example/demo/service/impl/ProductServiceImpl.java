@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.demo.entity.Product;
 import com.example.demo.entity.User;
+import com.example.demo.entity.Category;
 import com.example.demo.entity.dto.ProductDTO;
 import com.example.demo.mapper.ProductMapper;
 import com.example.demo.mapper.UserMapper;
+import com.example.demo.mapper.CategoryMapper;
 import com.example.demo.service.ProductService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
@@ -27,6 +29,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private CategoryMapper categoryMapper;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -193,14 +198,29 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     }
 
     @Override
-    public Result deleteProduct(Integer productId, Integer userId) {
+    public Result deleteProduct(Integer productId, HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        String username = jwtUtil.getUsernameFromToken(token);
+        if (username == null || !jwtUtil.validateToken(token, username)) {
+            return Result.error("Token 无效");
+        }
+
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
         Product product = this.getById(productId);
         if (product == null) {
             return Result.error("商品不存在");
         }
 
         // 验证是否是该商品的卖家
-        if (!product.getSellerId().equals(userId)) {
+        if (!product.getSellerId().equals(user.getId())) {
             return Result.error("无权删除此商品");
         }
 
@@ -210,6 +230,14 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         } else {
             return Result.error("商品删除失败");
         }
+    }
+
+    @Override
+    public Result getCategories() {
+        QueryWrapper<Category> wrapper = new QueryWrapper<>();
+        wrapper.orderByAsc("parent_id", "name");
+        java.util.List<Category> categories = categoryMapper.selectList(wrapper);
+        return Result.success(categories);
     }
 
     @Override

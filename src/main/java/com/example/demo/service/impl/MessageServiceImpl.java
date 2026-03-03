@@ -65,7 +65,67 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
         wrapper.eq("receiver_id", userId)
                 .eq("is_read", 0);
 
-        int count = (int)this.count(wrapper);  // 修复：将long转为int
+        int count = (int)this.count(wrapper);  // 修复：将 long 转为 int
         return Result.success(count);
+    }
+
+    @Override
+    public Result sendMessage(Integer fromUserId, Integer toUserId, String content, String type) {
+        if (content == null || content.trim().isEmpty()) {
+            return Result.error("消息内容不能为空");
+        }
+
+        Message message = new Message();
+        message.setSenderId(fromUserId);
+        message.setReceiverId(toUserId);
+        message.setContent(content);
+        message.setMessageType(type != null ? type : "private");
+        message.setIsRead(0);
+        message.setCreatedAt(LocalDateTime.now());
+
+        boolean result = this.save(message);
+        if (result) {
+            return Result.success("消息发送成功");
+        } else {
+            return Result.error("消息发送失败");
+        }
+    }
+
+    @Override
+    public Result markAsReadBatch(java.util.List<Integer> messageIds, Integer userId) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return Result.error("消息 ID 列表不能为空");
+        }
+
+        for (Integer messageId : messageIds) {
+            Message message = this.getById(messageId);
+            if (message != null && message.getReceiverId().equals(userId)) {
+                message.setIsRead(1);
+                message.setUpdatedAt(LocalDateTime.now());
+                this.updateById(message);
+            }
+        }
+
+        return Result.success("批量标记成功", java.util.Map.of("count", messageIds.size()));
+    }
+
+    @Override
+    public Result deleteMessage(Integer messageId, Integer userId) {
+        Message message = this.getById(messageId);
+        if (message == null) {
+            return Result.error("消息不存在");
+        }
+
+        // 验证消息是否属于当前用户
+        if (!message.getReceiverId().equals(userId) && !message.getSenderId().equals(userId)) {
+            return Result.error("无权删除此消息");
+        }
+
+        boolean result = this.removeById(messageId);
+        if (result) {
+            return Result.success("消息删除成功");
+        } else {
+            return Result.error("消息删除失败");
+        }
     }
 }

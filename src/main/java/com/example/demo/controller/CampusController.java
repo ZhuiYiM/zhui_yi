@@ -30,4 +30,17 @@ public class CampusController {
     public Result getLocationDetail(@PathVariable Integer locationId) {
         return campusService.getLocationById(locationId);
     }
+
+    // 获取校区详情
+    @GetMapping("/{campusId}")
+    public Result getCampusDetail(@PathVariable Integer campusId) {
+        return campusService.getCampusById(campusId);
+    }
+
+    // 搜索地点
+    @GetMapping("/locations/search")
+    public Result searchLocations(@RequestParam String keyword,
+                                   @RequestParam(required = false) Integer campusId) {
+        return campusService.searchLocations(keyword, campusId);
+    }
 }

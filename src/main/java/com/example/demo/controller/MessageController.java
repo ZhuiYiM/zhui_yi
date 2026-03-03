@@ -6,6 +6,8 @@ import com.example.demo.utils.JwtUtil;  // 添加导入
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/messages")
 @CrossOrigin
@@ -42,7 +44,7 @@ public class MessageController {
         return messageService.getUnreadCount(userId);
     }
 
-    // 从Token中提取用户ID的辅助方法
+    // 从 Token 中提取用户 ID 的辅助方法
     private Integer extractUserIdFromToken(String token) {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
@@ -55,4 +57,45 @@ public class MessageController {
         return null; // 表示未登录用户
     }
 
+    // 发送消息
+    @PostMapping
+    public Result sendMessage(@RequestBody Map<String, Object> requestBody,
+                              @RequestHeader("Authorization") String token) {
+        Integer userId = extractUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+        
+        Integer toUserId = (Integer) requestBody.get("toUserId");
+        String content = (String) requestBody.get("content");
+        String type = (String) requestBody.get("type");
+        
+        return messageService.sendMessage(userId, toUserId, content, type);
+    }
+
+    // 批量标记已读
+    @PutMapping("/read-batch")
+    public Result markAsReadBatch(@RequestBody Map<String, Object> requestBody,
+                                   @RequestHeader("Authorization") String token) {
+        Integer userId = extractUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+        
+        @SuppressWarnings("unchecked")
+        java.util.List<Integer> ids = (java.util.List<Integer>) requestBody.get("ids");
+        return messageService.markAsReadBatch(ids, userId);
+    }
+
+    // 删除消息
+    @DeleteMapping("/{id}")
+    public Result deleteMessage(@PathVariable Integer id,
+                                @RequestHeader("Authorization") String token) {
+        Integer userId = extractUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+        
+        return messageService.deleteMessage(id, userId);
+    }
 }

@@ -4,6 +4,7 @@ import com.example.demo.common.Result;
 import com.example.demo.entity.dto.LoginDTO;
 import com.example.demo.entity.dto.RegisterDTO;
 import com.example.demo.service.UserService;
+import com.example.demo.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,9 @@ public class UserLoginController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     /**
      * 用户登录接口
@@ -55,5 +59,52 @@ public class UserLoginController {
     @PostMapping("/login/phone")
     public Result loginByPhone(@RequestBody java.util.Map<String, String> request) {
         return userService.loginByPhone(request);
+    }
+
+    /**
+     * 用户登出
+     * POST /user/logout
+     */
+    @PostMapping("/logout")
+    public Result logout(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        // TODO: 实现 Token 黑名单机制或清除 Redis 中的 Token
+        return Result.success("登出成功");
+    }
+
+    /**
+     * 刷新 Token
+     * POST /user/refresh
+     */
+    @PostMapping("/refresh")
+    public Result refreshToken(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+        
+        try {
+            // 验证 Token 是否有效
+            if (!jwtUtil.validateTokenWithIdOrUsername(token)) {
+                return Result.error(401, "Token 已过期");
+            }
+            
+            // 获取用户信息并生成新 Token
+            String username = jwtUtil.getUsernameFromToken(token);
+            Integer userId = jwtUtil.getUserIdFromToken(token);
+            
+            // 使用 refreshToken 方法刷新 Token
+            String newToken = jwtUtil.refreshToken(token);
+            
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("token", newToken);
+            
+            return Result.success(response);
+        } catch (Exception e) {
+            return Result.error(401, "Token 刷新失败：" + e.getMessage());
+        }
     }
 }

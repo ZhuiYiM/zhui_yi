@@ -23,11 +23,15 @@ public class TokenInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 检查是否为排除路径
+        // 检查是否为排除路径（包括 API 前缀和特定的公开接口）
         String uri = request.getRequestURI();
         if (uri.startsWith("/auth/") || 
             uri.startsWith("/number/") || 
-            uri.startsWith("/upload/")) {
+            uri.startsWith("/upload/") ||
+            // 排除所有非 /api/ 开头的路径（前端路由不拦截）
+            (!uri.startsWith("/api/") && !uri.startsWith("/products/") && 
+             !uri.startsWith("/topics/") && !uri.startsWith("/messages/") && 
+             !uri.startsWith("/campus/"))) {
             return true; // 直接放行
         }
 

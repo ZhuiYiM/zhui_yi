@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.config.annotation.CorsRegistry; // 添加此行
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+
+import java.io.IOException;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -30,5 +33,27 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 允许的方法
                 .allowedHeaders("*") // 允许的头部
                 .allowCredentials(false); // 是否允许携带凭证（如 Cookie）
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // 忽略 API 路径的静态资源检查，防止 NoResourceFoundException
+        registry.addResourceHandler(
+                "/user/profile",
+                "/user/**", 
+                "/topics/**", 
+                "/products/**", 
+                "/messages/**", 
+                "/campus/**",
+                "/tags/**",
+                "/auth/**",
+                "/number/**",
+                "/upload/**",
+                "/api/**"
+        )
+                .addResourceLocations("classpath:/static/");
+        
+        // 不处理其他路径的静态资源请求，让前后端分离架构更清晰
+        // 前端应由独立的开发服务器（如 Vite）提供服务
     }
 }

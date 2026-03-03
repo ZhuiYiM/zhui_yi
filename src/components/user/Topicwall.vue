@@ -2072,11 +2072,11 @@ onUnmounted(() => {
 .topic-card {
   cursor: pointer;
   transition: all 0.3s;
-  
-  &:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
-  }
+}
+
+.topic-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
 /* 作者头像和姓名点击效果 */
@@ -2084,10 +2084,11 @@ onUnmounted(() => {
 .author-name {
   cursor: pointer;
   transition: opacity 0.3s;
-  
-  &:hover {
-    opacity: 0.8;
-  }
+}
+
+.author-avatar:hover,
+.author-name:hover {
+  opacity: 0.8;
 }
 
 /* 发布模态框中的标签选择器 */
@@ -2095,19 +2096,19 @@ onUnmounted(() => {
   max-height: 400px;
   overflow-y: auto;
   padding-right: 10px;
-  
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: #dcdfe6;
-    border-radius: 3px;
-    
-    &:hover {
-      background: #c0c4cc;
-    }
-  }
+}
+
+.publish-modal .tag-selector-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.publish-modal .tag-selector-container::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
+}
+
+.publish-modal .tag-selector-container::-webkit-scrollbar-thumb:hover {
+  background: #c0c4cc;
 }
 
 /* 发布按钮禁用状态 */

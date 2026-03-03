@@ -479,7 +479,7 @@ defineExpose({
 });
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .tag-selector-container {
   padding: 20px 0;
 }

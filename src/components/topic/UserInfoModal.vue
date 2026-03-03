@@ -217,7 +217,7 @@ defineExpose({
 });
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .user-info-modal-overlay {
   position: fixed;
   top: 0;

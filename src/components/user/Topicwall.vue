@@ -1,8 +1,8 @@
 <template>
   <div :class="['topic-wall-container', { 'mobile': isMobile }]">
     <!-- 统一导航组件 -->
-    <UnifiedNav 
-      :is-mobile="isMobile" 
+    <UnifiedNav
+      :is-mobile="isMobile"
       current-page="topicwall"
       :show-sidebar="!isMobile"
       :show-mobile-nav="isMobile"
@@ -16,25 +16,25 @@
       <header class="page-header">
         <div class="header-content">
           <h1 class="page-title">{{ isMobile ? '校园话题墙' : '校园话题墙' }}</h1>
-          
+
           <!-- 搜索区域 -->
           <div class="search-section">
             <div class="search-box">
-              <input 
+              <input
                 v-model="searchQuery"
-                type="text" 
-                placeholder="搜索话题、标签或用户..." 
+                type="text"
+                placeholder="搜索话题、标签或用户..."
                 @keyup.enter="handleSearch"
                 class="search-input"
               >
               <button @click="handleSearch" class="search-btn">🔍</button>
             </div>
-            
+
             <!-- 操作按钮区域 -->
             <div class="action-buttons">
               <!-- 刷新按钮 (桌面端) -->
-              <button 
-                v-if="!isMobile" 
+              <button
+                v-if="!isMobile"
                 @click="refreshAllData"
                 class="refresh-btn"
                 :disabled="loading"
@@ -42,10 +42,10 @@
                 <span v-if="loading" class="loading-spinner"></span>
                 <span v-else>🔄 刷新</span>
               </button>
-              
+
               <!-- 发布按钮 (桌面端) -->
-              <button 
-                v-if="!isMobile" 
+              <button
+                v-if="!isMobile"
                 @click="showPublishModal = true"
                 class="publish-btn"
               >
@@ -57,13 +57,13 @@
       </header>
 
       <!-- 内容区域 -->
-      <div 
+      <div
         class="content-wrapper"
         @scroll="handleScroll"
         ref="contentWrapper"
       >
         <!-- 左侧内容区 -->
-        <div 
+        <div
           class="left-content"
           @touchstart="handleTouchStart"
           @touchmove="handleTouchMove"
@@ -74,8 +74,8 @@
           <section class="popular-tags">
             <h2>热门标签</h2>
             <div class="tags-container">
-              <span 
-                v-for="tag in popularTags" 
+              <span
+                v-for="tag in popularTags"
                 :key="tag"
                 @click="filterByTag(tag)"
                 class="tag-item"
@@ -91,8 +91,8 @@
             <div class="section-header">
               <h2>{{ activeTag ? `#${activeTag}` : '最新话题' }}</h2>
               <div class="sort-options">
-                <button 
-                  v-for="option in sortOptions" 
+                <button
+                  v-for="option in sortOptions"
                   :key="option.value"
                   @click="changeSort(option.value)"
                   class="sort-btn"
@@ -121,8 +121,8 @@
 
             <!-- 话题列表 -->
             <div v-else class="topics-list">
-              <div 
-                v-for="post in posts" 
+              <div
+                v-for="post in posts"
                 :key="post.id"
                 class="topic-card"
               >
@@ -134,7 +134,7 @@
                       <span class="post-time">{{ formatTime(post.createdAt) }}</span>
                     </div>
                   </div>
-                  
+
                   <div class="post-actions">
                     <button @click="toggleLike(post)" class="action-btn" :class="{ liked: post.isLiked }">
                       👍 {{ post.likes }}
@@ -150,19 +150,19 @@
 
                 <div class="post-content">
                   <p>{{ post.content }}</p>
-                  
+
                   <!-- 图片展示 -->
                   <div v-if="post.images && post.images.length > 0" class="post-images">
-                    <img 
-                      v-for="(image, index) in post.images.slice(0, 4)" 
+                    <img
+                      v-for="(image, index) in post.images.slice(0, 4)"
                       :key="index"
-                      :src="image" 
+                      :src="image"
                       :alt="`图片${index + 1}`"
                       class="post-image"
                       @click="previewImage(image)"
                     >
-                    <div 
-                      v-if="post.images.length > 4" 
+                    <div
+                      v-if="post.images.length > 4"
                       class="more-images"
                       @click="previewAllImages(post.images)"
                     >
@@ -172,8 +172,8 @@
 
                   <!-- 标签 -->
                   <div v-if="post.tags && post.tags.length > 0" class="post-tags">
-                    <span 
-                      v-for="tag in post.tags" 
+                    <span
+                      v-for="tag in post.tags"
                       :key="tag"
                       @click="filterByTag(tag)"
                       class="post-tag"
@@ -186,20 +186,20 @@
 
               <!-- 分页 -->
               <div v-if="totalPages > 1" class="pagination">
-                <button 
-                  @click="changePage(currentPage - 1)" 
+                <button
+                  @click="changePage(currentPage - 1)"
                   :disabled="currentPage === 1"
                   class="page-btn"
                 >
                   上一页
                 </button>
-                
+
                 <span class="page-info">
                   第 {{ currentPage }} 页，共 {{ totalPages }} 页
                 </span>
-                
-                <button 
-                  @click="changePage(currentPage + 1)" 
+
+                <button
+                  @click="changePage(currentPage + 1)"
                   :disabled="currentPage === totalPages"
                   class="page-btn"
                 >
@@ -215,7 +215,7 @@
           <!-- 发布话题卡片 -->
           <div class="publish-card">
             <h3>发布新话题</h3>
-            <textarea 
+            <textarea
               v-model="quickPostContent"
               placeholder="分享你的校园生活..."
               class="quick-post-textarea"
@@ -232,8 +232,8 @@
           <div class="hot-users">
             <h3>活跃用户</h3>
             <div class="users-list">
-              <div 
-                v-for="user in hotUsers" 
+              <div
+                v-for="user in hotUsers"
                 :key="user.id"
                 class="user-item"
               >
@@ -275,25 +275,25 @@
           <h2>发布新话题</h2>
           <button @click="closeModal" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
-          <textarea 
+          <textarea
             v-model="newPostContent"
             placeholder="分享你的想法..."
             class="post-textarea"
             rows="5"
           ></textarea>
-          
+
           <div class="post-media">
             <div class="image-preview">
-              <img 
-                v-for="(image, index) in postImages" 
+              <img
+                v-for="(image, index) in postImages"
                 :key="index"
-                :src="image" 
+                :src="image"
                 alt="预览图片"
                 class="preview-image"
               >
-              <button 
+              <button
                 v-if="postImages.length < 9"
                 @click="addImageToPost"
                 class="add-image-btn"
@@ -301,17 +301,17 @@
                 +
               </button>
             </div>
-            
+
             <div class="tag-input">
-              <input 
+              <input
                 v-model="tagInput"
-                type="text" 
+                type="text"
                 placeholder="添加标签 (回车确认)"
                 @keyup.enter="addTag"
               >
               <div class="selected-tags">
-                <span 
-                  v-for="(tag, index) in postTags" 
+                <span
+                  v-for="(tag, index) in postTags"
                   :key="index"
                   class="selected-tag"
                 >
@@ -322,7 +322,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
           <button @click="closeModal" class="cancel-btn">取消</button>
           <button @click="publishPost" class="submit-btn">发布</button>
@@ -422,17 +422,17 @@ const fetchTopics = async () => {
       tag: activeTag.value,
       search: searchQuery.value
     };
-    
+
     console.log('📡 请求话题列表，参数:', params);
     const response = await topicAPI.getTopics(params);
     console.log('📥 响应数据:', response);
-    
+
     // 后端返回的数据已经在拦截器中解包到 data 层
     if (response) {
       // 兼容两种数据结构
       const topicsData = response.data || response;
       const rawTopics = topicsData.topics || [];
-      
+
       // 转换字段名以匹配前端模板
       posts.value = rawTopics.map(topic => ({
         id: topic.id,
@@ -454,11 +454,11 @@ const fetchTopics = async () => {
           avatar: topic.author.avatarUrl || ''
         }
       }));
-      
+
       totalPosts.value = topicsData.total || 0;
       stats.value.totalPosts = topicsData.totalPosts || 0;
       stats.value.todayPosts = topicsData.todayPosts || 0;
-      
+
       console.log('✅ 话题数据已加载:', posts.value.length, '条');
     }
   } catch (error) {
@@ -615,7 +615,7 @@ const addImageToPost = () => {
     'https://placehold.co/200x200/4ECDC4/FFFFFF?text=图2',
     'https://placehold.co/200x200/FFE66D/333333?text=图3'
   ];
-  
+
   if (postImages.value.length < 9) {
     postImages.value.push(mockImages[postImages.value.length % 3]);
     ElMessage.success('图片添加成功');
@@ -701,7 +701,7 @@ const closeModal = () => {
 // 刷新功能
 const refreshAllData = async () => {
   if (loading.value) return;
-  
+
   loading.value = true;
   try {
     // 重置分页
@@ -709,13 +709,13 @@ const refreshAllData = async () => {
     activeTag.value = '';
     searchQuery.value = '';
     currentSort.value = 'latest';
-    
+
     // 并行获取所有数据
     await Promise.all([
       fetchTopics(),
       fetchPopularTags()
     ]);
-    
+
     ElMessage.success('刷新成功');
   } catch (error) {
     console.error('刷新失败:', error);
@@ -737,12 +737,12 @@ const handleTouchMove = (e) => {
   if (isMobile.value && !loading.value && touchStartY.value > 0) {
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - touchStartY.value;
-    
+
     // 只有在页面顶部且向下拉动时才触发
     if (deltaY > 0 && contentWrapper.value.scrollTop === 0) {
       e.preventDefault();
       pullDistance.value = Math.min(deltaY * 0.5, maxPullDistance.value);
-      
+
       // 更新容器样式
       if (topicsContainer.value) {
         topicsContainer.value.style.transform = `translateY(${pullDistance.value}px)`;
@@ -758,13 +758,13 @@ const handleTouchEnd = async () => {
     if (pullDistance.value >= maxPullDistance.value * 0.6) {
       await refreshAllData();
     }
-    
+
     // 重置样式
     if (topicsContainer.value) {
       topicsContainer.value.style.transform = 'translateY(0)';
       topicsContainer.value.style.transition = 'transform 0.3s ease';
     }
-    
+
     touchStartY.value = 0;
     pullDistance.value = 0;
   }
@@ -797,7 +797,7 @@ const loadMoreTopics = async () => {
         tag: activeTag.value,
         search: searchQuery.value
       };
-      
+
       const response = await topicAPI.getTopics(params);
       if (response.data && response.data.topics) {
         posts.value = [...posts.value, ...response.data.topics];
@@ -842,7 +842,7 @@ onMounted(async () => {
   updateDeviceDetection();
   getUserInfo();
   window.addEventListener('resize', updateDeviceDetection);
-  
+
   // 获取初始数据
   await Promise.all([
     fetchTopics(),
@@ -1857,80 +1857,80 @@ onUnmounted(() => {
   .topic-wall-container {
     padding-bottom: 80px;
   }
-  
+
   .sidebar {
     display: none;
   }
-  
+
   .page-header {
     padding: 20px 15px;
   }
-  
+
   .page-title {
     font-size: 1.5rem;
     text-align: center;
   }
-  
+
   .search-section {
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .action-buttons {
     width: 100%;
     justify-content: center;
   }
-  
+
   .content-wrapper {
     padding: 15px;
     gap: 20px;
     height: calc(100vh - 160px);
   }
-  
+
   .popular-tags, .topics-section {
     padding: 20px;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
   }
-  
+
   .sort-options {
     align-self: flex-end;
   }
-  
+
   .topic-card {
     padding: 20px;
   }
-  
+
   .post-header {
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .post-actions {
     align-self: flex-end;
   }
-  
+
   .publish-card, .hot-users, .stats-card {
     padding: 20px;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  
+
   .modal-overlay {
     padding: 10px;
   }
-  
+
   .publish-modal {
     max-height: 95vh;
   }
-  
+
   .modal-header, .modal-body, .modal-footer {
     padding: 20px;
   }
@@ -1940,29 +1940,29 @@ onUnmounted(() => {
   .page-header {
     padding: 15px;
   }
-  
+
   .content-wrapper {
     padding: 10px;
   }
-  
+
   .topic-card {
     padding: 15px;
   }
-  
+
   .post-images {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .nav-grid {
     gap: 2px;
   }
-  
+
   .nav-icon {
     width: 32px;
     height: 32px;
     font-size: 1rem;
   }
-  
+
   .nav-text {
     font-size: 0.6rem;
   }

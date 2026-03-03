@@ -28,31 +28,16 @@
       <section class="announcements-section">
         <div class="section-header">
           <h2>校园公告</h2>
-          <!-- 对于游客，点击查看更多会检查认证状态 -->
+          <!-- 所有用户都使用认证检查 -->
           <button
-              v-if="!isMobile && isLoggedIn"
-              class="view-more-btn"
-              @click="goToPage('activities')"
-          >
-            查看更多
-          </button>
-          <span
-              v-else-if="isMobile && isLoggedIn"
-              class="view-more"
-              @click="goToPage('activities')"
-          >
-            查看更多 >
-          </span>
-          <!-- 游客版本的"查看更多" -->
-          <button
-              v-else-if="!isMobile && !isLoggedIn"
+              v-if="!isMobile"
               class="view-more-btn"
               @click="checkAuthAndNavigate('activities')"
           >
             查看更多
           </button>
           <span
-              v-else-if="isMobile && !isLoggedIn"
+              v-else
               class="view-more"
               @click="checkAuthAndNavigate('activities')"
           >
@@ -92,30 +77,16 @@
       <section class="ads-section">
         <div class="section-header">
           <h2>商业广告</h2>
+          <!-- 所有用户都使用认证检查 -->
           <button
-              v-if="!isMobile && isLoggedIn"
-              class="view-more-btn"
-              @click="goToPage('ads')"
-          >
-            查看更多
-          </button>
-          <span
-              v-else-if="isMobile && isLoggedIn"
-              class="view-more"
-              @click="goToPage('ads')"
-          >
-            查看更多 >
-          </span>
-          <!-- 游客版本 -->
-          <button
-              v-else-if="!isMobile && !isLoggedIn"
+              v-if="!isMobile"
               class="view-more-btn"
               @click="checkAuthAndNavigate('ads')"
           >
             查看更多
           </button>
           <span
-              v-else-if="isMobile && !isLoggedIn"
+              v-else
               class="view-more"
               @click="checkAuthAndNavigate('ads')"
           >
@@ -179,11 +150,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 // 当前用户信息
-const currentUser = ref({
-  name: '',
-  studentId: '',
-  avatar: ''
-});
+const currentUser = ref(null);
 
 // 更新设备类型检测
 const updateDeviceType = () => {
@@ -205,6 +172,9 @@ const checkLoginStatus = () => {
     };
     
     console.log('🏠 当前用户信息:', currentUser.value);
+  } else {
+    // 未登录时设置为 null
+    currentUser.value = null;
   }
 };
 

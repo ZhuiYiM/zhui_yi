@@ -84,4 +84,27 @@ const router = createRouter({
     routes
 });
 
+// 路由守卫 - 统一处理认证检查
+router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('token');
+    const requiresAuth = to.meta.requiresAuth;
+    
+    // 如果路由需要认证
+    if (requiresAuth) {
+        if (!token) {
+            // 未登录，重定向到登录页
+            next({
+                path: '/login',
+                query: { redirect: to.fullPath } // 保存原始目标路径
+            });
+        } else {
+            // 已登录，允许访问
+            next();
+        }
+    } else {
+        // 不需要认证的路由，直接访问
+        next();
+    }
+});
+
 export default router;

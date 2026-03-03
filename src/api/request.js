@@ -3,7 +3,7 @@ import router from '../router';
 
 // 创建 axios 实例
 const apiClient = axios.create({
-    baseURL: 'http://localhost:8080', // 直接连接后端服务
+    baseURL: '/api', // 使用 Vite 代理
     timeout: 15000, // 增加超时时间
     headers: {
         'Content-Type': 'application/json',

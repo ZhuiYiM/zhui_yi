@@ -5,7 +5,7 @@
       <h1>校园信息平台</h1>
     </div>
     
-    <!-- 用户信息区域 -->
+    <!-- 用户信息区域（仅已登录时显示） -->
     <div v-if="showUserInfo && hasUserInfo" class="user-info">
       <div class="user-avatar">
         <img 
@@ -16,17 +16,7 @@
       </div>
       <div class="user-details">
         <div class="username">{{ displayUserName }}</div>
-        <div class="student-id">学号: {{ displayStudentId }}</div>
-      </div>
-    </div>
-    
-    <!-- 游客信息区域 -->
-    <div v-else-if="showUserInfo" class="guest-info">
-      <div class="guest-avatar">
-        👤
-      </div>
-      <div class="guest-details">
-        <div class="guest-text">请登录</div>
+        <div class="student-id">学号：{{ displayStudentId }}</div>
       </div>
     </div>
     
@@ -65,6 +55,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   isMobile: {
@@ -99,10 +90,10 @@ const props = defineProps({
 
 const router = useRouter()
 
-// 计算属性：判断是否有用户信息
+// 计算属性：判断是否有用户信息（只有明确有用户名才显示）
 const hasUserInfo = computed(() => {
-  return props.userInfo && 
-         (props.userInfo.name || props.userInfo.username || props.userInfo.nickname)
+  const user = props.userInfo
+  return user && (user.name || user.username || user.nickname)
 })
 
 // 计算属性：显示用户名
@@ -165,6 +156,21 @@ const mobileNavItems = [
 
 // 导航函数
 const navigateTo = (pageId) => {
+  // 检查是否需要认证
+  const token = localStorage.getItem('token')
+  const requiresAuthPages = ['map', 'mall', 'message', 'topicwall', 'personalcenter']
+  
+  if (requiresAuthPages.includes(pageId) && !token) {
+    // 未登录，提示并跳转到登录页
+    ElMessage.info('请先登录后再访问此功能')
+    router.push({
+      path: '/login',
+      query: { redirect: pageId }
+    })
+    return
+  }
+  
+  // 已登录或不需要认证的页面，正常跳转
   switch(pageId) {
     case 'home':
       router.push('/')

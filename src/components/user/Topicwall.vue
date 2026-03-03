@@ -365,11 +365,7 @@ const pullDistance = ref(0);
 const maxPullDistance = ref(80);
 
 // 用户信息
-const currentUser = ref({
-  name: '',
-  studentId: '',
-  avatar: ''
-});
+const currentUser = ref(null);
 
 const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U';
 
@@ -503,12 +499,18 @@ const updateDeviceDetection = () => {
 };
 
 const getUserInfo = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  currentUser.value = {
-    name: user.name || user.username || '',
-    studentId: user.studentId || user.student_id || '',
-    avatar: user.avatar || ''
-  };
+  const token = localStorage.getItem('token');
+  if (token) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    currentUser.value = {
+      name: user.name || user.username || '',
+      studentId: user.studentId || user.student_id || '',
+      avatar: user.avatar || ''
+    };
+  } else {
+    // 未登录时设置为 null
+    currentUser.value = null;
+  }
 };
 
 const formatTime = (date) => {

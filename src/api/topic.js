@@ -98,5 +98,40 @@ export const topicAPI = {
     // 获取用户公开信息
     getUserPublicInfo(userId) {
         return request.get(`/user/${userId}/public-info`);
+    },
+
+    // 获取用户发布的话题
+    getUserPublishedTopics(userId, params = {}) {
+        return request.get(`/user/${userId}/published-topics`, { params });
+    },
+
+    // 获取用户参与的话题
+    getUserParticipatedTopics(userId, params = {}) {
+        return request.get(`/user/${userId}/participated-topics`, { params });
+    },
+
+    // 收藏话题
+    collectTopic(topicId) {
+        return request.post(`/topics/${topicId}/collect`);
+    },
+
+    // 获取用户收藏列表
+    getCollections(params = {}) {
+        return request.get('/topics/collections', { params });
+    },
+
+    // 编辑话题
+    editTopic(id, data) {
+        return request.put(`/topics/${id}`, data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    },
+
+    // 获取平台统计
+    getStats() {
+        return request.get('/topics/stats');
     }
 };

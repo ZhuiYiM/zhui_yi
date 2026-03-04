@@ -577,11 +577,26 @@ const toggleLike = async () => {
 const toggleCollection = async () => {
   if (!isLoggedIn.value) {
     ElMessage.warning('请先登录');
+    router.push('/login');
     return;
   }
   
-  // TODO: 实现收藏功能
-  ElMessage.info('收藏功能开发中...');
+  try {
+    const response = await topicAPI.collectTopic(topic.value.id);
+    if (response.data) {
+      isCollected.value = !isCollected.value;
+      
+      if (!topic.value.statistics) {
+        topic.value.statistics = {};
+      }
+      topic.value.statistics.collectionsCount += isCollected.value ? 1 : -1;
+      
+      ElMessage.success(isCollected.value ? '收藏成功' : '取消收藏');
+    }
+  } catch (err) {
+    console.error('收藏失败:', err);
+    ElMessage.error(err.response?.data?.message || '操作失败，请稍后重试');
+  }
 };
 
 // 分享
@@ -683,8 +698,19 @@ const scrollToComments = () => {
 };
 
 // 编辑话题
-const editTopic = () => {
-  ElMessage.info('编辑功能开发中...');
+const editTopic = async () => {
+  const newContent = prompt('编辑话题内容:', topic.value.content);
+  if (!newContent || newContent === topic.value.content) return;
+  
+  try {
+    await topicAPI.editTopic(route.params.id, { content: newContent });
+    ElMessage.success('编辑成功');
+    // 重新加载话题
+    await loadTopicDetail();
+  } catch (err) {
+    console.error('编辑失败:', err);
+    ElMessage.error(err.response?.data?.message || '编辑失败，请重试');
+  }
 };
 
 // 删除话题

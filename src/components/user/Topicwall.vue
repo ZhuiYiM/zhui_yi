@@ -662,6 +662,29 @@ const loadTags = async () => {
   }
 };
 
+// 加载统计信息
+const loadStats = async () => {
+  try {
+    const response = await topicAPI.getStats();
+    if (response.data) {
+      stats.value = {
+        totalPosts: response.data.totalPosts || 0,
+        activeUsers: response.data.activeUsers || 0,
+        todayPosts: response.data.todayPosts || 0
+      };
+      console.log('✅ 统计信息已加载');
+    }
+  } catch (error) {
+    console.error('加载统计信息失败:', error);
+    // 使用 Mock 数据
+    stats.value = {
+      totalPosts: 1234,
+      activeUsers: 89,
+      todayPosts: 56
+    };
+  }
+};
+
 const fetchPopularTags = async () => {
   try {
     const response = await topicAPI.getPopularTags();
@@ -1261,7 +1284,8 @@ onMounted(async () => {
   await Promise.all([
     fetchTopics(),
     fetchPopularTags(),
-    loadTags()
+    loadTags(),
+    loadStats() // 加载统计信息
   ]);
 });
 

@@ -383,35 +383,6 @@ const goBack = () => {
   router.back();
 };
 
-// 加载用户发布和参与的话题
-const loadUserTopics = async () => {
-  if (!canViewContent.value && !isCurrentUser.value) {
-    return;
-  }
-  
-  topicsLoading.value = true;
-  const userId = route.params.userId;
-  
-  try {
-    // 并行加载发布和参与的话题
-    const [publishedRes, participatedRes] = await Promise.all([
-      topicAPI.getUserPublishedTopics(userId),
-      topicAPI.getUserParticipatedTopics(userId)
-    ]);
-    
-    publishedTopics.value = publishedRes.data?.topics || [];
-    participatedTopics.value = participatedRes.data?.topics || [];
-    
-    console.log('✅ 用户话题已加载');
-  } catch (error) {
-    console.error('加载用户话题失败:', error);
-    // 使用 Mock 数据
-    useMockTopicsData();
-  } finally {
-    topicsLoading.value = false;
-  }
-};
-
 // 更新隐私设置
 const updatePrivacySettings = async () => {
   try {

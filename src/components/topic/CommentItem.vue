@@ -6,12 +6,16 @@
         :alt="comment.author.username"
         class="comment-avatar"
         @click="$emit('user-click', comment.author.id)"
+        @mouseenter="$emit('avatar-hover', $event, comment.author.id)"
+        @mouseleave="$emit('avatar-leave')"
       >
       <div class="comment-meta">
         <div class="author-row">
           <span 
             class="author-name"
             @click="$emit('user-click', comment.author.id)"
+            @mouseenter="$emit('avatar-hover', $event, comment.author.id)"
+            @mouseleave="$emit('avatar-leave')"
           >
             {{ comment.author.realName || comment.author.username }}
           </span>
@@ -61,7 +65,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['user-click']);
+const emit = defineEmits(['user-click', 'avatar-hover', 'avatar-leave']);
 
 const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U';
 const isLiked = ref(false);

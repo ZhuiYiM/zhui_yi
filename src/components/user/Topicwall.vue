@@ -70,26 +70,70 @@
           @touchend="handleTouchEnd"
           ref="topicsContainer"
         >
-          <!-- 热门标签 -->
-          <section class="popular-tags">
-            <h2>热门标签</h2>
-            <div class="tags-container">
-              <span
-                v-for="tag in popularTags"
-                :key="tag"
-                @click="filterByTag(tag)"
-                class="tag-item"
-                :class="{ active: activeTag === tag }"
-              >
-                #{{ tag }}
-              </span>
+          <!-- 标签选择器 -->
+          <section class="tag-selector-section">
+            <!-- 二级标签 -->
+            <div class="tag-level level-2">
+              <div class="tags-container multi-select">
+                <span
+                  v-for="tag in displayLevel2Tags"
+                  :key="tag.code"
+                  @click="toggleLevel2Tag(tag)"
+                  class="tag-item chip"
+                  :class="{ active: selectedLevel2.includes(tag.code) }"
+                  :style="isSelectedLevel2(tag) ? { backgroundColor: tag.color + '20', borderColor: tag.color } : {}"
+                >
+                  {{ tag.name }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 三级标签 -->
+            <div class="tag-level level-3">
+              <div class="tags-container multi-select">
+                <span
+                  v-for="tag in displayLevel3Tags"
+                  :key="tag.code"
+                  @click="toggleLevel3Tag(tag)"
+                  class="tag-item chip location"
+                  :class="{ active: selectedLevel3.includes(tag.code) }"
+                >
+                  📍 {{ tag.name }}
+                </span>
+              </div>
+            </div>
+            
+            <!-- 清除筛选 -->
+            <div class="clear-filters" v-if="hasActiveFilters">
+              <button @click="clearAllFilters" class="clear-btn">
+                ✕ 清除所有筛选
+              </button>
             </div>
           </section>
 
           <!-- 话题列表 -->
           <section class="topics-section">
             <div class="section-header">
-              <h2>{{ activeTag ? `#${activeTag}` : '最新话题' }}</h2>
+              <!-- 一级标签选择器 -->
+              <div class="level1-tags-container">
+                <span
+                  @click="selectLevel1Tag(null)"
+                  class="level1-tag-item"
+                  :class="{ active: !selectedLevel1 }"
+                >
+                  全部
+                </span>
+                <span
+                  v-for="tag in displayLevel1Tags"
+                  :key="tag.code"
+                  @click="selectLevel1Tag(tag.code)"
+                  class="level1-tag-item"
+                  :class="{ active: selectedLevel1 === tag.code }"
+                >
+                  {{ tag.icon }} {{ tag.name }}
+                </span>
+              </div>
+              
               <div class="sort-options">
                 <button
                   v-for="option in sortOptions"
@@ -133,11 +177,18 @@
                       :src="post.author.avatar || defaultAvatar" 
                       :alt="post.author.name" 
                       class="author-avatar"
-                      @click.stop="showAuthorInfo(post.author.id)"
+                      @click.stop="viewUserProfile(post.author.id)"
+                      @mouseenter="handleAvatarHover($event, post.author.id)"
+                      @mouseleave="hidePopover"
                     >
                     <div class="author-details">
-                      <span class="author-name" @click.stop="showAuthorInfo(post.author.id)">{{ post.author.name }}</span>
-                      <span class="post-time">{{ formatTime(post.createdAt) }}</span>
+                      <span class="author-name" @click.stop="viewUserProfile(post.author.id)" @mouseenter="handleAvatarHover($event, post.author.id)" @mouseleave="hidePopover">{{ post.author.name }}</span>
+                      <div class="author-meta">
+                        <span v-if="post.author.identityTag" class="identity-tag" :class="post.author.identityTag">
+                          {{ getIdentityTagName(post.author.identityTag) }}
+                        </span>
+                        <span class="post-time">{{ formatTime(post.createdAt) }}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -177,14 +228,38 @@
                   </div>
 
                   <!-- 标签 -->
-                  <div v-if="post.tags && post.tags.length > 0" class="post-tags">
+                  <div class="topic-tags-container">
+                    <!-- 一级标签（用户类型） -->
+                    <span v-if="post.level1Tag" class="topic-tag level1-tag">
+                      {{ getIdentityTagName(post.level1Tag) }}
+                    </span>
+                    
+                    <!-- 二级标签（最多 3 个） -->
                     <span
-                      v-for="tag in post.tags"
-                      :key="tag"
-                      @click="filterByTag(tag)"
-                      class="post-tag"
+                      v-for="tag in post.level2Tags.slice(0, 3)"
+                      :key="'l2-' + tag.code"
+                      class="topic-tag level2-tag"
+                      :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
                     >
-                      #{{ tag }}
+                      {{ tag.name }}
+                    </span>
+                    
+                    <!-- 三级标签（最多 3 个） -->
+                    <span
+                      v-for="tag in post.level3Tags.slice(0, 3)"
+                      :key="'l3-' + tag.code"
+                      class="topic-tag level3-tag"
+                    >
+                      📍{{ tag.name }}
+                    </span>
+                    
+                    <!-- 四级标签（自定义标签，最多 3 个） -->
+                    <span
+                      v-for="tag in post.level4Tags.slice(0, 3)"
+                      :key="'l4-' + tag.code"
+                      class="topic-tag level4-tag"
+                    >
+                      #{{ tag.name }}
                     </span>
                   </div>
                 </div>
@@ -329,14 +404,11 @@
       </div>
     </div>
 
-    <!-- 用户信息弹窗 -->
-    <UserInfoModal
-      v-if="showUserModal"
-      :visible="showUserModal"
-      :userId="selectedUserId"
-      :current-user-id="currentUser?.id"
-      @close="showUserModal = false"
-      @action="handleUserAction"
+    <!-- 用户信息悬浮卡片 (桌面端) -->
+    <UserPopoverCard
+      v-if="showPopover && !isMobile"
+      :userId="popoverUserId"
+      :position="popoverPosition"
     />
 
     <!-- 图片预览模态框 -->
@@ -355,13 +427,13 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import TagSelector from '@/components/topic/TagSelector.vue';
-import UserInfoModal from '@/components/topic/UserInfoModal.vue';
+import UserPopoverCard from '@/components/user/UserPopoverCard.vue';
 import { topicAPI, tagAPI } from '@/api/topic';
+import { isMobile as isMobileDevice } from '@/utils/device';
 
 const router = useRouter();
 
 // 响应式数据
-const isMobile = ref(false);
 const loading = ref(false);
 const showPublishModal = ref(false);
 const showImagePreview = ref(false);
@@ -385,11 +457,70 @@ const searchQuery = ref('');
 const activeTag = ref('');
 const currentSort = ref('latest');
 
+// 标签选择器相关
+const level1Tags = ref([]);
+const level2Tags = ref([]);
+const level3Tags = ref([]);
+const selectedLevel1 = ref(null);
+const selectedLevel2 = ref([]);
+const selectedLevel3 = ref([]);
+
 const sortOptions = [
   { label: '最新', value: 'latest' },
   { label: '最热', value: 'hot' },
   { label: '精华', value: 'essence' }
 ];
+
+// 计算属性 - 是否有激活的筛选
+const hasActiveFilters = computed(() => {
+  return selectedLevel1.value || selectedLevel2.value.length > 0 || selectedLevel3.value.length > 0;
+});
+
+// 计算属性 - 显示标签（后端无数据时使用默认标签）
+const displayLevel1Tags = computed(() => {
+  if (level1Tags.value.length > 0) {
+    return level1Tags.value;
+  }
+  // 默认一级标签
+  return [
+    { code: 'student', name: '学生', icon: '👨‍🎓' },
+    { code: 'organization', name: '团体', icon: '👥' },
+    { code: 'followed', name: '关注', icon: '⭐' },
+    { code: 'society', name: '社会', icon: '🌍' }
+  ];
+});
+
+const displayLevel2Tags = computed(() => {
+  if (level2Tags.value.length > 0) {
+    return level2Tags.value.slice(0, 8);
+  }
+  // 默认二级标签
+  return [
+    { code: 'study_experience', name: '学习经验', color: '#50C878' },
+    { code: 'tech_exchange', name: '技术交流', color: '#4169E1' },
+    { code: 'campus_life', name: '校园生活', color: '#FF6B6B' },
+    { code: 'food_recommend', name: '美食推荐', color: '#FFA07A' },
+    { code: 'activity', name: '社团活动', color: '#DDA0DD' },
+    { code: 'employment', name: '就业信息', color: '#98FB98' },
+    { code: 'help', name: '求助帖', color: '#F0E68C' },
+    { code: 'confession', name: '表白墙', color: '#FFB6C1' }
+  ];
+});
+
+const displayLevel3Tags = computed(() => {
+  if (level3Tags.value.length > 0) {
+    return level3Tags.value.slice(0, 6);
+  }
+  // 默认三级标签
+  return [
+    { code: 'library', name: '图书馆' },
+    { code: 'cafeteria', name: '食堂' },
+    { code: 'dormitory', name: '宿舍' },
+    { code: 'playground', name: '操场' },
+    { code: 'teaching_building', name: '教学楼' },
+    { code: 'laboratory', name: '实验室' }
+  ];
+});
 
 // 发布相关
 const newPostContent = ref('');
@@ -409,6 +540,12 @@ const tagSelectorRef = ref(null);
 // 用户信息弹窗
 const showUserModal = ref(false);
 const selectedUserId = ref(null);
+
+// 悬浮卡片相关
+const showPopover = ref(false);
+const popoverUserId = ref(null);
+const popoverPosition = ref({ top: 0, left: 0 });
+const isMobile = ref(isMobileDevice());
 
 // 分页数据
 const currentPage = ref(1);
@@ -434,7 +571,7 @@ const stats = ref({
 // 计算属性
 const totalPages = computed(() => Math.ceil(totalPosts.value / pageSize.value));
 
-// API调用方法
+// API 调用方法
 const fetchTopics = async () => {
   loading.value = true;
   try {
@@ -474,8 +611,14 @@ const fetchTopics = async () => {
           name: topic.author.realName || topic.author.username || '匿名用户',
           username: topic.author.username,
           studentId: topic.author.studentId,
-          avatar: topic.author.avatarUrl || ''
-        }
+          avatar: topic.author.avatarUrl || '',
+          identityTag: topic.author.identity?.level1Tag || null // 保存一级标签
+        },
+        // 保存话题的完整标签体系
+        level1Tag: topic.level1Tag || null,
+        level2Tags: topic.level2Tags || [],
+        level3Tags: topic.level3Tags || [],
+        level4Tags: topic.level4Tags || []
       }));
 
       totalPosts.value = topicsData.total || 0;
@@ -489,6 +632,33 @@ const fetchTopics = async () => {
     ElMessage.error('获取话题失败，请稍后重试');
   } finally {
     loading.value = false;
+  }
+};
+
+// 加载标签数据
+const loadTags = async () => {
+  try {
+    // 并行加载所有标签
+    const [level1Res, level2Res, level3Res] = await Promise.all([
+      tagAPI.getLevel1Tags(),
+      tagAPI.getLevel2Tags(),
+      tagAPI.getLevel3Tags()
+    ]);
+    
+    if (level1Res.data) {
+      level1Tags.value = level1Res.data || [];
+    }
+    if (level2Res.data) {
+      level2Tags.value = level2Res.data || [];
+    }
+    if (level3Res.data) {
+      level3Tags.value = level3Res.data || [];
+    }
+    
+    console.log('✅ 标签数据已加载');
+  } catch (error) {
+    console.error('❌ 加载标签失败:', error);
+    // 不显示错误提示，静默失败
   }
 };
 
@@ -581,6 +751,17 @@ const formatTime = (date) => {
   return new Date(date).toLocaleDateString();
 };
 
+// 获取身份标签名称
+const getIdentityTagName = (tagCode) => {
+  const tagMap = {
+    'student': '认证学生',
+    'organization': '认证团体',
+    'followed': '已关注',
+    'society': '社会'
+  };
+  return tagMap[tagCode] || '';
+};
+
 const handleSearch = async () => {
   if (searchQuery.value.trim()) {
     currentPage.value = 1;
@@ -592,6 +773,114 @@ const filterByTag = async (tag) => {
   activeTag.value = activeTag.value === tag ? '' : tag;
   currentPage.value = 1;
   await fetchTopics();
+};
+
+// 标签选择器方法
+const selectLevel1Tag = (code) => {
+  // 如果点击的是已选中的标签，则取消选择（切换效果）
+  selectedLevel1.value = selectedLevel1.value === code ? null : code;
+  currentPage.value = 1;
+  fetchTopicsWithFilters();
+};
+
+const toggleLevel2Tag = (tag) => {
+  const index = selectedLevel2.value.indexOf(tag.code);
+  if (index > -1) {
+    selectedLevel2.value.splice(index, 1);
+  } else {
+    selectedLevel2.value.push(tag.code);
+  }
+  currentPage.value = 1;
+  fetchTopicsWithFilters();
+};
+
+const isSelectedLevel2 = (tag) => {
+  return selectedLevel2.value.includes(tag.code);
+};
+
+const toggleLevel3Tag = (tag) => {
+  const index = selectedLevel3.value.indexOf(tag.code);
+  if (index > -1) {
+    selectedLevel3.value.splice(index, 1);
+  } else {
+    selectedLevel3.value.push(tag.code);
+  }
+  currentPage.value = 1;
+  fetchTopicsWithFilters();
+};
+
+const clearAllFilters = () => {
+  selectedLevel1.value = null;
+  selectedLevel2.value = [];
+  selectedLevel3.value = [];
+  currentPage.value = 1;
+  fetchTopicsWithFilters();
+};
+
+const fetchTopicsWithFilters = async () => {
+  loading.value = true;
+  try {
+    const params = {
+      page: currentPage.value,
+      size: pageSize.value,
+      sort: currentSort.value,
+      search: searchQuery.value
+    };
+    
+    // 添加标签筛选参数
+    if (selectedLevel1.value) {
+      params.level1Tag = selectedLevel1.value;
+    }
+    if (selectedLevel2.value.length > 0) {
+      params.level2Tags = selectedLevel2.value;
+    }
+    if (selectedLevel3.value.length > 0) {
+      params.level3Tags = selectedLevel3.value;
+    }
+    
+    console.log('📡 请求话题列表，带标签筛选:', params);
+    const response = await topicAPI.getTopics(params);
+    
+    if (response) {
+      const topicsData = response.data || response;
+      const rawTopics = topicsData.topics || [];
+      
+      posts.value = rawTopics.map(topic => ({
+        id: topic.id,
+        content: topic.content,
+        images: topic.images || [],
+        tags: topic.tags || [],
+        likes: topic.likesCount || 0,
+        comments: topic.commentsCount || 0,
+        shares: topic.viewsCount || 0,
+        isLiked: false,
+        isTop: topic.isTop || 0,
+        isEssence: topic.isEssence || 0,
+        createdAt: topic.createdAt,
+        author: {
+          id: topic.author.id,
+          name: topic.author.realName || topic.author.username || '匿名用户',
+          username: topic.author.username,
+          studentId: topic.author.studentId,
+          avatar: topic.author.avatarUrl || '',
+          identityTag: topic.author.identity?.level1Tag || null // 保存一级标签
+        },
+        // 保存话题的完整标签体系
+        level1Tag: topic.level1Tag || null,
+        level2Tags: topic.level2Tags || [],
+        level3Tags: topic.level3Tags || [],
+        level4Tags: topic.level4Tags || []
+      }));
+      
+      totalPosts.value = topicsData.total || 0;
+      console.log('✅ 话题数据已加载:', posts.value.length, '条');
+    }
+  } catch (error) {
+    console.error('❌ 获取话题列表失败:', error);
+    ElMessage.error('获取话题失败，请稍后重试');
+  } finally {
+    loading.value = false;
+  }
 };
 
 const changeSort = async (sortType) => {
@@ -629,6 +918,14 @@ const showTopicDetail = (post) => {
 const previewImage = (imageUrl) => {
   previewImageUrl.value = imageUrl;
   showImagePreview.value = true;
+};
+
+const previewAllImages = (images) => {
+  // 显示第一张图片或弹出图片列表
+  if (images && images.length > 0) {
+    previewImageUrl.value = images[0];
+    showImagePreview.value = true;
+  }
 };
 
 const closeImagePreview = () => {
@@ -724,10 +1021,27 @@ const publishPost = async () => {
   }
 };
 
-// 点击作者头像显示用户信息
-const showAuthorInfo = (authorId) => {
-  selectedUserId.value = authorId;
-  showUserModal.value = true;
+// 查看用户主页
+const viewUserProfile = (userId) => {
+  router.push(`/user/${userId}`);
+};
+
+// 处理头像悬浮（桌面端）
+const handleAvatarHover = (event, userId) => {
+  if (isMobile.value) return;
+  
+  const rect = event.currentTarget.getBoundingClientRect();
+  popoverPosition.value = {
+    top: rect.top + window.scrollY - 50, // 向上偏移，使卡片顶部与头像对齐
+    left: rect.left + window.scrollX - 340 // 向左偏移，显示在头像左侧（卡片宽度 320px + 间距 20px）
+  };
+  popoverUserId.value = userId;
+  showPopover.value = true;
+};
+
+// 隐藏悬浮卡片
+const hidePopover = () => {
+  showPopover.value = false;
 };
 
 // 处理用户操作
@@ -946,7 +1260,8 @@ onMounted(async () => {
   // 获取初始数据
   await Promise.all([
     fetchTopics(),
-    fetchPopularTags()
+    fetchPopularTags(),
+    loadTags()
   ]);
 });
 
@@ -1291,6 +1606,41 @@ onUnmounted(() => {
   gap: 10px;
 }
 
+/* 一级标签容器 */
+.level1-tags-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 一级标签项 */
+.level1-tag-item {
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 2px solid transparent;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+  
+  &:hover {
+    background: #ecf5ff;
+    border-color: #b3d8ff;
+  }
+  
+  &.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+  }
+}
+
 .sort-btn {
   padding: 8px 15px;
   background: #f5f7fa;
@@ -1505,6 +1855,54 @@ onUnmounted(() => {
 .post-tag:hover {
   background: #c8e6c9;
   transform: translateY(-2px);
+}
+
+/* 话题标签容器 */
+.topic-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+/* 通用标签样式 */
+.topic-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+  cursor: default;
+}
+
+/* 一级标签（用户类型） */
+.level1-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* 二级标签（话题分类） */
+.level2-tag {
+  background: rgba(80, 200, 120, 0.15);
+  color: #50C878;
+  border: 1px solid #50C878;
+}
+
+/* 三级标签（地点） */
+.level3-tag {
+  background: #e0f7fa;
+  color: #00acc1;
+  border: 1px solid #b2ebf2;
+}
+
+/* 四级标签（自定义标签） */
+.level4-tag {
+  background: #fff3e0;
+  color: #ff9800;
+  border: 1px solid #ffe0b2;
 }
 
 /* 分页 */
@@ -2089,6 +2487,107 @@ onUnmounted(() => {
 .author-avatar:hover,
 .author-name:hover {
   opacity: 0.8;
+}
+
+/* 标签选择器区域 */
+.tag-selector-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.tag-selector-section h2 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.tag-level {
+  margin-bottom: 20px;
+}
+
+.tag-level:last-child {
+  margin-bottom: 0;
+}
+
+.tag-title {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  
+  &.multi-select {
+    gap: 8px;
+  }
+}
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+  font-size: 14px;
+  color: #606266;
+  
+  &:hover:not(.reset) {
+    background: #ecf5ff;
+    border-color: #409eff;
+  }
+  
+  &.active {
+    background: #ecf5ff;
+    border-color: #409eff;
+    color: #409eff;
+  }
+  
+  &.chip {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  &.location {
+    background: #f0f9ff;
+    border-color: #00bcd4;
+    
+    &.active {
+      background: #e0f7fa;
+      border-color: #00acc1;
+    }
+  }
+}
+
+.clear-filters {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.clear-btn {
+  padding: 8px 20px;
+  background: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  color: #606266;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+  
+  &:hover {
+    background: #f0f0f0;
+    border-color: #c0c4cc;
+  }
 }
 
 /* 发布模态框中的标签选择器 */

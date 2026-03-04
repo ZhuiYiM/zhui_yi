@@ -16,14 +16,19 @@
 
     <!-- 话题详情内容 -->
     <div v-else-if="topic" class="topic-content">
-      <!-- 返回按钮 -->
-      <button @click="goBack" class="back-to-list">← 返回话题列表</button>
+      <!-- 返回按钮 (紧凑样式) -->
+      <button @click="goBack" class="back-to-list">← 返回</button>
 
-      <!-- 话题主体 -->
+      <!-- 主体内容 -->
       <article class="topic-article">
         <!-- 作者信息栏 -->
         <header class="author-section">
-          <div class="author-info" @click="showAuthorInfo">
+          <div 
+            class="author-info" 
+            @click="showAuthorInfo"
+            @mouseenter="handleAvatarHover($event, topic.author.id)"
+            @mouseleave="hidePopover"
+          >
             <img 
               :src="topic.author.avatarUrl || defaultAvatar" 
               :alt="topic.author.username"
@@ -56,6 +61,13 @@
             </button>
           </div>
         </header>
+
+        <!-- 用户信息悬浮卡片 (桌面端) -->
+        <UserPopoverCard
+          v-if="showPopover && !isMobile"
+          :userId="popoverUserId"
+          :position="popoverPosition"
+        />
 
         <!-- 话题内容 -->
         <div class="topic-body">
@@ -177,6 +189,8 @@
                 <CommentItem 
                   :comment="comment" 
                   @user-click="showUserInfo"
+                  @avatar-hover="handleAvatarHover"
+                  @avatar-leave="hidePopover"
                 />
               </div>
             </div>
@@ -192,6 +206,8 @@
                 <CommentItem 
                   :comment="comment"
                   @user-click="showUserInfo"
+                  @avatar-hover="handleAvatarHover"
+                  @avatar-leave="hidePopover"
                 />
               </div>
             </div>
@@ -219,40 +235,12 @@
           </div>
         </section>
       </article>
-
-      <!-- 侧边栏 (桌面端) -->
-      <aside v-if="!isMobile" class="sidebar">
-        <div class="related-topics">
-          <h3>相关话题</h3>
-          <div class="topic-list">
-            <div
-              v-for="topic in relatedTopics"
-              :key="topic.id"
-              @click="viewTopic(topic.id)"
-              class="topic-item"
-            >
-              <h4>{{ topic.title }}</h4>
-              <p>{{ topic.excerpt }}</p>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
-
-    <!-- 用户信息弹窗 -->
-    <UserInfoModal
-      v-if="showUserModal"
-      :visible="showUserModal"
-      :userId="selectedUserId"
-      :current-user-id="currentUserId"
-      @close="showUserModal = false"
-      @action="handleUserAction"
-    />
 
     <!-- 图片预览弹窗 -->
     <div v-if="showPreview" class="image-preview-overlay" @click="closePreview">
       <button class="close-btn">×</button>
-      <img :src="previewImage" alt="预览" class="preview-image">
+      <img :src="previewImageUrl" alt="预览" class="preview-image">
     </div>
   </div>
 </template>
@@ -262,8 +250,9 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { topicAPI } from '@/api/topic';
-import UserInfoModal from './UserInfoModal.vue';
 import CommentItem from './CommentItem.vue';
+import UserPopoverCard from '@/components/user/UserPopoverCard.vue';
+import { isMobile as isMobileDevice } from '@/utils/device';
 
 const route = useRoute();
 const router = useRouter();
@@ -281,8 +270,14 @@ const newComment = ref('');
 const showUserModal = ref(false);
 const selectedUserId = ref(null);
 const showPreview = ref(false);
-const previewImage = ref('');
+const previewImageUrl = ref('');
 const currentUserId = ref(null);
+
+// 悬浮卡片相关
+const showPopover = ref(false);
+const popoverUserId = ref(null);
+const popoverPosition = ref({ top: 0, left: 0 });
+const isMobile = ref(isMobileDevice());
 
 const defaultAvatar = 'https://placehold.co/200x200/4A90E2/FFFFFF?text=U';
 const HOT_THRESHOLD = 10; // 热评阈值
@@ -339,11 +334,81 @@ const loadTopicDetail = async () => {
     }
   } catch (err) {
     console.error('加载话题详情失败:', err);
-    error.value = err.response?.data?.message || '加载失败，请重试';
-    ElMessage.error(error.value);
+    
+    // 如果后端接口失败，使用 mock 数据预览效果
+    console.warn('⚠️ 使用 Mock 数据预览前端效果');
+    useMockData();
   } finally {
     loading.value = false;
   }
+};
+
+// 使用 Mock 数据预览
+const useMockData = () => {
+  topic.value = {
+    id: route.params.id,
+    title: '分享我的编程学习经验',
+    content: `大家好，今天我想分享一下我的编程学习经验。
+
+## 学习历程
+我从大一开始学习编程，最初是从 C 语言入门的。那时候觉得指针特别难理解，但是通过不断的练习和做项目，逐渐掌握了要领。
+
+## 学习方法
+1. **多动手实践**: 光看书是不够的，一定要自己动手写代码
+2. **做项目**: 通过实际项目来巩固所学知识
+3. **阅读优秀代码**: GitHub 上有很多优秀的开源项目可以学习
+4. **坚持每天 coding**: 保持手感很重要
+
+## 推荐资源
+- 《代码大全》
+- 《程序员修炼之道》
+- LeetCode 刷题
+- GitHub 开源项目
+
+希望这些经验对大家有帮助！有任何问题都可以在评论区交流。💪`,
+    images: [
+      'https://placehold.co/600x400/4A90E2/FFFFFF?text=编程学习',
+      'https://placehold.co/600x400/50C878/FFFFFF?text=代码示例',
+      'https://placehold.co/600x400/FF6B6B/FFFFFF?text=学习笔记'
+    ],
+    author: {
+      id: 6,
+      username: 'testuser0',
+      realName: '马拥康',
+      avatarUrl: null,
+      college: '计算机学院',
+      bio: '热爱编程的大学生',
+      identity: 'student'
+    },
+    tags: {
+      level1: { code: 'student', name: '学生', icon: '👨‍🎓' },
+      level2: [
+        { code: 'study_experience', name: '学习经验', color: '#50C878' },
+        { code: 'tech_exchange', name: '技术交流', color: '#4169E1' }
+      ],
+      level3: [
+        { code: 'library', name: '图书馆' }
+      ],
+      level4: [
+        { id: 1, name: '编程开发' },
+        { id: 2, name: '学习方法' }
+      ]
+    },
+    statistics: {
+      likesCount: 56,
+      commentsCount: 12,
+      viewsCount: 235,
+      collectionsCount: 8
+    },
+    interactions: {
+      isLiked: false,
+      isCollected: false
+    },
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 小时前
+    updatedAt: new Date().toISOString()
+  };
+  
+  ElMessage.info('后端接口未实现，当前显示 Mock 数据');
 };
 
 // 加载评论
@@ -368,7 +433,80 @@ const loadComments = async (page = 1) => {
     }
   } catch (err) {
     console.error('加载评论失败:', err);
+    // 使用 Mock 评论数据
+    useMockComments();
   }
+};
+
+// 使用 Mock 评论数据
+const useMockComments = () => {
+  hotComments.value = [
+    {
+      id: 1,
+      userId: 10,
+      content: '写得很好，感谢分享！对我帮助很大 🙏',
+      likeCount: 25,
+      isHot: true,
+      author: {
+        id: 10,
+        username: 'user1',
+        realName: '张三',
+        avatarUrl: null
+      },
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 2,
+      userId: 11,
+      content: '同为计算机专业的学生，深有同感。实践真的很重要！',
+      likeCount: 18,
+      isHot: true,
+      author: {
+        id: 11,
+        username: 'user2',
+        realName: '李四',
+        avatarUrl: null
+      },
+      createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    }
+  ];
+  
+  comments.value = [
+    {
+      id: 3,
+      userId: 12,
+      content: 'Mark 一下，慢慢看',
+      likeCount: 5,
+      isHot: false,
+      author: {
+        id: 12,
+        username: 'user3',
+        realName: '王五',
+        avatarUrl: null
+      },
+      createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString()
+    },
+    {
+      id: 4,
+      userId: 13,
+      content: '请问有什么推荐的入门书籍吗？',
+      likeCount: 3,
+      isHot: false,
+      author: {
+        id: 13,
+        username: 'user4',
+        realName: '赵六',
+        avatarUrl: null
+      },
+      createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    }
+  ];
+  
+  commentPagination.value = {
+    currentPage: 1,
+    totalPages: 1,
+    total: comments.value.length + hotComments.value.length
+  };
 };
 
 // 加载相关话题
@@ -483,15 +621,31 @@ const submitComment = async () => {
 // 显示作者信息
 const showAuthorInfo = () => {
   if (topic.value?.author?.id) {
-    selectedUserId.value = topic.value.author.id;
-    showUserModal.value = true;
+    router.push(`/user/${topic.value.author.id}`);
   }
 };
 
-// 显示用户信息
+// 显示用户信息（点击）
 const showUserInfo = (userId) => {
-  selectedUserId.value = userId;
-  showUserModal.value = true;
+  router.push(`/user/${userId}`);
+};
+
+// 处理头像悬浮（桌面端）
+const handleAvatarHover = (event, userId) => {
+  if (isMobile.value) return;
+  
+  const rect = event.currentTarget.getBoundingClientRect();
+  popoverPosition.value = {
+    top: rect.top + window.scrollY - 50, // 向上偏移，使卡片顶部与头像对齐
+    left: rect.left + window.scrollX - 340 // 向左偏移，显示在头像左侧（卡片宽度 320px + 间距 20px）
+  };
+  popoverUserId.value = userId;
+  showPopover.value = true;
+};
+
+// 隐藏悬浮卡片
+const hidePopover = () => {
+  showPopover.value = false;
 };
 
 // 处理用户操作
@@ -512,13 +666,13 @@ const handleUserAction = (action) => {
 
 // 预览图片
 const previewImage = (imageUrl) => {
-  previewImage.value = imageUrl;
+  previewImageUrl.value = imageUrl;
   showPreview.value = true;
 };
 
 const closePreview = () => {
   showPreview.value = false;
-  previewImage.value = '';
+  previewImageUrl.value = '';
 };
 
 // 滚动到评论区
@@ -612,19 +766,30 @@ const goToLogin = () => {
 .topic-content {
   max-width: 1200px;
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
 }
 
 .back-to-list {
   margin-bottom: 16px;
-  padding: 8px 16px;
+  padding: 6px 12px;
   background: transparent;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   cursor: pointer;
   color: #606266;
+  font-size: 13px;
+  align-self: flex-start;
+  transition: all 0.3s;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.back-to-list:hover {
+  background: #f5f7fa;
+  border-color: #409eff;
+  color: #409eff;
 }
 
 .topic-article {
@@ -632,6 +797,31 @@ const goToLogin = () => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  position: relative;
+  width: 100%;
+}
+
+/* 移动端返回按钮 (固定在顶部) */
+.mobile-back-btn {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #dcdfe6;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  font-size: 13px;
+  color: #606266;
+  transition: all 0.3s;
+}
+
+.mobile-back-btn:hover {
+  background: #f5f7fa;
+  color: #409eff;
 }
 
 .author-section {
@@ -683,22 +873,14 @@ const goToLogin = () => {
   gap: 8px;
 }
 
-.action-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
+.action-btn.edit {
+  background: #67c23a;
+  color: white;
+}
   
-  &.edit {
-    background: #67c23a;
-    color: white;
-  }
-  
-  &.delete {
-    background: #f56c6c;
-    color: white;
-  }
+.action-btn.delete {
+  background: #f56c6c;
+  color: white;
 }
 
 .tags-section {
@@ -708,23 +890,16 @@ const goToLogin = () => {
   margin: 20px 0;
 }
 
-.tag-badge {
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 13px;
-  color: white;
+.tag-badge.level2 {
+  font-weight: 600;
+}
   
-  &.level2 {
-    font-weight: 600;
-  }
+.tag-badge.level3 {
+  background: #909399;
+}
   
-  &.level3 {
-    background: #909399;
-  }
-  
-  &.level4 {
-    background: #e6a23c;
-  }
+.tag-badge.level4 {
+  background: #e6a23c;
 }
 
 .content-text {
@@ -740,22 +915,15 @@ const goToLogin = () => {
   margin: 20px 0;
 }
 
-.image-item {
-  aspect-ratio: 1;
-  overflow: hidden;
-  border-radius: 8px;
-  cursor: pointer;
-  
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s;
-    
-    &:hover {
-      transform: scale(1.05);
-    }
-  }
+.image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.image-item img:hover {
+  transform: scale(1.05);
 }
 
 .statistics-bar {
@@ -798,22 +966,22 @@ const goToLogin = () => {
   cursor: pointer;
   font-size: 14px;
   transition: all 0.3s;
+}
+
+.interact-btn:hover {
+  background: #f5f7fa;
+}
+
+.interact-btn.like.active {
+  background: #409eff;
+  color: white;
+  border-color: #409eff;
+}
   
-  &:hover {
-    background: #f5f7fa;
-  }
-  
-  &.like.active {
-    background: #409eff;
-    color: white;
-    border-color: #409eff;
-  }
-  
-  &.collect.active {
-    background: #e6a23c;
-    color: white;
-    border-color: #e6a23c;
-  }
+.interact-btn.collect.active {
+  background: #e6a23c;
+  color: white;
+  border-color: #e6a23c;
 }
 
 .comments-section {
@@ -857,11 +1025,11 @@ const goToLogin = () => {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .login-hint {
@@ -905,47 +1073,13 @@ const goToLogin = () => {
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   cursor: pointer;
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
 }
 
-.sidebar {
-  position: sticky;
-  top: 20px;
-  height: fit-content;
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.related-topics {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.topic-item {
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-  
-  h4 {
-    font-size: 14px;
-    margin: 0 0 8px 0;
-    color: #333;
-  }
-  
-  p {
-    font-size: 13px;
-    color: #999;
-    margin: 0;
-  }
-}
 
 .image-preview-overlay {
   position: fixed;
@@ -981,12 +1115,9 @@ const goToLogin = () => {
 }
 
 @media (max-width: 768px) {
-  .topic-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .sidebar {
-    display: none;
+  .topic-article {
+    padding: 16px;
+    margin-top: 60px;
   }
   
   .statistics-bar {

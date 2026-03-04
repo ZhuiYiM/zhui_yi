@@ -10,6 +10,7 @@ import AccountManagement from "../components/user/AccountManagement.vue";
 import AccountVerification from "../components/user/AccountVerification.vue";
 import Map from "../components/user/Map.vue";
 import Message from "../components/user/Message.vue"; // 添加 Map 组件的导入
+import UserProfile from "../components/user/UserProfile.vue";
 
 // 懒加载组件
 const TopicDetail = () => import('../components/topic/TopicDetail.vue');
@@ -79,6 +80,12 @@ const routes = [
         name: 'TopicDetail',
         component: TopicDetail,
         meta: { requiresAuth: false }  // 话题详情页游客也可访问
+    },
+    {
+        path: '/user/:userId',
+        name: 'UserProfile',
+        component: UserProfile,
+        meta: { requiresAuth: false }  // 用户主页游客也可访问
     },
     {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由

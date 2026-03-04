@@ -630,6 +630,9 @@ const fetchTopics = async () => {
   } catch (error) {
     console.error('❌ 获取话题列表失败:', error);
     ElMessage.error('获取话题失败，请稍后重试');
+    // 不显示 Mock 数据，保持空列表
+    posts.value = [];
+    totalPosts.value = 0;
   } finally {
     loading.value = false;
   }
@@ -676,11 +679,11 @@ const loadStats = async () => {
     }
   } catch (error) {
     console.error('加载统计信息失败:', error);
-    // 使用 Mock 数据
+    // 不显示 Mock 数据，保持空列表
     stats.value = {
-      totalPosts: 1234,
-      activeUsers: 89,
-      todayPosts: 56
+      totalPosts: 0,
+      activeUsers: 0,
+      todayPosts: 0
     };
   }
 };
@@ -693,17 +696,8 @@ const fetchPopularTags = async () => {
     }
   } catch (error) {
     console.error('获取热门标签失败:', error);
-    // 检查是否是数据库表不存在的错误
-    if (error.response?.data?.message?.includes('Table') && error.response?.data?.message?.includes("doesn't exist")) {
-      console.warn('数据库标签表不存在，使用默认标签');
-      ElMessage.warning('标签功能暂时不可用，使用默认标签');
-    }
-    // 使用默认标签作为后备
-    popularTags.value = [
-      '校园生活', '学习经验', '社团活动', '美食推荐',
-      '考试心得', '实习分享', '就业信息', '旅行攻略',
-      '技术交流', '生活感悟', '求助帖', '表白墙'
-    ];
+    // 不显示默认标签，保持空列表
+    popularTags.value = [];
   }
 };
 
@@ -901,6 +895,8 @@ const fetchTopicsWithFilters = async () => {
   } catch (error) {
     console.error('❌ 获取话题列表失败:', error);
     ElMessage.error('获取话题失败，请稍后重试');
+    // 不显示 Mock 数据，保持空列表
+    posts.value = [];
   } finally {
     loading.value = false;
   }

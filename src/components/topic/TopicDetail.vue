@@ -334,81 +334,11 @@ const loadTopicDetail = async () => {
     }
   } catch (err) {
     console.error('加载话题详情失败:', err);
-    
-    // 如果后端接口失败，使用 mock 数据预览效果
-    console.warn('⚠️ 使用 Mock 数据预览前端效果');
-    useMockData();
+    error.value = err.response?.data?.message || '加载失败，请稍后重试';
+    ElMessage.error(error.value);
   } finally {
     loading.value = false;
   }
-};
-
-// 使用 Mock 数据预览
-const useMockData = () => {
-  topic.value = {
-    id: route.params.id,
-    title: '分享我的编程学习经验',
-    content: `大家好，今天我想分享一下我的编程学习经验。
-
-## 学习历程
-我从大一开始学习编程，最初是从 C 语言入门的。那时候觉得指针特别难理解，但是通过不断的练习和做项目，逐渐掌握了要领。
-
-## 学习方法
-1. **多动手实践**: 光看书是不够的，一定要自己动手写代码
-2. **做项目**: 通过实际项目来巩固所学知识
-3. **阅读优秀代码**: GitHub 上有很多优秀的开源项目可以学习
-4. **坚持每天 coding**: 保持手感很重要
-
-## 推荐资源
-- 《代码大全》
-- 《程序员修炼之道》
-- LeetCode 刷题
-- GitHub 开源项目
-
-希望这些经验对大家有帮助！有任何问题都可以在评论区交流。💪`,
-    images: [
-      'https://placehold.co/600x400/4A90E2/FFFFFF?text=编程学习',
-      'https://placehold.co/600x400/50C878/FFFFFF?text=代码示例',
-      'https://placehold.co/600x400/FF6B6B/FFFFFF?text=学习笔记'
-    ],
-    author: {
-      id: 6,
-      username: 'testuser0',
-      realName: '马拥康',
-      avatarUrl: null,
-      college: '计算机学院',
-      bio: '热爱编程的大学生',
-      identity: 'student'
-    },
-    tags: {
-      level1: { code: 'student', name: '学生', icon: '👨‍🎓' },
-      level2: [
-        { code: 'study_experience', name: '学习经验', color: '#50C878' },
-        { code: 'tech_exchange', name: '技术交流', color: '#4169E1' }
-      ],
-      level3: [
-        { code: 'library', name: '图书馆' }
-      ],
-      level4: [
-        { id: 1, name: '编程开发' },
-        { id: 2, name: '学习方法' }
-      ]
-    },
-    statistics: {
-      likesCount: 56,
-      commentsCount: 12,
-      viewsCount: 235,
-      collectionsCount: 8
-    },
-    interactions: {
-      isLiked: false,
-      isCollected: false
-    },
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 小时前
-    updatedAt: new Date().toISOString()
-  };
-  
-  ElMessage.info('后端接口未实现，当前显示 Mock 数据');
 };
 
 // 加载评论
@@ -433,79 +363,9 @@ const loadComments = async (page = 1) => {
     }
   } catch (err) {
     console.error('加载评论失败:', err);
-    // 使用 Mock 评论数据
-    useMockComments();
-  }
-};
-
-// 使用 Mock 评论数据
-const useMockComments = () => {
-  hotComments.value = [
-    {
-      id: 1,
-      userId: 10,
-      content: '写得很好，感谢分享！对我帮助很大 🙏',
-      likeCount: 25,
-      isHot: true,
-      author: {
-        id: 10,
-        username: 'user1',
-        realName: '张三',
-        avatarUrl: null
-      },
-      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString()
-    },
-    {
-      id: 2,
-      userId: 11,
-      content: '同为计算机专业的学生，深有同感。实践真的很重要！',
-      likeCount: 18,
-      isHot: true,
-      author: {
-        id: 11,
-        username: 'user2',
-        realName: '李四',
-        avatarUrl: null
-      },
-      createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString()
-    }
-  ];
-  
-  comments.value = [
-    {
-      id: 3,
-      userId: 12,
-      content: 'Mark 一下，慢慢看',
-      likeCount: 5,
-      isHot: false,
-      author: {
-        id: 12,
-        username: 'user3',
-        realName: '王五',
-        avatarUrl: null
-      },
-      createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString()
-    },
-    {
-      id: 4,
-      userId: 13,
-      content: '请问有什么推荐的入门书籍吗？',
-      likeCount: 3,
-      isHot: false,
-      author: {
-        id: 13,
-        username: 'user4',
-        realName: '赵六',
-        avatarUrl: null
-      },
-      createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString()
-    }
-  ];
-  
-  commentPagination.value = {
-    currentPage: 1,
-    totalPages: 1,
-    total: comments.value.length + hotComments.value.length
+    // 不显示 Mock 数据，保持空列表
+    comments.value = [];
+    hotComments.value = [];
   };
 };
 

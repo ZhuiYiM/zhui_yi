@@ -288,9 +288,8 @@ const loadUserInfo = async () => {
     }
   } catch (err) {
     console.error('加载用户信息失败:', err);
-    // 使用 Mock 数据预览
-    console.warn('⚠️ 使用 Mock 数据预览前端效果');
-    useMockData();
+    error.value = err.response?.data?.message || '加载用户信息失败';
+    ElMessage.error(error.value);
   } finally {
     loading.value = false;
   }
@@ -319,8 +318,9 @@ const loadUserTopics = async () => {
     console.log('✅ 用户话题已加载');
   } catch (error) {
     console.error('加载用户话题失败:', error);
-    // 使用 Mock 数据
-    useMockTopicsData();
+    // 不显示 Mock 数据，保持空列表
+    publishedTopics.value = [];
+    participatedTopics.value = [];
   } finally {
     topicsLoading.value = false;
   }
@@ -361,7 +361,7 @@ const useMockData = () => {
     canMessage: true
   };
   
-  ElMessage.info('后端接口未实现，当前显示 Mock 数据');
+  ElMessage.error('后端接口未实现，请检查后端服务');
 };
 
 // 处理操作
@@ -381,6 +381,38 @@ const handleMessage = () => {
 
 const goBack = () => {
   router.back();
+};
+
+// Mock 话题数据
+const useMockTopicsData = () => {
+  const mockTopics = [
+    {
+      id: 1,
+      content: '分享我的学习经验：如何高效准备期末考试...',
+      likesCount: 25,
+      commentsCount: 8,
+      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
+    },
+    {
+      id: 2,
+      content: '图书馆三楼新装修了，环境超级好！推荐大家去那里自习~',
+      likesCount: 42,
+      commentsCount: 15,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString()
+    },
+    {
+      id: 3,
+      content: '求助：有没有人知道计算机学院的选修课哪个老师比较好？',
+      likesCount: 12,
+      commentsCount: 23,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
+    }
+  ];
+  
+  publishedTopics.value = mockTopics;
+  participatedTopics.value = mockTopics.slice(0, 2);
+  
+  console.warn('⚠️ Mock 数据已移除，请确保后端接口正常');
 };
 
 // 更新隐私设置
@@ -415,38 +447,6 @@ const formatTime = (date) => {
   if (hours < 24) return `${hours}小时前`;
   if (days < 7) return `${days}天前`;
   return new Date(date).toLocaleDateString();
-};
-
-// Mock 话题数据
-const useMockTopicsData = () => {
-  const mockTopics = [
-    {
-      id: 1,
-      content: '分享我的学习经验：如何高效准备期末考试...',
-      likesCount: 25,
-      commentsCount: 8,
-      createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString()
-    },
-    {
-      id: 2,
-      content: '图书馆三楼新装修了，环境超级好！推荐大家去那里自习~',
-      likesCount: 42,
-      commentsCount: 15,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString()
-    },
-    {
-      id: 3,
-      content: '求助：有没有人知道计算机学院的选修课哪个老师比较好？',
-      likesCount: 12,
-      commentsCount: 23,
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString()
-    }
-  ];
-  
-  publishedTopics.value = mockTopics;
-  participatedTopics.value = mockTopics.slice(0, 2);
-  
-  console.warn('⚠️ 使用 Mock 话题数据预览');
 };
 </script>
 

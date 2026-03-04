@@ -115,31 +115,9 @@ const loadUserInfo = async () => {
     }
   } catch (err) {
     console.error('加载用户信息失败:', err);
-    // 使用 Mock 数据预览
-    useMockData();
+    error.value = '加载失败';
   } finally {
     loading.value = false;
-  }
-};
-
-const useMockData = () => {
-  userInfo.value = {
-    basicInfo: {
-      id: props.userId,
-      username: `user${props.userId}`,
-      realName: props.userId === 6 ? '马拥康' : '张三',
-      avatarUrl: null,
-      bio: '热爱编程的大学生，喜欢分享技术经验'
-    },
-    identity: {
-      level1Tag: 'student',
-      verified: true
-    },
-    statistics: {
-      postCount: 15,
-      followerCount: 128,
-      followingCount: 56
-    }
   };
 };
 

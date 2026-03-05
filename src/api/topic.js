@@ -138,5 +138,40 @@ export const topicAPI = {
     // 获取平台统计
     getStats() {
         return request.get('/topics/stats');
+    },
+
+    // ========== 新增：标签筛选接口 ==========
+    // 根据多级标签筛选话题 (文档第 63 行)
+    filterTopics(params = {}) {
+        return request.get('/topics/filter', { params });
+    },
+
+    // 按单个标签筛选话题 (文档第 145 行)
+    getTopicsByTag(tagCode, params = {}) {
+        return request.get(`/topics/tag/${tagCode}`, { params });
+    },
+
+    // ========== 新增：评论管理接口 ==========
+    // 删除评论 (文档第 253 行)
+    deleteComment(commentId) {
+        return request.delete(`/topics/comments/${commentId}`);
+    },
+
+    // 点赞评论 (文档第 283 行)
+    likeComment(commentId, action = 'like') {
+        return request.post(`/topics/comments/${commentId}/like`, null, {
+            params: { action }
+        });
+    },
+
+    // ========== 新增：收藏功能接口 ==========
+    // 切换收藏状态 (文档第 386 行)
+    toggleTopicCollect(topicId) {
+        return request.post(`/topics/${topicId}/collect`);
+    },
+
+    // 获取用户收藏列表 (文档第 423 行)
+    getUserCollections(params = {}) {
+        return request.get('/topics/collections', { params });
     }
 };

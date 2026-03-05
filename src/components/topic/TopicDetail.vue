@@ -168,49 +168,11 @@
         </article>
 
         <!-- 评论区 -->
-        <section class="comments-section">
-          <h3>评论 ({{ comments.length }})</h3>
-
-          <!-- 发表评论 -->
-          <div class="comment-input-box">
-            <textarea
-                v-model="newComment"
-                placeholder="写下你的评论..."
-                class="comment-textarea"
-                rows="3"
-            ></textarea>
-            <button @click="submitComment" class="submit-comment-btn">发表评论</button>
-          </div>
-
-          <!-- 评论列表 -->
-          <div class="comments-list">
-            <div
-                v-for="comment in comments"
-                :key="comment.id"
-                class="comment-item"
-            >
-              <img
-                  :src="comment.author.avatarUrl || defaultAvatar"
-                  class="comment-avatar"
-              >
-              <div class="comment-content">
-                <div class="comment-header">
-                  <span class="comment-author">{{ comment.author.username }}</span>
-                  <span class="comment-time">{{ formatDate(comment.createdAt) }}</span>
-                </div>
-                <p class="comment-text">{{ comment.content }}</p>
-                <div class="comment-actions">
-                  <button @click="likeComment(comment)" class="comment-like-btn">
-                    👍 {{ comment.likesCount }}
-                  </button>
-                  <button @click="replyComment(comment)" class="comment-reply-btn">
-                    💬 回复
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <CommentSection 
+          :topic-id="Number(route.params.id)" 
+          @comment-added="handleCommentAdded"
+          @comment-deleted="handleCommentDeleted"
+        />
       </div>
 
       <!-- 空状态 -->
@@ -229,6 +191,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
+import CommentSection from './CommentSection.vue';
 import { topicAPI } from '@/api/topic';
 
 const route = useRoute();
@@ -366,30 +329,19 @@ const fetchAuthorPublicInfo = async (userId) => {
 
 // 获取评论列表
 const fetchComments = async () => {
-  try {
-    console.log('📡 正在获取评论列表，topicId:', route.params.id);
-    const response = await topicAPI.getTopicComments(route.params.id, { page: 1, size: 20, sort: 'latest' });
-    
-    console.log('✅ 评论列表响应:', response);
+  // CommentSection 组件会自动加载评论，这里保留作为备用
+};
 
-    if (response) {
-      // 适配后端返回的数据结构
-      comments.value = (response.comments || response.data || []).map(comment => ({
-        id: comment.id,
-        content: comment.content,
-        author: {
-          id: comment.author?.id,
-          username: comment.author?.username || comment.author?.realName,
-          avatarUrl: comment.author?.avatarUrl
-        },
-        likesCount: comment.likesCount || 0,
-        createdAt: comment.createdAt,
-        replies: comment.replies || []
-      }));
-    }
-  } catch (error) {
-    console.error('❌ 获取评论失败:', error);
-  }
+// 处理评论添加
+const handleCommentAdded = async () => {
+  // 重新获取话题详情以更新评论数
+  await fetchTopicDetail();
+};
+
+// 处理评论删除
+const handleCommentDeleted = async () => {
+  // 重新获取话题详情以更新评论数
+  await fetchTopicDetail();
 };
 
 // 发表评论

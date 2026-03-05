@@ -17,7 +17,12 @@
     <!-- 用户信息内容 -->
     <div v-else-if="userInfo" class="user-content">
       <!-- 头部背景 -->
-      <div class="user-header-bg" :style="{ background: headerGradient }"></div>
+      <div class="user-header-bg" :style="{ background: headerGradient }">
+        <!-- 返回按钮移至顶部左侧 -->
+        <button @click="goBack" class="back-to-top-btn">
+          ← 返回
+        </button>
+      </div>
       
       <!-- 用户基本信息 -->
       <div class="user-basic-info">
@@ -110,9 +115,6 @@
           class="message-btn"
         >
           发消息
-        </button>
-        <button @click="goBack" class="back-btn">
-          返回
         </button>
       </div>
       
@@ -541,6 +543,31 @@ const formatTime = (date) => {
 .user-header-bg {
   height: 200px;
   border-radius: 16px 16px 0 0;
+  position: relative;
+}
+
+/* 顶部返回按钮 */
+.back-to-top-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.back-to-top-btn:hover {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
 }
 
 .user-basic-info {

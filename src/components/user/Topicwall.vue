@@ -257,9 +257,9 @@
 
                   <!-- 标签 -->
                   <div class="topic-tags-container">
-                    <!-- 一级标签（用户类型） -->
-                    <span v-if="post.level1Tag" class="topic-tag level1-tag">
-                      {{ getIdentityTagName(post.level1Tag) }}
+                    <!-- 一级标签（用户类型）- 始终显示 -->
+                    <span v-if="getPostLevel1Tag(post)" class="topic-tag level1-tag">
+                      {{ getIdentityTagName(getPostLevel1Tag(post)) }}
                     </span>
                     
                     <!-- 二级标签（最多 3 个） -->
@@ -835,6 +835,20 @@ const getIdentityTagName = (tagCode) => {
   return tagMap[tagCode] || '';
 };
 
+// 获取帖子的一级标签（用户类型）
+const getPostLevel1Tag = (post) => {
+  // 优先从 author 对象中读取
+  if (post.author?.level1Tag) {
+    return post.author.level1Tag;
+  }
+  // 兼容旧的 identityTag 字段
+  if (post.author?.identityTag) {
+    return post.author.identityTag;
+  }
+  // 最后从 post 本身读取
+  return post.level1Tag || null;
+};
+
 const handleSearch = async () => {
   if (searchQuery.value.trim()) {
     currentPage.value = 1;
@@ -936,7 +950,7 @@ const fetchTopicsWithFilters = async () => {
           username: topic.author.username,
           studentId: topic.author.studentId,
           avatar: topic.author.avatarUrl || '',
-          identityTag: topic.author.identity?.level1Tag || null // 保存一级标签
+          level1Tag: topic.author.level1Tag || topic.author.identity?.level1Tag || null // 保存一级标签
         },
         // 保存话题的完整标签体系
         level1Tag: topic.level1Tag || null,

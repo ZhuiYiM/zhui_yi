@@ -87,14 +87,51 @@
             </div>
 
             <!-- 标签展示 -->
-            <div v-if="topic.tags && topic.tags.level4 && topic.tags.level4.length > 0" class="content-tags">
-              <span
-                  v-for="tag in topic.tags.level4"
-                  :key="tag.id"
-                  class="hashtag"
-              >
-                #{{ tag.name }}
-              </span>
+            <div v-if="hasTags" class="content-tags">
+              <!-- 二级标签 -->
+              <template v-if="topic.tags.level2 && topic.tags.level2.length > 0">
+                <span
+                    v-for="tag in topic.tags.level2"
+                    :key="'l2-' + (tag.code || tag.name || tag)"
+                    class="hashtag level2"
+                    :style="getTagStyle(tag)"
+                >
+                  {{ tag.name || tag }}
+                </span>
+              </template>
+              
+              <!-- 三级标签 -->
+              <template v-if="topic.tags.level3 && topic.tags.level3.length > 0">
+                <span
+                    v-for="tag in topic.tags.level3"
+                    :key="'l3-' + (tag.code || tag.name || tag)"
+                    class="hashtag level3"
+                >
+                  📍{{ tag.name || tag }}
+                </span>
+              </template>
+              
+              <!-- 四级标签 -->
+              <template v-if="topic.tags.level4 && topic.tags.level4.length > 0">
+                <span
+                    v-for="tag in topic.tags.level4"
+                    :key="'l4-' + (tag.code || tag.name || tag)"
+                    class="hashtag level4"
+                >
+                  #{{ tag.name || tag }}
+                </span>
+              </template>
+              
+              <!-- 兼容简单数组格式的标签 -->
+              <template v-if="Array.isArray(topic.tags) && topic.tags.length > 0">
+                <span
+                    v-for="(tag, index) in topic.tags"
+                    :key="'tag-' + index"
+                    class="hashtag simple"
+                >
+                  #{{ tag.name || tag }}
+                </span>
+              </template>
             </div>
           </div>
 
@@ -210,6 +247,23 @@ const currentUser = ref(null);
 // 计算属性
 const isAuthor = computed(() => {
   return currentUser.value && topic.value && currentUser.value.id === topic.value.author.id;
+});
+
+// 是否有标签
+const hasTags = computed(() => {
+  if (!topic.value || !topic.value.tags) {
+    return false;
+  }
+  
+  const tags = topic.value.tags;
+  // 检查各种可能的标签格式
+  return (
+    (tags.level2 && tags.level2.length > 0) ||
+    (tags.level3 && tags.level3.length > 0) ||
+    (tags.level4 && tags.level4.length > 0) ||
+    // 兼容简单数组格式
+    (Array.isArray(tags) && tags.length > 0)
+  );
 });
 
 const defaultAvatar = 'https://placehold.co/100x100/CCCCCC/FFFFFF?text=默认头像';
@@ -519,6 +573,17 @@ const getIdentityTagName = (tagCode) => {
     'admin': '管理员'
   };
   return identityMap[tagCode] || tagCode;
+};
+
+// 获取标签样式
+const getTagStyle = (tag) => {
+  if (tag && tag.color) {
+    return {
+      backgroundColor: tag.color + '20',
+      borderColor: tag.color
+    };
+  }
+  return {};
 };
 
 // 返回上一页
@@ -1004,6 +1069,50 @@ onMounted(async () => {
 
 .primary-btn:hover {
   background: #66b1ff;
+}
+
+/* 标签样式 */
+.content-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.hashtag {
+  background: #f0f2f5;
+  color: #606266;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid transparent;
+}
+
+.hashtag:hover {
+  background: #409EFF;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.hashtag.level2 {
+  font-weight: 500;
+}
+
+.hashtag.level3 {
+  background: #ecf5ff;
+  color: #409EFF;
+}
+
+.hashtag.level4 {
+  background: #f4f4f5;
+  color: #909399;
+}
+
+.hashtag.simple {
+  background: #f0f2f5;
+  color: #606266;
 }
 
 @media (max-width: 768px) {

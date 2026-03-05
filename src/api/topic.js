@@ -100,6 +100,11 @@ export const topicAPI = {
         return request.get(`/user/${userId}/public-info`);
     },
 
+    // 获取当前用户资料
+    getUserProfile() {
+        return request.get('/user/profile');
+    },
+
     // 获取用户发布的话题
     getUserPublishedTopics(userId, params = {}) {
         return request.get(`/user/${userId}/published-topics`, { params });

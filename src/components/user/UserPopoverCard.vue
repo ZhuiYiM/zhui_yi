@@ -106,19 +106,47 @@ const loadUserInfo = async () => {
   error.value = null;
   
   try {
+    console.log('📡 正在加载用户公开信息，userId:', props.userId);
     const response = await topicAPI.getUserPublicInfo(props.userId);
     
-    if (response.data) {
-      userInfo.value = response.data;
+    console.log('✅ 用户公开信息响应:', response);
+    
+    if (response) {
+      // 适配后端返回的数据结构
+      userInfo.value = {
+        basicInfo: {
+          id: response.basicInfo?.id || response.id,
+          username: response.basicInfo?.username || response.username,
+          realName: response.basicInfo?.realName || response.realName,
+          avatarUrl: response.basicInfo?.avatarUrl || response.avatarUrl,
+          bio: response.basicInfo?.bio || response.bio,
+          college: response.basicInfo?.college || response.college
+        },
+        academicInfo: response.academicInfo || {},
+        identity: {
+          verified: response.identity?.verified || false,
+          level1Tag: response.identity?.level1Tag || response.identity?.tagCode,
+          level1TagName: response.identity?.level1TagName || response.identity?.tagName
+        },
+        privacySettings: response.privacySettings || {},
+        statistics: {
+          postCount: response.statistics?.postCount || 0,
+          likesReceived: response.statistics?.likesReceived || 0,
+          followerCount: response.statistics?.followerCount || 0,
+          followingCount: response.statistics?.followingCount || 0
+        },
+        canMessage: response.canMessage || false
+      };
+      console.log('✅ 用户信息解析成功:', userInfo.value);
     } else {
       throw new Error('用户信息为空');
     }
   } catch (err) {
-    console.error('加载用户信息失败:', err);
+    console.error('❌ 加载用户信息失败:', err);
     error.value = '加载失败';
   } finally {
     loading.value = false;
-  };
+  }
 };
 
 const viewProfile = () => {

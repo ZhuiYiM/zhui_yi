@@ -987,6 +987,14 @@ const sharePost = (post) => {
 
 // 显示话题详情
 const showTopicDetail = (post) => {
+  console.log('📡 打开话题详情，postId:', post?.id);
+  
+  if (!post || !post.id) {
+    console.error('❌ 话题信息不完整:', post);
+    ElMessage.error('话题信息不完整');
+    return;
+  }
+  
   router.push(`/topic/${post.id}`);
 };
 

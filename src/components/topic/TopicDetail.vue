@@ -188,8 +188,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
-import axios from 'axios';
-import { getAuthHeaders } from '../../api/request';
+import { topicAPI } from '@/api/topic';
 
 const route = useRoute();
 const router = useRouter();
@@ -214,25 +213,52 @@ const defaultAvatar = 'https://placehold.co/100x100/CCCCCC/FFFFFF?text=默认头
 // 获取话题详情
 const fetchTopicDetail = async () => {
   try {
-    const response = await axios.get(`/api/topic/${route.params.id}`, {
-      headers: getAuthHeaders()
-    });
+    console.log('📡 正在获取话题详情，topicId:', route.params.id);
+    const response = await topicAPI.getTopicDetail(route.params.id);
+    
+    console.log('✅ 话题详情响应:', response);
 
-    if (response.data.code === 200) {
-      topic.value = response.data.data;
+    if (response) {
+      // 适配后端返回的数据结构
+      topic.value = {
+        id: response.id,
+        content: response.content,
+        images: response.images || [],
+        tags: response.tags || {},
+        author: {
+          id: response.author?.id,
+          username: response.author?.username || response.author?.realName,
+          realName: response.author?.realName,
+          avatarUrl: response.author?.avatarUrl,
+          studentId: response.author?.studentId
+        },
+        statistics: {
+          viewsCount: response.statistics?.viewsCount || response.viewsCount || 0,
+          likesCount: response.statistics?.likesCount || response.likesCount || 0,
+          commentsCount: response.statistics?.commentsCount || response.commentsCount || 0,
+          collectionsCount: response.statistics?.collectionsCount || response.collectionsCount || 0
+        },
+        interactions: {
+          isLiked: response.interactions?.isLiked || response.isLiked || false,
+          isCollected: response.interactions?.isCollected || response.isCollected || false
+        },
+        isEssence: response.isEssence || 0,
+        createdAt: response.createdAt
+      };
 
       // 获取作者公开信息
       if (topic.value.author && topic.value.author.id) {
+        console.log('📡 正在获取作者公开信息，authorId:', topic.value.author.id);
         await fetchAuthorPublicInfo(topic.value.author.id);
       }
 
       // 获取评论列表
       await fetchComments();
     } else {
-      ElMessage.error(response.data.message || '获取话题详情失败');
+      throw new Error('话题详情数据为空');
     }
   } catch (error) {
-    console.error('获取话题详情失败:', error);
+    console.error('❌ 获取话题详情失败:', error);
     ElMessage.error('获取话题详情失败');
   } finally {
     loading.value = false;
@@ -242,31 +268,64 @@ const fetchTopicDetail = async () => {
 // 获取作者公开信息
 const fetchAuthorPublicInfo = async (userId) => {
   try {
-    const response = await axios.get(`/api/user/${userId}/public-info`, {
-      headers: getAuthHeaders()
-    });
+    console.log('📡 正在获取作者公开信息，userId:', userId);
+    const response = await topicAPI.getUserPublicInfo(userId);
+    
+    console.log('✅ 作者公开信息响应:', response);
 
-    if (response.data.code === 200) {
-      authorPublicInfo.value = response.data.data;
+    if (response) {
+      // 适配后端返回的数据结构
+      authorPublicInfo.value = {
+        basicInfo: {
+          id: response.basicInfo?.id || response.id,
+          username: response.basicInfo?.username || response.username,
+          realName: response.basicInfo?.realName || response.realName,
+          avatarUrl: response.basicInfo?.avatarUrl || response.avatarUrl,
+          bio: response.basicInfo?.bio || response.bio,
+          college: response.basicInfo?.college || response.college
+        },
+        academicInfo: response.academicInfo || {},
+        identity: response.identity || {},
+        privacySettings: response.privacySettings || {},
+        statistics: {
+          postCount: response.statistics?.postCount || 0,
+          likesReceived: response.statistics?.likesReceived || 0,
+          followerCount: response.statistics?.followerCount || 0,
+          followingCount: response.statistics?.followingCount || 0
+        },
+        canMessage: response.canMessage || false
+      };
     }
   } catch (error) {
-    console.error('获取作者信息失败:', error);
+    console.error('❌ 获取作者信息失败:', error);
   }
 };
 
 // 获取评论列表
 const fetchComments = async () => {
   try {
-    const response = await axios.get(`/api/topic/${route.params.id}/comments`, {
-      params: { page: 1, size: 20, sort: 'latest' },
-      headers: getAuthHeaders()
-    });
+    console.log('📡 正在获取评论列表，topicId:', route.params.id);
+    const response = await topicAPI.getTopicComments(route.params.id, { page: 1, size: 20, sort: 'latest' });
+    
+    console.log('✅ 评论列表响应:', response);
 
-    if (response.data.code === 200) {
-      comments.value = response.data.data || [];
+    if (response) {
+      // 适配后端返回的数据结构
+      comments.value = (response.comments || response.data || []).map(comment => ({
+        id: comment.id,
+        content: comment.content,
+        author: {
+          id: comment.author?.id,
+          username: comment.author?.username || comment.author?.realName,
+          avatarUrl: comment.author?.avatarUrl
+        },
+        likesCount: comment.likesCount || 0,
+        createdAt: comment.createdAt,
+        replies: comment.replies || []
+      }));
     }
   } catch (error) {
-    console.error('获取评论失败:', error);
+    console.error('❌ 获取评论失败:', error);
   }
 };
 
@@ -455,18 +514,16 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize);
 
   // 获取当前用户信息
-  const token = localStorage.getItem('token');
-  if (token) {
-    try {
-      const response = await axios.get('/api/user/profile', {
-        headers: getAuthHeaders()
-      });
-      if (response.data.code === 200) {
-        currentUser.value = response.data.data;
-      }
-    } catch (error) {
-      console.error('获取用户信息失败:', error);
+  try {
+    console.log('📡 正在获取当前用户信息');
+    const response = await topicAPI.getUserProfile();
+    
+    if (response) {
+      currentUser.value = response;
+      console.log('✅ 当前用户信息:', currentUser.value);
     }
+  } catch (error) {
+    console.error('❌ 获取用户信息失败:', error);
   }
 
   await fetchTopicDetail();

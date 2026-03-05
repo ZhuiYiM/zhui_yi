@@ -39,6 +39,10 @@
               >
               <div class="author-details">
                 <span class="author-name">{{ topic.author.realName || topic.author.username }}</span>
+                <!-- 显示身份标签 -->
+                <span v-if="topic.author.level1Tag" class="identity-tag" :class="topic.author.level1Tag">
+                  {{ getIdentityTagName(topic.author.level1Tag) }}
+                </span>
                 <span class="post-time">{{ formatDate(topic.createdAt) }}</span>
               </div>
             </div>
@@ -217,20 +221,22 @@ const fetchTopicDetail = async () => {
     const response = await topicAPI.getTopicDetail(route.params.id);
     
     console.log('✅ 话题详情响应:', response);
+    console.log('📋 响应数据结构:', JSON.stringify(response, null, 2));
 
     if (response) {
-      // 适配后端返回的数据结构
+      // 适配后端实际返回的数据结构（平铺字段）
       topic.value = {
         id: response.id,
         content: response.content,
         images: response.images || [],
         tags: response.tags || {},
         author: {
-          id: response.author?.id,
-          username: response.author?.username || response.author?.realName,
-          realName: response.author?.realName,
-          avatarUrl: response.author?.avatarUrl,
-          studentId: response.author?.studentId
+          id: response.author?.id || response.authorId,
+          username: response.author?.username || response.authorUsername || response.author?.realName,
+          realName: response.author?.realName || response.authorRealName,
+          avatarUrl: response.author?.avatarUrl || response.authorAvatarUrl,
+          studentId: response.author?.studentId || response.authorStudentId,
+          level1Tag: response.author?.level1Tag || response.level1Tag // 添加身份标签
         },
         statistics: {
           viewsCount: response.statistics?.viewsCount || response.viewsCount || 0,
@@ -245,6 +251,9 @@ const fetchTopicDetail = async () => {
         isEssence: response.isEssence || 0,
         createdAt: response.createdAt
       };
+
+      console.log('👤 话题作者信息:', topic.value.author);
+      console.log('🏷️ 作者身份标签:', topic.value.author.level1Tag);
 
       // 获取作者公开信息
       if (topic.value.author && topic.value.author.id) {
@@ -500,6 +509,18 @@ const formatDate = (dateString) => {
   }
 };
 
+// 获取身份标签名称
+const getIdentityTagName = (tagCode) => {
+  const identityMap = {
+    'student': '学生',
+    'merchant': '商户',
+    'organization': '团体',
+    'individual': '个人',
+    'admin': '管理员'
+  };
+  return identityMap[tagCode] || tagCode;
+};
+
 // 返回上一页
 const goBack = () => {
   router.push('/topicwall');
@@ -626,6 +647,42 @@ onMounted(async () => {
 .post-time {
   font-size: 13px;
   color: #999;
+}
+
+/* 身份标签 */
+.identity-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+  transition: all 0.3s;
+}
+
+.identity-tag.student {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.identity-tag.merchant {
+  background: #fff3e0;
+  color: #f57c00;
+}
+
+.identity-tag.organization {
+  background: #e8f5e9;
+  color: #388e3c;
+}
+
+.identity-tag.individual {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.identity-tag.admin {
+  background: #ffebee;
+  color: #d32f2f;
 }
 
 /* 作者信息悬停提示 */

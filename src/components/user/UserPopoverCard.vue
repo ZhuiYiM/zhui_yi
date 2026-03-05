@@ -110,34 +110,36 @@ const loadUserInfo = async () => {
     const response = await topicAPI.getUserPublicInfo(props.userId);
     
     console.log('✅ 用户公开信息响应:', response);
+    console.log('📋 响应数据结构:', JSON.stringify(response, null, 2));
     
     if (response) {
-      // 适配后端返回的数据结构
+      // 适配后端实际返回的数据结构（平铺在 data 中）
       userInfo.value = {
         basicInfo: {
-          id: response.basicInfo?.id || response.id,
-          username: response.basicInfo?.username || response.username,
-          realName: response.basicInfo?.realName || response.realName,
-          avatarUrl: response.basicInfo?.avatarUrl || response.avatarUrl,
-          bio: response.basicInfo?.bio || response.bio,
-          college: response.basicInfo?.college || response.college
+          id: response.id || response.basicInfo?.id,
+          username: response.username || response.basicInfo?.username,
+          realName: response.realName || response.basicInfo?.realName,
+          avatarUrl: response.avatarUrl || response.basicInfo?.avatarUrl,
+          bio: response.bio || response.basicInfo?.bio,
+          college: response.college || response.basicInfo?.college
         },
         academicInfo: response.academicInfo || {},
         identity: {
-          verified: response.identity?.verified || false,
-          level1Tag: response.identity?.level1Tag || response.identity?.tagCode,
-          level1TagName: response.identity?.level1TagName || response.identity?.tagName
+          verified: response.verified || response.identity?.verified || false,
+          level1Tag: response.level1Tag || response.identity?.level1Tag || response.identity?.tagCode,
+          level1TagName: response.level1TagName || response.identity?.level1TagName || response.identity?.tagName
         },
         privacySettings: response.privacySettings || {},
         statistics: {
-          postCount: response.statistics?.postCount || 0,
-          likesReceived: response.statistics?.likesReceived || 0,
-          followerCount: response.statistics?.followerCount || 0,
-          followingCount: response.statistics?.followingCount || 0
+          postCount: response.postCount || response.statistics?.postCount || 0,
+          likesReceived: response.likesReceived || response.statistics?.likesReceived || 0,
+          followerCount: response.followerCount || response.statistics?.followerCount || 0,
+          followingCount: response.followingCount || response.statistics?.followingCount || 0
         },
         canMessage: response.canMessage || false
       };
       console.log('✅ 用户信息解析成功:', userInfo.value);
+      console.log('🏷️ 身份标签:', userInfo.value.identity.level1Tag);
     } else {
       throw new Error('用户信息为空');
     }

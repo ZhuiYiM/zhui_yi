@@ -155,20 +155,22 @@ import UnifiedNav from '@/components/common/UnifiedNav.vue';
 const router = useRouter(); // 创建路由实例
 
 // 用户信息
-const currentUser = ref({
-  name: '',
-  studentId: '',
-  avatar: ''
-});
+const currentUser = ref(null);
 
 // 获取用户信息
 const getUserInfo = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  currentUser.value = {
-    name: user.name || user.username || '',
-    studentId: user.studentId || user.student_id || '',
-    avatar: user.avatar || ''
-  };
+  const token = localStorage.getItem('token');
+  if (token) {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    currentUser.value = {
+      name: user.name || user.username || '',
+      studentId: user.studentId || user.student_id || '',
+      avatar: user.avatar || ''
+    };
+  } else {
+    // 未登录时设置为 null
+    currentUser.value = null;
+  }
 };
 
 // 设备检测相关

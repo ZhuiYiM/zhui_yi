@@ -253,6 +253,49 @@ public class TopicsController {
     }
 
     /**
+     * 根据多级标签筛选话题
+     * GET /api/topics/filter?level1=student&level2=study,life&level3=library,dorm&page=1&size=10
+     * POST /api/topics/filter (JSON body)
+     */
+    @GetMapping("/filter")
+    @PostMapping("/filter")
+    public ApiResult filterTopics(
+            @RequestParam(required = false) String level1,
+            @RequestParam(required = false) String level2,
+            @RequestParam(required = false) String level3,
+            @RequestBody(required = false) TopicQueryDTO requestBody,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        
+        TopicQueryDTO queryDTO = new TopicQueryDTO();
+        
+        // 如果是 POST 请求，从 body 获取参数
+        if (requestBody != null) {
+            queryDTO.setLevel1Tag(requestBody.getLevel1Tag());
+            queryDTO.setLevel2Tags(requestBody.getLevel2Tags());
+            queryDTO.setLevel3Tags(requestBody.getLevel3Tags());
+            queryDTO.setPage(requestBody.getPage());
+            queryDTO.setSize(requestBody.getSize());
+            queryDTO.setSort(requestBody.getSort());
+        } else {
+            // GET 请求，从 URL 参数获取
+            queryDTO.setLevel1Tag(level1);
+            // 将逗号分隔的字符串转为数组
+            if (level2 != null && !level2.trim().isEmpty()) {
+                queryDTO.setLevel2Tags(level2.split(","));
+            }
+            if (level3 != null && !level3.trim().isEmpty()) {
+                queryDTO.setLevel3Tags(level3.split(","));
+            }
+            queryDTO.setPage(page);
+            queryDTO.setSize(size);
+            queryDTO.setSort("latest");
+        }
+        
+        return topicsService.filterTopics(queryDTO);
+    }
+
+    /**
      * 从请求中提取用户 ID 的辅助方法
      */
     private Long extractUserIdFromRequest(HttpServletRequest request) {

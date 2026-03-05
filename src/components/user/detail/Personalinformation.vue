@@ -176,21 +176,21 @@
               <h3 class="section-title">更多信息</h3>
               <p class="section-description">这些信息可设置隐私控制，选择是否对他人可见</p>
 
-              <!-- 真实姓名（只读） -->
+              <!-- 真实姓名 (只读) -->
               <div class="form-group">
                 <div class="field-header">
                   <label>真实姓名</label>
                   <div class="visibility-fixed">
-                    <span class="visibility-label">只读信息</span>
+                    <span class="visibility-label">{{ getVisibilityLabel('realName') }}</span>
                     <span class="lock-icon">🔒</span>
                   </div>
                 </div>
                 <input 
                   type="text" 
-                  :value="form.realName" 
+                  :value="maskField(form.realName, privacySettings.realNameVisibility)" 
                   readonly
                   class="readonly-input"
-                  placeholder="真实姓名（只读）"
+                  placeholder="真实姓名 (只读)"
                 />
                 <p class="readonly-note">真实姓名为只读信息，请到专门的账号设置页面修改</p>
               </div>
@@ -213,77 +213,77 @@
                 <p class="readonly-note">出生日期为只读信息，请到专门的账号设置页面修改</p>
               </div>
 
-              <!-- 联系信息（只读） -->
+              <!-- 联系信息 (只读) -->
               <div class="form-group">
                 <div class="field-header">
                   <label>手机号码</label>
                   <div class="visibility-fixed">
-                    <span class="visibility-label">只读信息</span>
+                    <span class="visibility-label">{{ getVisibilityLabel('phone') }}</span>
                     <span class="lock-icon">🔒</span>
                   </div>
                 </div>
                 <input 
                   type="tel" 
-                  :value="form.phone" 
+                  :value="maskField(form.phone, privacySettings.phoneVisibility)" 
                   readonly
                   class="readonly-input"
-                  placeholder="手机号码（只读）"
+                  placeholder="手机号码 (只读)"
                 />
                 <p class="readonly-note">手机号码为只读信息，请到专门的账号设置页面修改</p>
               </div>
-
+              
               <div class="form-group">
                 <div class="field-header">
                   <label>邮箱地址</label>
                   <div class="visibility-fixed">
-                    <span class="visibility-label">只读信息</span>
+                    <span class="visibility-label">{{ getVisibilityLabel('email') }}</span>
                     <span class="lock-icon">🔒</span>
                   </div>
                 </div>
                 <input 
                   type="email" 
-                  :value="form.email" 
+                  :value="maskField(form.email, privacySettings.emailVisibility)" 
                   readonly
                   class="readonly-input"
-                  placeholder="邮箱地址（只读）"
+                  placeholder="邮箱地址 (只读)"
                 />
                 <p class="readonly-note">邮箱地址为只读信息，请到专门的账号设置页面修改</p>
               </div>
 
-              <!-- 学号（只读） -->
+              <!-- 学号 (只读) -->
               <div class="form-group">
                 <div class="field-header">
                   <label>学号</label>
                   <div class="visibility-fixed">
-                    <span class="visibility-label">只读信息</span>
+                    <span class="visibility-label">{{ getVisibilityLabel('studentId') }}</span>
                     <span class="lock-icon">🔒</span>
                   </div>
                 </div>
                 <input 
                   type="text" 
-                  :value="form.studentId" 
+                  :value="maskField(form.studentId, privacySettings.studentIdVisibility)" 
                   readonly
                   class="readonly-input"
-                  placeholder="学号（只读）"
+                  placeholder="学号 (只读)"
                 />
                 <p class="readonly-note">学号为只读信息，请到专门的账号设置页面修改</p>
               </div>
 
-              <!-- 身份证号码（只读） -->
+              <!-- 身份证号码 (只读) -->
               <div class="form-group">
                 <div class="field-header">
                   <label>身份证号码</label>
                   <div class="visibility-fixed">
-                    <span class="visibility-label">只读信息</span>
+                    <span class="visibility-label">{{ privacySettings.realNameVisibility === 'private' ? '仅自己可见' : '实名认证信息' }}</span>
                     <span class="lock-icon">🔒</span>
                   </div>
                 </div>
                 <input 
                   type="text" 
-                  :value="form.idCard || '未设置'" 
+                  :value="privacySettings.realNameVisibility === 'private' ? (form.idCard || '未设置') : maskField(form.idCard, 'private')" 
                   readonly
                   class="readonly-input"
-                  placeholder="身份证号码（只读）"
+                  placeholder="身份证号码 (只读)"
                 />
                 <p class="readonly-note">身份证号码为只读信息，请到专门的账号设置页面修改</p>
               </div>
@@ -400,6 +400,57 @@ const userId = computed(() => {
   return user.userId || user.id || user._id || '未设置';
 });
 
+// 获取可见性标签
+const getVisibilityLabel = (field) => {
+  const visibilityMap = {
+    realName: privacySettings.realNameVisibility === 'public' ? '公开' : 
+              privacySettings.realNameVisibility === 'friends' ? '好友可见' : '仅自己',
+    phone: privacySettings.phoneVisibility === 'public' ? '公开' : 
+           privacySettings.phoneVisibility === 'friends' ? '好友可见' : '仅自己',
+    email: privacySettings.emailVisibility === 'public' ? '公开' : 
+           privacySettings.emailVisibility === 'friends' ? '好友可见' : '仅自己',
+    studentId: privacySettings.studentIdVisibility === 'public' ? '公开' : 
+               privacySettings.studentIdVisibility === 'friends' ? '好友可见' : '仅自己'
+  };
+  return visibilityMap[field] || '仅自己';
+};
+
+// 字段脱敏处理
+const maskField = (value, visibility) => {
+  if (!value) return '';
+  
+  // 如果对自己可见，显示完整信息
+  if (visibility === 'private') {
+    return value;
+  }
+  
+  // 对手机号、邮箱、学号进行脱敏
+  if (typeof value === 'string') {
+    // 手机号：138****1234
+    if (/^1[3-9]\d{9}$/.test(value)) {
+      return value.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+    }
+    // 邮箱：123****@qq.com
+    if (value.includes('@')) {
+      const [username, domain] = value.split('@');
+      if (username.length > 3) {
+        return `${username.substring(0, 3)}****@${domain}`;
+      }
+      return `${username}****@${domain}`;
+    }
+    // 学号：2228****118
+    if (/^\d{10,}$/.test(value)) {
+      return value.replace(/(\d{4})\d{3,5}(\d{2,3})/, '$1***$2');
+    }
+    // 姓名：马*康
+    if (value.length >= 2) {
+      return value.charAt(0) + '*'.repeat(value.length - 2) + value.charAt(value.length - 1);
+    }
+  }
+  
+  return value;
+};
+
 // 表单数据
 const form = reactive({
   avatar: '',
@@ -417,12 +468,23 @@ const form = reactive({
   hobbies: []
 });
 
-// 隐私控制数据（仅适用于更多信息区域）
+// 隐私控制数据 (仅适用于更多信息区域)
 const privacy = reactive({
   realName: false,
   birthDate: false,
+  phone: false,
+  email: false,
+  studentId: false,
   major: false,
   hobbies: false
+});
+
+// 隐私设置 (从账号管理获取)
+const privacySettings = reactive({
+  realNameVisibility: 'private',
+  phoneVisibility: 'private',
+  emailVisibility: 'private',
+  studentIdVisibility: 'private'
 });
 
 // 默认隐私级别
@@ -435,9 +497,9 @@ const avatarInput = ref(null);
 // 初始化数据
 const initializeData = async () => {
   try {
-    // 首先尝试从localStorage获取
+    // 首先尝试从 localStorage 获取
     const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('从localStorage获取的用户数据:', localUser);
+    console.log('从 localStorage 获取的用户数据:', localUser);
     
     // 同时从服务器获取最新的用户信息
     const serverUser = await userAPI.getCurrentUser();
@@ -451,34 +513,57 @@ const initializeData = async () => {
     form.realName = user.realName || user.name || localUser.realName || localUser.name || '';
     form.gender = user.gender || localUser.gender || '';
     form.birthDate = user.birthDate || localUser.birthDate || '';
-    form.phone = user.phone || localUser.phone || '';
+    form.phone = user.phone || user.phoneNumber || localUser.phone || localUser.phoneNumber || '';
     form.email = user.email || localUser.email || '';
     form.studentId = user.studentId || user.student_id || localUser.studentId || localUser.student_id || '';
     form.idCard = user.idCard || user.id_card || localUser.idCard || localUser.id_card || '';
     form.college = user.college || user.department || localUser.college || localUser.department || '';
     form.major = user.major || localUser.major || '';
     form.bio = user.bio || user.introduction || localUser.bio || localUser.introduction || '';
-    form.hobbies = user.hobbies || localUser.hobbies || [];
+    form.hobbies = parseHobbies(user.hobbies || localUser.hobbies);
     form.avatar = user.avatar || user.avatarUrl || localUser.avatar || localUser.avatarUrl || '';
     
     console.log('初始化后的表单数据:', form);
+    
+    // 获取隐私设置
+    try {
+      const privacyResponse = await userAPI.getPrivacySettings();
+      if (privacyResponse.data) {
+        Object.assign(privacySettings, privacyResponse.data);
+      }
+    } catch (error) {
+      console.log('获取隐私设置失败:', error.message);
+      // 使用默认设置
+    }
   } catch (error) {
     console.error('初始化用户数据失败:', error);
-    // 失败时使用localStorage数据
+    // 失败时使用 localStorage 数据
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     form.nickname = user.nickname || user.username || '';
     form.realName = user.realName || user.name || '';
     form.gender = user.gender || '';
     form.birthDate = user.birthDate || '';
-    form.phone = user.phone || '';
+    form.phone = user.phone || user.phoneNumber || '';
     form.email = user.email || '';
     form.studentId = user.studentId || user.student_id || '';
     form.idCard = user.idCard || user.id_card || '';
     form.college = user.college || user.department || '';
     form.major = user.major || '';
     form.bio = user.bio || user.introduction || '';
-    form.hobbies = user.hobbies || [];
+    form.hobbies = parseHobbies(user.hobbies);
     form.avatar = user.avatar || user.avatarUrl || '';
+  }
+};
+
+// 解析兴趣爱好 (处理字符串数组)
+const parseHobbies = (hobbies) => {
+  if (!hobbies) return [];
+  if (Array.isArray(hobbies)) return hobbies;
+  try {
+    // 如果是 JSON 字符串，尝试解析
+    return JSON.parse(hobbies);
+  } catch (e) {
+    return [hobbies];
   }
 };
 

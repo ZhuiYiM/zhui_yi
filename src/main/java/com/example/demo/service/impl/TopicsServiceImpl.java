@@ -63,32 +63,48 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             if (userId == null) {
                 return ApiResult.error(401, "用户未登录");
             }
-            
+                
+            // ✅ 获取用户并自动设置身份标签
+            User user = userMapper.selectById(userId);
+            if (user == null) {
+                return ApiResult.error(404, "用户不存在");
+            }
+                
+            // ✅ 根据用户类型自动确定一级标签代码
+            String level1TagCode = determineUserLevel1Tag(user);
+                
             // 验证内容长度
             if (topicDTO.getContent() == null || topicDTO.getContent().trim().isEmpty()) {
                 return ApiResult.error(400, "话题内容不能为空");
             }
-            
+                
             if (topicDTO.getContent().length() > 1000) {
-                return ApiResult.error(400, "话题内容不能超过1000字符");
+                return ApiResult.error(400, "话题内容不能超过 1000 字符");
             }
-            
+                
             // 验证图片数量
             if (topicDTO.getImages() != null && topicDTO.getImages().size() > 9) {
-                return ApiResult.error(400, "图片数量不能超过9张");
+                return ApiResult.error(400, "图片数量不能超过 9 张");
             }
-            
+                
             // 验证标签数量
             if (topicDTO.getTags() != null && topicDTO.getTags().size() > 5) {
-                return ApiResult.error(400, "标签数量不能超过5个");
+                return ApiResult.error(400, "标签数量不能超过 5 个");
             }
-            
+                
             // 创建话题
             Topics topic = new Topics();
             topic.setUserId(userId);
             topic.setContent(topicDTO.getContent());
             topic.setImages(convertListToJson(topicDTO.getImages()));
             topic.setTags(convertListToJson(topicDTO.getTags()));
+                
+            // ✅ 设置自动识别的一级标签
+            topic.setLevel1TagCode(level1TagCode);
+            topic.setLevel2TagCodes(convertListToJson(topicDTO.getLevel2TagCodes()));
+            topic.setLevel3TagCodes(convertListToJson(topicDTO.getLevel3TagCodes()));
+            topic.setLevel4TagCodes(convertListToJson(topicDTO.getLevel4TagCodes()));
+                
             topic.setLikesCount(0);
             topic.setCommentsCount(0);
             topic.setViewsCount(0);
@@ -96,20 +112,20 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             topic.setStatus(1);
             topic.setCreatedAt(LocalDateTime.now());
             topic.setUpdatedAt(LocalDateTime.now());
-            
+                
             boolean saveResult = this.save(topic);
             if (!saveResult) {
                 return ApiResult.error(500, "话题发布失败");
             }
-            
+                
             // 处理标签
             if (topicDTO.getTags() != null && !topicDTO.getTags().isEmpty()) {
                 handleTopicTags(topic.getId(), topicDTO.getTags());
             }
-            
+                
             return ApiResult.success("话题发布成功", topic);
         } catch (Exception e) {
-            return ApiResult.error(500, "话题发布失败: " + e.getMessage());
+            return ApiResult.error(500, "话题发布失败：" + e.getMessage());
         }
     }
 
@@ -160,12 +176,7 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
                 Map<String, Object> topicInfo = convertTopicToMap(topic);
                 User author = userMapper.selectById(topic.getUserId());
                 if (author != null) {
-                    Map<String, Object> authorInfo = new HashMap<>();
-                    authorInfo.put("id", author.getId());
-                    authorInfo.put("username", author.getUsername());
-                    authorInfo.put("realName", author.getRealName());
-                    authorInfo.put("avatarUrl", author.getAvatarUrl());
-                    authorInfo.put("studentId", author.getStudentId());
+                    Map<String, Object> authorInfo = buildAuthorInfo(author);
                     topicInfo.put("author", authorInfo);
                 }
                 topicsWithUserInfo.add(topicInfo);
@@ -180,7 +191,77 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             
             return ApiResult.success(responseData);
         } catch (Exception e) {
-            return ApiResult.error(500, "获取话题列表失败: " + e.getMessage());
+            return ApiResult.error(500, "获取话题列表失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    public ApiResult filterTopics(TopicQueryDTO queryDTO) {
+        try {
+            Page<Topics> page = new Page<>(queryDTO.getPage(), queryDTO.getSize());
+            QueryWrapper<Topics> wrapper = new QueryWrapper<>();
+                
+            // 只查询正常状态的话题
+            wrapper.eq("status", 1);
+                
+            // 一级标签筛选
+            if (queryDTO.getLevel1Tag() != null && !queryDTO.getLevel1Tag().trim().isEmpty()) {
+                wrapper.eq("level1_tag_code", queryDTO.getLevel1Tag());
+            }
+                
+            // 二级标签筛选 (JSON 数组包含匹配)
+            if (queryDTO.getLevel2Tags() != null && queryDTO.getLevel2Tags().length > 0) {
+                for (String level2Code : queryDTO.getLevel2Tags()) {
+                    wrapper.or(w -> w.like("level2_tag_codes", "\"" + level2Code.trim() + "\""));
+                }
+            }
+                
+            // 三级标签筛选 (JSON 数组包含匹配)
+            if (queryDTO.getLevel3Tags() != null && queryDTO.getLevel3Tags().length > 0) {
+                for (String level3Code : queryDTO.getLevel3Tags()) {
+                    wrapper.or(w -> w.like("level3_tag_codes", "\"" + level3Code.trim() + "\""));
+                }
+            }
+                
+            // 按排序方式处理
+            switch (queryDTO.getSort()) {
+                case "hot":
+                    wrapper.orderByDesc("likes_count");
+                    break;
+                case "essence":
+                    wrapper.eq("is_essence", 1);
+                    wrapper.orderByDesc("created_at");
+                    break;
+                case "latest":
+                default:
+                    wrapper.orderByDesc("created_at");
+                    break;
+            }
+                
+            Page<Topics> result = this.page(page, wrapper);
+                
+            // 补充用户信息和处理数据
+            List<Map<String, Object>> topicsWithUserInfo = new ArrayList<>();
+            for (Topics topic : result.getRecords()) {
+                Map<String, Object> topicInfo = convertTopicToMap(topic);
+                User author = userMapper.selectById(topic.getUserId());
+                if (author != null) {
+                    Map<String, Object> authorInfo = buildAuthorInfo(author);
+                    topicInfo.put("author", authorInfo);
+                }
+                topicsWithUserInfo.add(topicInfo);
+            }
+                
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("topics", topicsWithUserInfo);
+            responseData.put("total", result.getTotal());
+            responseData.put("page", result.getCurrent());
+            responseData.put("size", result.getSize());
+            responseData.put("totalPages", result.getPages());
+                
+            return ApiResult.success(responseData);
+        } catch (Exception e) {
+            return ApiResult.error(500, "筛选话题失败：" + e.getMessage());
         }
     }
 
@@ -543,6 +624,13 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         map.put("content", topic.getContent());
         map.put("images", parseJsonToList(topic.getImages()));
         map.put("tags", parseJsonToList(topic.getTags()));
+        
+        // 添加分级标签
+        map.put("level1Tag", buildLevel1TagInfo(topic.getLevel1TagCode()));
+        map.put("level2Tags", buildLevel2TagInfos(parseJsonToList(topic.getLevel2TagCodes())));
+        map.put("level3Tags", buildLevel3TagInfos(parseJsonToList(topic.getLevel3TagCodes())));
+        map.put("level4Tags", buildLevel4TagInfos(parseJsonToList(topic.getLevel4TagCodes())));
+        
         map.put("likesCount", topic.getLikesCount());
         map.put("commentsCount", topic.getCommentsCount());
         map.put("viewsCount", topic.getViewsCount());
@@ -673,10 +761,7 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
                     // 获取作者信息
                     User author = userMapper.selectById(topic.getUserId());
                     if (author != null) {
-                        Map<String, Object> authorInfo = new HashMap<>();
-                        authorInfo.put("id", author.getId());
-                        authorInfo.put("username", author.getUsername());
-                        authorInfo.put("realName", author.getRealName());
+                        Map<String, Object> authorInfo = buildAuthorInfo(author);
                         topicInfo.put("author", authorInfo);
                     }
                     
@@ -694,7 +779,188 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             
             return ApiResult.success(responseData);
         } catch (Exception e) {
-            return ApiResult.error(500, "获取收藏列表失败: " + e.getMessage());
+            return ApiResult.error(500, "获取收藏列表失败：" + e.getMessage());
         }
+    }
+    
+    /**
+     * 构建作者信息（包含身份信息）
+     */
+    private Map<String, Object> buildAuthorInfo(User author) {
+        Map<String, Object> authorInfo = new HashMap<>();
+        authorInfo.put("id", author.getId());
+        authorInfo.put("username", author.getUsername());
+        authorInfo.put("realName", author.getRealName());
+        authorInfo.put("avatarUrl", author.getAvatarUrl());
+        authorInfo.put("studentId", author.getStudentId());
+        
+        // 添加身份信息
+        Map<String, Object> identityInfo = buildIdentityInfo(author);
+        authorInfo.put("identity", identityInfo);
+        
+        return authorInfo;
+    }
+    
+    /**
+     * 构建用户身份信息
+     */
+    private Map<String, Object> buildIdentityInfo(User user) {
+        Map<String, Object> identity = new HashMap<>();
+        
+        // 确定一级身份标签
+        String level1Tag = determineUserLevel1Tag(user);
+        identity.put("level1Tag", level1Tag);
+        identity.put("level1TagName", getLevel1TagName(level1Tag));
+        
+        // 认证状态
+        Map<String, Boolean> certifications = new HashMap<>();
+        certifications.put("realName", user.getIsRealNameVerified() != null && user.getIsRealNameVerified() == 1);
+        certifications.put("student", user.getStudentId() != null && !user.getStudentId().trim().isEmpty());
+        certifications.put("merchant", user.getIsMerchant() != null && user.getIsMerchant() == 1);
+        certifications.put("organization", user.getIsOrganization() != null && user.getIsOrganization() == 1);
+        identity.put("certifications", certifications);
+        
+        return identity;
+    }
+    
+    /**
+     * 确定用户的一级身份标签
+     */
+    private String determineUserLevel1Tag(User user) {
+        if (user == null) {
+            return "society";
+        }
+        
+        // 1. 检查管理员身份（最高优先级）
+        if ("admin".equals(user.getRole()) || 
+            (user.getIsAdmin() != null && user.getIsAdmin() == 1)) {
+            return "admin";
+        }
+        
+        // 2. 检查学生身份
+        if (user.getStudentId() != null && !user.getStudentId().trim().isEmpty()) {
+            return "student";
+        }
+        
+        // 3. 检查商户身份
+        if (user.getIsMerchant() != null && user.getIsMerchant() == 1) {
+            return "merchant";
+        }
+        
+        // 4. 检查团体身份
+        if (user.getIsOrganization() != null && user.getIsOrganization() == 1) {
+            return "organization";
+        }
+        
+        // 5. 默认为社会
+        return "society";
+    }
+    
+    /**
+     * 获取一级标签名称
+     */
+    private String getLevel1TagName(String code) {
+        switch (code) {
+            case "admin":
+                return "管理员";
+            case "student":
+                return "学生";
+            case "merchant":
+                return "校外商户";
+            case "organization":
+                return "团体";
+            default:
+                return "社会";
+        }
+    }
+    
+    /**
+     * 构建一级标签信息
+     */
+    private Map<String, String> buildLevel1TagInfo(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return null;
+        }
+        
+        Map<String, String> tagInfo = new HashMap<>();
+        tagInfo.put("code", code);
+        tagInfo.put("name", getLevel1TagName(code));
+        
+        // 添加图标
+        switch (code) {
+            case "admin":
+                tagInfo.put("icon", "🛡️");
+                break;
+            case "student":
+                tagInfo.put("icon", "👨‍🎓");
+                break;
+            case "merchant":
+                tagInfo.put("icon", "🏪");
+                break;
+            case "organization":
+                tagInfo.put("icon", "👥");
+                break;
+            default:
+                tagInfo.put("icon", "🌍");
+        }
+        
+        return tagInfo;
+    }
+    
+    /**
+     * 构建二级标签信息列表
+     */
+    private List<Map<String, String>> buildLevel2TagInfos(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, String>> result = new ArrayList<>();
+        for (String code : codes) {
+            Map<String, String> tagInfo = new HashMap<>();
+            tagInfo.put("code", code);
+            tagInfo.put("name", code); // TODO: 从数据库查询名称
+            tagInfo.put("color", "#50C878"); // TODO: 从数据库查询颜色
+            result.add(tagInfo);
+        }
+        return result;
+    }
+    
+    /**
+     * 构建三级标签信息列表
+     */
+    private List<Map<String, String>> buildLevel3TagInfos(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, String>> result = new ArrayList<>();
+        for (String code : codes) {
+            Map<String, String> tagInfo = new HashMap<>();
+            tagInfo.put("code", code);
+            tagInfo.put("name", code); // TODO: 从数据库查询名称
+            tagInfo.put("type", "location"); // TODO: 从数据库查询类型
+            result.add(tagInfo);
+        }
+        return result;
+    }
+    
+    /**
+     * 构建四级标签信息列表
+     */
+    private List<Map<String, String>> buildLevel4TagInfos(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, String>> result = new ArrayList<>();
+        for (String code : codes) {
+            Map<String, String> tagInfo = new HashMap<>();
+            tagInfo.put("code", code);
+            tagInfo.put("name", code); // TODO: 从数据库查询名称
+            tagInfo.put("category", "tech"); // TODO: 从数据库查询分类
+            result.add(tagInfo);
+        }
+        return result;
     }
 }

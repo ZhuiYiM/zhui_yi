@@ -10,6 +10,10 @@ import AccountManagement from "../components/user/AccountManagement.vue";
 import AccountVerification from "../components/user/AccountVerification.vue";
 import Map from "../components/user/Map.vue";
 import Message from "../components/user/Message.vue"; // 添加 Map 组件的导入
+import UserProfile from "../components/user/UserProfile.vue";
+
+// 懒加载组件
+const TopicDetail = () => import('../components/topic/TopicDetail.vue');
 
 const routes = [
     {
@@ -72,6 +76,18 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
+        path: '/topic/:id',
+        name: 'TopicDetail',
+        component: TopicDetail,
+        meta: { requiresAuth: false }  // 话题详情页游客也可访问
+    },
+    {
+        path: '/user/:userId',
+        name: 'UserProfile',
+        component: UserProfile,
+        meta: { requiresAuth: false }  // 用户主页游客也可访问
+    },
+    {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由
         name: 'NotFound',
         component: () => import('../components/NotFound.vue'), // 动态导入
@@ -82,6 +98,29 @@ const routes = [
 const router = createRouter({
     history: createWebHistory(),
     routes
+});
+
+// 路由守卫 - 统一处理认证检查
+router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('token');
+    const requiresAuth = to.meta.requiresAuth;
+    
+    // 如果路由需要认证
+    if (requiresAuth) {
+        if (!token) {
+            // 未登录，重定向到登录页
+            next({
+                path: '/login',
+                query: { redirect: to.fullPath } // 保存原始目标路径
+            });
+        } else {
+            // 已登录，允许访问
+            next();
+        }
+    } else {
+        // 不需要认证的路由，直接访问
+        next();
+    }
 });
 
 export default router;

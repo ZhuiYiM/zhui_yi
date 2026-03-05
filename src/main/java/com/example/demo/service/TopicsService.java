@@ -78,4 +78,9 @@ public interface TopicsService extends IService<Topics> {
      * 获取用户收藏的话题列表
      */
     ApiResult getUserCollections(Long userId, Integer page, Integer size);
+    
+    /**
+     * 根据多级标签筛选话题
+     */
+    ApiResult filterTopics(TopicQueryDTO queryDTO);
 }

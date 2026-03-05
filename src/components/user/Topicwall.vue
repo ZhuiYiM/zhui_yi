@@ -19,19 +19,49 @@
 
           <!-- 搜索区域 -->
           <div class="search-section">
-            <div class="search-box">
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="搜索话题、标签或用户..."
-                @keyup.enter="handleSearch"
-                class="search-input"
-              >
-              <button @click="handleSearch" class="search-btn">🔍</button>
-            </div>
-
-            <!-- 操作按钮区域 -->
-            <div class="action-buttons">
+            <!-- 搜索框和刷新按钮在同一行 -->
+            <div class="search-row">
+              <div class="search-box-wrapper">
+                <div class="search-box">
+                  <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="搜索话题、标签或用户..."
+                    @keyup.enter="handleSearch"
+                    @focus="handleSearchFocus"
+                    @blur="handleSearchBlur"
+                    class="search-input"
+                    ref="searchInputRef"
+                  >
+                  <button @click="handleSearch" class="search-btn">🔍</button>
+                </div>
+                
+                <!-- 搜索标签选择器（点击搜索框时显示） -->
+                <div v-if="showSearchTagSelector" class="search-tag-selector">
+                  <div class="tag-selector-header">
+                    <span>选择标签进行搜索</span>
+                    <button @click="closeSearchTagSelector" class="close-selector-btn">✕</button>
+                  </div>
+                  <div class="search-tags-grid">
+                    <div
+                      v-for="tag in allTagsForSearch"
+                      :key="tag.code"
+                      @click="selectTagForSearch(tag)"
+                      class="search-tag-item"
+                      :class="{ active: selectedSearchTags.includes(tag.code) }"
+                    >
+                      <span class="tag-icon">{{ tag.icon || '🏷️' }}</span>
+                      <span class="tag-name">{{ tag.name }}</span>
+                      <span v-if="selectedSearchTags.includes(tag.code)" class="check-mark">✓</span>
+                    </div>
+                  </div>
+                  <div class="search-tag-actions">
+                    <button @click="clearSearchTags" class="clear-tags-btn">清空</button>
+                    <button @click="applySearchTags" class="apply-tags-btn">应用筛选</button>
+                  </div>
+                </div>
+              </div>
+              
               <!-- 刷新按钮 (桌面端) -->
               <button
                 v-if="!isMobile"
@@ -41,15 +71,6 @@
               >
                 <span v-if="loading" class="loading-spinner"></span>
                 <span v-else>🔄 刷新</span>
-              </button>
-
-              <!-- 发布按钮 (桌面端) -->
-              <button
-                v-if="!isMobile"
-                @click="showPublishModal = true"
-                class="publish-btn"
-              >
-                📝 发布话题
               </button>
             </div>
           </div>
@@ -113,6 +134,13 @@
 
           <!-- 话题列表 -->
           <section class="topics-section">
+            <!-- 发布按钮区域 -->
+            <div class="publish-action-area">
+              <button @click="showPublishModal = true" class="main-publish-btn">
+                📝 发布新话题
+              </button>
+            </div>
+            
             <div class="section-header">
               <!-- 一级标签选择器 -->
               <div class="level1-tags-container">
@@ -236,31 +264,42 @@
                     
                     <!-- 二级标签（最多 3 个） -->
                     <span
-                      v-for="tag in post.level2Tags.slice(0, 3)"
-                      :key="'l2-' + tag.code"
+                      v-for="tag in (post.level2Tags || []).slice(0, 3)"
+                      :key="'l2-' + (tag.code || tag.name || '')"
                       class="topic-tag level2-tag"
                       :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
                     >
-                      {{ tag.name }}
+                      {{ tag.name || tag }}
                     </span>
                     
                     <!-- 三级标签（最多 3 个） -->
                     <span
-                      v-for="tag in post.level3Tags.slice(0, 3)"
-                      :key="'l3-' + tag.code"
+                      v-for="tag in (post.level3Tags || []).slice(0, 3)"
+                      :key="'l3-' + (tag.code || tag.name || '')"
                       class="topic-tag level3-tag"
                     >
-                      📍{{ tag.name }}
+                      📍{{ tag.name || tag }}
                     </span>
                     
                     <!-- 四级标签（自定义标签，最多 3 个） -->
                     <span
-                      v-for="tag in post.level4Tags.slice(0, 3)"
-                      :key="'l4-' + tag.code"
+                      v-for="tag in (post.level4Tags || []).slice(0, 3)"
+                      :key="'l4-' + (tag.code || tag.name || '')"
                       class="topic-tag level4-tag"
                     >
-                      #{{ tag.name }}
+                      #{{ tag.name || tag }}
                     </span>
+                    
+                    <!-- 兼容后端返回的 tags 数组 -->
+                    <template v-if="(!post.level2Tags || post.level2Tags.length === 0) && (!post.level3Tags || post.level3Tags.length === 0) && (!post.level4Tags || post.level4Tags.length === 0) && post.tags && post.tags.length > 0">
+                      <span
+                        v-for="(tag, index) in post.tags.slice(0, 3)"
+                        :key="'tag-' + index"
+                        class="topic-tag simple-tag"
+                      >
+                        #{{ tag }}
+                      </span>
+                    </template>
                   </div>
                 </div>
               </div>
@@ -289,62 +328,6 @@
               </div>
             </div>
           </section>
-        </div>
-
-        <!-- 右侧侧边栏 (桌面端) -->
-        <div v-if="!isMobile" class="right-sidebar">
-          <!-- 发布话题卡片 -->
-          <div class="publish-card">
-            <h3>发布新话题</h3>
-            <textarea
-              v-model="quickPostContent"
-              placeholder="分享你的校园生活..."
-              class="quick-post-textarea"
-              rows="3"
-            ></textarea>
-            <div class="quick-post-actions">
-              <button @click="addQuickImage" class="icon-btn">📷</button>
-              <button @click="addQuickTag" class="icon-btn">🏷️</button>
-              <button @click="publishQuickPost" class="publish-btn">发布</button>
-            </div>
-          </div>
-
-          <!-- 热门用户 -->
-          <div class="hot-users">
-            <h3>活跃用户</h3>
-            <div class="users-list">
-              <div
-                v-for="user in hotUsers"
-                :key="user.id"
-                class="user-item"
-              >
-                <img :src="user.avatar || defaultAvatar" :alt="user.name" class="user-avatar">
-                <div class="user-info">
-                  <span class="user-name">{{ user.name }}</span>
-                  <span class="user-posts">{{ user.postCount }} 篇</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 统计信息 -->
-          <div class="stats-card">
-            <h3>社区统计</h3>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-number">{{ stats.totalPosts }}</span>
-                <span class="stat-label">总话题</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-number">{{ stats.activeUsers }}</span>
-                <span class="stat-label">活跃用户</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-number">{{ stats.todayPosts }}</span>
-                <span class="stat-label">今日新增</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </main>
@@ -389,6 +372,7 @@
               ref="tagSelectorRef"
               v-model="selectedPostTags"
               :auto-select-level1="true"
+              :read-only-level1="true"
               :userId="currentUser?.id"
               @change="handleTagChange"
             />
@@ -457,6 +441,13 @@ const searchQuery = ref('');
 const activeTag = ref('');
 const currentSort = ref('latest');
 
+// 搜索标签选择器
+const showSearchTagSelector = ref(false);
+const selectedSearchTags = ref([]);
+const showQuickTagSelector = ref(false);
+const quickSelectedTags = ref([]);
+const searchInputRef = ref(null); // 搜索框引用
+
 // 标签选择器相关
 const level1Tags = ref([]);
 const level2Tags = ref([]);
@@ -483,10 +474,10 @@ const displayLevel1Tags = computed(() => {
   }
   // 默认一级标签
   return [
-    { code: 'student', name: '学生', icon: '👨‍🎓' },
-    { code: 'organization', name: '团体', icon: '👥' },
-    { code: 'followed', name: '关注', icon: '⭐' },
-    { code: 'society', name: '社会', icon: '🌍' }
+    { code: 'student', name: '学生', icon: '👨‍🎓', enabled: true },
+    { code: 'organization', name: '团体', icon: '👥', enabled: true },
+    { code: 'followed', name: '关注', icon: '⭐', enabled: true },
+    { code: 'society', name: '社会', icon: '🌍', enabled: true }
   ];
 });
 
@@ -520,6 +511,23 @@ const displayLevel3Tags = computed(() => {
     { code: 'teaching_building', name: '教学楼' },
     { code: 'laboratory', name: '实验室' }
   ];
+});
+
+// 所有标签合集（用于搜索和快速选择）
+const allTagsForSearch = computed(() => {
+  const tags = [];
+  
+  // 添加二级标签
+  displayLevel2Tags.value.forEach(tag => {
+    tags.push({ ...tag, type: 'level2' });
+  });
+  
+  // 添加三级标签
+  displayLevel3Tags.value.forEach(tag => {
+    tags.push({ ...tag, type: 'level3', icon: '📍' });
+  });
+  
+  return tags;
 });
 
 // 发布相关
@@ -594,32 +602,49 @@ const fetchTopics = async () => {
       const rawTopics = topicsData.topics || [];
 
       // 转换字段名以匹配前端模板
-      posts.value = rawTopics.map(topic => ({
-        id: topic.id,
-        content: topic.content,
-        images: topic.images || [],
-        tags: topic.tags || [],
-        likes: topic.likesCount || 0,
-        comments: topic.commentsCount || 0,
-        shares: topic.viewsCount || 0,
-        isLiked: false, // 默认未点赞
-        isTop: topic.isTop || 0,
-        isEssence: topic.isEssence || 0,
-        createdAt: topic.createdAt,
-        author: {
-          id: topic.author.id,
-          name: topic.author.realName || topic.author.username || '匿名用户',
-          username: topic.author.username,
-          studentId: topic.author.studentId,
-          avatar: topic.author.avatarUrl || '',
-          identityTag: topic.author.identity?.level1Tag || null // 保存一级标签
-        },
-        // 保存话题的完整标签体系
-        level1Tag: topic.level1Tag || null,
-        level2Tags: topic.level2Tags || [],
-        level3Tags: topic.level3Tags || [],
-        level4Tags: topic.level4Tags || []
-      }));
+      posts.value = rawTopics.map(topic => {
+        // 处理标签数据 - 后端可能在 tags 数组或分级字段中
+        const tags = topic.tags || [];
+        
+        return ({
+          id: topic.id,
+          content: topic.content,
+          images: topic.images || [],
+          tags: tags,
+          likes: topic.likesCount || 0,
+          comments: topic.commentsCount || 0,
+          shares: topic.viewsCount || 0,
+          isLiked: false, // 默认未点赞
+          isTop: topic.isTop || 0,
+          isEssence: topic.isEssence || 0,
+          createdAt: topic.createdAt,
+          author: {
+            id: topic.author.id,
+            name: topic.author.realName || topic.author.username || '匿名用户',
+            username: topic.author.username,
+            studentId: topic.author.studentId,
+            avatar: topic.author.avatarUrl || '',
+            identityTag: topic.author.identity?.level1Tag || null // 保存一级标签
+          },
+          // 保存话题的完整标签体系 - 需要转换为对象格式
+          level1Tag: topic.level1Tag || null,
+          level2Tags: (topic.level2Tags || []).map(tag => 
+            typeof tag === 'string' || typeof tag === 'number' 
+              ? { code: tag, name: tag } 
+              : tag
+          ),
+          level3Tags: (topic.level3Tags || []).map(tag => 
+            typeof tag === 'string' || typeof tag === 'number' 
+              ? { code: tag, name: tag } 
+              : tag
+          ),
+          level4Tags: (topic.level4Tags || []).map(tag => 
+            typeof tag === 'string' || typeof tag === 'number' 
+              ? { code: tag, name: tag } 
+              : tag
+          )
+        });
+      });
 
       totalPosts.value = topicsData.total || 0;
       stats.value.totalPosts = topicsData.totalPosts || 0;
@@ -648,21 +673,52 @@ const loadTags = async () => {
       tagAPI.getLevel3Tags()
     ]);
     
-    if (level1Res.data) {
-      level1Tags.value = level1Res.data || [];
-    }
-    if (level2Res.data) {
-      level2Tags.value = level2Res.data || [];
-    }
-    if (level3Res.data) {
-      level3Tags.value = level3Res.data || [];
-    }
+    console.log('📥 原始响应数据:', {
+      level1: level1Res,
+      level2: level2Res,
+      level3: level3Res
+    });
     
-    console.log('✅ 标签数据已加载');
+    // 处理一级标签：添加 enabled 字段和 emoji 图标映射
+    level1Tags.value = (Array.isArray(level1Res) ? level1Res : []).map(tag => ({
+      ...tag,
+      enabled: tag.isActive !== undefined ? tag.isActive : true,
+      icon: getIconEmoji(tag.code) || tag.icon || '👤'
+    }));
+    
+    // 处理二级标签：添加 enabled 字段
+    level2Tags.value = (Array.isArray(level2Res) ? level2Res : []).map(tag => ({
+      ...tag,
+      enabled: tag.isActive !== undefined ? tag.isActive : true
+    }));
+    
+    // 处理三级标签：添加 enabled 字段
+    level3Tags.value = (Array.isArray(level3Res) ? level3Res : []).map(tag => ({
+      ...tag,
+      enabled: tag.isActive !== undefined ? tag.isActive : true
+    }));
+    
+    console.log('✅ 标签数据已加载:', {
+      level1: level1Tags.value,
+      level2: level2Tags.value,
+      level3: level3Tags.value
+    });
   } catch (error) {
     console.error('❌ 加载标签失败:', error);
     // 不显示错误提示，静默失败
   }
+};
+
+// 获取标签对应的 emoji 图标
+const getIconEmoji = (code) => {
+  const iconMap = {
+    'student': '👨‍🎓',
+    'merchant': '🏪',
+    'organization': '👥',
+    'individual': '👤',
+    'followed': '⭐'
+  };
+  return iconMap[code] || null;
 };
 
 // 加载统计信息
@@ -1112,8 +1168,133 @@ const addQuickImage = () => {
   ElMessage.info('图片上传功能开发中...');
 };
 
-const addQuickTag = () => {
-  ElMessage.info('标签功能开发中...');
+// 打开快速标签选择器
+const openQuickTagSelector = () => {
+  showQuickTagSelector.value = true;
+};
+
+// 关闭快速标签选择器
+const closeQuickTagSelector = () => {
+  showQuickTagSelector.value = false;
+};
+
+// 切换快速标签选择
+const toggleQuickTag = (tag) => {
+  const index = quickSelectedTags.value.indexOf(tag.code);
+  if (index > -1) {
+    quickSelectedTags.value.splice(index, 1);
+  } else {
+    // 最多选择 5 个标签
+    if (quickSelectedTags.value.length >= 5) {
+      ElMessage.warning('最多选择 5 个标签');
+      return;
+    }
+    quickSelectedTags.value.push(tag.code);
+  }
+};
+
+// 清空快速标签
+const clearQuickTags = () => {
+  quickSelectedTags.value = [];
+};
+
+// 确认快速标签选择
+const confirmQuickTags = () => {
+  // 将选中的标签应用到发布内容中（暂时只显示提示）
+  const selectedNames = allTagsForSearch.value
+    .filter(tag => quickSelectedTags.value.includes(tag.code))
+    .map(tag => tag.name)
+    .join(', ');
+  
+  ElMessage.success(`已选择标签：${selectedNames || '无'}`);
+  closeQuickTagSelector();
+};
+
+// 关闭搜索标签选择器
+const closeSearchTagSelector = () => {
+  showSearchTagSelector.value = false;
+};
+
+// 处理搜索框点击
+const handleSearchBoxClick = () => {
+  showSearchTagSelector.value = true;
+};
+
+// 处理搜索框获得焦点
+const handleSearchFocus = () => {
+  // 延迟显示，避免与点击事件冲突
+  setTimeout(() => {
+    showSearchTagSelector.value = true;
+  }, 100);
+};
+
+// 处理搜索框失去焦点
+const handleSearchBlur = (event) => {
+  // 延迟关闭，给点击标签留出时间
+  setTimeout(() => {
+    // 如果点击的是标签选择器内部，不关闭
+    const tagSelector = document.querySelector('.search-tag-selector');
+    if (!tagSelector?.contains(event.relatedTarget)) {
+      showSearchTagSelector.value = false;
+    }
+  }, 200);
+};
+
+// 处理点击外部关闭标签选择器
+const handleClickOutside = (event) => {
+  const searchBox = document.querySelector('.search-box');
+  const tagSelector = document.querySelector('.search-tag-selector');
+  const quickTagSelector = document.querySelector('.quick-tag-selector');
+  
+  // 如果点击的不是搜索框、标签选择器或快速标签选择器，则关闭所有选择器
+  if (searchBox && !searchBox.contains(event.target) && 
+      tagSelector && !tagSelector.contains(event.target) &&
+      quickTagSelector && !quickTagSelector.contains(event.target)) {
+    showSearchTagSelector.value = false;
+    showQuickTagSelector.value = false;
+  }
+};
+
+// 选择搜索标签
+const selectTagForSearch = (tag) => {
+  const index = selectedSearchTags.value.indexOf(tag.code);
+  if (index > -1) {
+    selectedSearchTags.value.splice(index, 1);
+  } else {
+    // 最多选择 5 个标签
+    if (selectedSearchTags.value.length >= 5) {
+      ElMessage.warning('最多选择 5 个标签');
+      return;
+    }
+    selectedSearchTags.value.push(tag.code);
+  }
+};
+
+// 清空搜索标签
+const clearSearchTags = () => {
+  selectedSearchTags.value = [];
+};
+
+// 应用搜索标签
+const applySearchTags = () => {
+  if (selectedSearchTags.value.length === 0) {
+    ElMessage.info('请选择至少一个标签');
+    return;
+  }
+  
+  // 获取选中的标签名称
+  const selectedNames = allTagsForSearch.value
+    .filter(tag => selectedSearchTags.value.includes(tag.code))
+    .map(tag => tag.name)
+    .join(', ');
+  
+  // 将标签添加到搜索条件中（这里可以调用后端 API 进行筛选）
+  searchQuery.value = selectedNames;
+  ElMessage.success(`开始筛选标签：${selectedNames}`);
+  closeSearchTagSelector();
+  
+  // TODO: 调用后端 API 根据标签筛选话题
+  // await fetchTopicsByTags(selectedSearchTags.value);
 };
 
 const changePage = async (page) => {
@@ -1275,6 +1456,9 @@ onMounted(async () => {
   updateDeviceDetection();
   getUserInfo();
   window.addEventListener('resize', updateDeviceDetection);
+  
+  // 添加全局点击事件监听，用于关闭标签选择器
+  document.addEventListener('click', handleClickOutside);
 
   // 获取初始数据
   await Promise.all([
@@ -1287,6 +1471,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateDeviceDetection);
+  // 移除全局点击事件监听
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -1441,23 +1627,43 @@ onUnmounted(() => {
 
 .search-section {
   display: flex;
+  flex-direction: column; /* 整体垂直布局 */
   gap: 15px;
   align-items: center;
+  position: relative; /* 确保相对定位 */
+  width: 100%; /* 占满宽度 */
+}
+
+/* 搜索行 - 搜索框和刷新按钮在同一行 */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  position: relative;
+}
+
+.search-box-wrapper {
+  flex: 1; /* 搜索框占据剩余空间 */
+  position: relative; /* 为标签选择器提供相对定位 */
+}
+
+.search-box {
+  width: 100%; /* 占满父容器宽度 */
+  display: flex;
+  background: white;
+  border-radius: 50px;
+  overflow: visible; /* 改为 visible 让下拉选择器可以显示 */
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  position: relative; /* 确保父容器有相对定位 */
 }
 
 .action-buttons {
   display: flex;
   gap: 10px;
   align-items: center;
-}
-
-.search-box {
-  flex: 1;
-  display: flex;
-  background: white;
-  border-radius: 50px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  width: 100%; /* 占满宽度 */
+  justify-content: flex-end; /* 按钮靠右对齐 */
 }
 
 .search-input {
@@ -1480,6 +1686,208 @@ onUnmounted(() => {
 
 .search-btn:hover {
   background: #357abd;
+}
+
+/* 发布按钮区域 */
+.publish-action-area {
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: center;
+}
+
+.main-publish-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.main-publish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* 搜索标签选择器 */
+.search-tag-selector {
+  position: absolute;
+  top: calc(100% + 5px); /* 紧贴搜索框，只留 5px 缝隙 */
+  left: 0;
+  right: 0;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  z-index: 1000; /* 提高层级 */
+  animation: slideDown 0.3s ease;
+  border: 1px solid #e1e5f2; /* 添加边框 */
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tag-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e1e5f2;
+}
+
+.tag-selector-header span {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.close-selector-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #999;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.close-selector-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.search-tags-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* 减小最小宽度 */
+  gap: 8px; /* 减小间距 */
+  margin-bottom: 15px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.search-tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px; /* 减小内边距 */
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px; /* 减小圆角 */
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 12px; /* 减小字体 */
+  position: relative;
+}
+
+.search-tag-item:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.search-tag-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.search-tag-item .tag-icon {
+  margin-right: 4px; /* 减小间距 */
+  font-size: 15px; /* 稍微增大图标 */
+  color: #2c3e50; /* 图标颜色加深 */
+}
+
+.search-tag-item.active .tag-icon {
+  color: white; /* 选中状态为白色 */
+}
+
+.search-tag-item .tag-name {
+  flex: 1;
+  font-weight: 600; /* 加粗字体 */
+  color: #2c3e50; /* 深色字体便于观看 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-tag-item.active .tag-name {
+  color: white; /* 选中状态为白色 */
+}
+
+.search-tag-item .check-mark {
+  display: none;
+  font-weight: bold;
+  font-size: 14px; /* 减小对勾大小 */
+}
+
+.search-tag-item.active .check-mark {
+  display: inline-block;
+}
+
+.search-tag-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px; /* 减小按钮间距 */
+}
+
+.clear-tags-btn,
+.apply-tags-btn {
+  padding: 6px 12px; /* 减小按钮内边距 */
+  border-radius: 6px;
+  font-size: 12px; /* 减小按钮字体 */
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.clear-tags-btn {
+  background: #f5f7fa;
+  color: #666;
+  border: 1px solid #dcdfe6;
+}
+
+.clear-tags-btn:hover {
+  background: #e4e7ed;
+}
+
+.apply-tags-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.apply-tags-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 快速发布标签选择器 */
+.quick-tag-selector {
+  margin-top: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  animation: slideDown 0.3s ease;
 }
 
 .publish-btn {
@@ -1923,6 +2331,13 @@ onUnmounted(() => {
   background: #fff3e0;
   color: #ff9800;
   border: 1px solid #ffe0b2;
+}
+
+/* 简单标签（兼容后端 tags 数组） */
+.simple-tag {
+  background: #f5f7fa;
+  color: #666;
+  border: 1px solid #e4e7ed;
 }
 
 /* 分页 */

@@ -275,19 +275,52 @@ const loadUserInfo = async () => {
   error.value = null;
   
   try {
+    console.log('📡 正在加载用户公开信息，userId:', userId);
     const response = await topicAPI.getUserPublicInfo(userId);
     
-    if (response.data) {
-      userInfo.value = response.data;
+    console.log('✅ 用户公开信息响应:', response);
+    console.log('📋 响应数据结构:', JSON.stringify(response, null, 2));
+    
+    if (response) {
+      // 适配后端实际返回的数据结构（平铺字段）
+      userInfo.value = {
+        basicInfo: {
+          id: response.id || response.basicInfo?.id,
+          username: response.username || response.basicInfo?.username,
+          realName: response.realName || response.basicInfo?.realName,
+          avatarUrl: response.avatarUrl || response.basicInfo?.avatarUrl,
+          bio: response.bio || response.basicInfo?.bio,
+          college: response.college || response.basicInfo?.college
+        },
+        academicInfo: response.academicInfo || {},
+        identity: {
+          verified: response.verified || response.identity?.verified || false,
+          level1Tag: response.level1Tag || response.identity?.level1Tag || response.identity?.tagCode,
+          level1TagName: response.level1TagName || response.identity?.level1TagName || response.identity?.tagName
+        },
+        privacySettings: response.privacySettings || {},
+        statistics: {
+          postCount: response.postCount || response.statistics?.postCount || 0,
+          likesReceived: response.likesReceived || response.statistics?.likesReceived || 0,
+          followerCount: response.followerCount || response.statistics?.followerCount || 0,
+          followingCount: response.followingCount || response.statistics?.followingCount || 0
+        },
+        canMessage: response.canMessage || false
+      };
+      
       // 加载隐私设置
-      privacySettings.value = response.data.privacySettings || { publicVisible: true };
+      privacySettings.value = userInfo.value.privacySettings;
+      
+      console.log('✅ 用户信息解析成功:', userInfo.value);
+      console.log('🏷️ 身份标签:', userInfo.value.identity.level1Tag);
+      
       // 加载用户的话题
       loadUserTopics();
     } else {
       throw new Error('用户信息为空');
     }
   } catch (err) {
-    console.error('加载用户信息失败:', err);
+    console.error('❌ 加载用户信息失败:', err);
     error.value = err.response?.data?.message || '加载用户信息失败';
     ElMessage.error(error.value);
   } finally {

@@ -1250,16 +1250,16 @@ const handleSearchFocus = () => {
   }, 100);
 };
 
-// 处理搜索框失去焦点
+// 处理搜索框失去焦点 - 优化：增加延迟防止误关闭
 const handleSearchBlur = (event) => {
-  // 延迟关闭，给点击标签留出时间
+  // 延迟关闭，给点击标签留出足够时间
   setTimeout(() => {
     // 如果点击的是标签选择器内部，不关闭
     const tagSelector = document.querySelector('.search-tag-selector');
     if (!tagSelector?.contains(event.relatedTarget)) {
       showSearchTagSelector.value = false;
     }
-  }, 200);
+  }, 300); // ⚠️ 延迟增加到 300ms，给点击留出足够时间
 };
 
 // 处理点击外部关闭标签选择器
@@ -1277,7 +1277,7 @@ const handleClickOutside = (event) => {
   }
 };
 
-// 选择搜索标签
+// 选择搜索标签 - 优化：不立即关闭选择器
 const selectTagForSearch = (tag) => {
   const index = selectedSearchTags.value.indexOf(tag.code);
   if (index > -1) {
@@ -1290,6 +1290,7 @@ const selectTagForSearch = (tag) => {
     }
     selectedSearchTags.value.push(tag.code);
   }
+  // ✅ 关键修改：不关闭选择器，允许继续选择
 };
 
 // 清空搜索标签
@@ -1297,8 +1298,8 @@ const clearSearchTags = () => {
   selectedSearchTags.value = [];
 };
 
-// 应用搜索标签
-const applySearchTags = () => {
+// 应用搜索标签 - 优化：执行真实搜索
+const applySearchTags = async () => {
   if (selectedSearchTags.value.length === 0) {
     ElMessage.info('请选择至少一个标签');
     return;
@@ -1310,13 +1311,14 @@ const applySearchTags = () => {
     .map(tag => tag.name)
     .join(', ');
   
-  // 将标签添加到搜索条件中（这里可以调用后端 API 进行筛选）
   searchQuery.value = selectedNames;
-  ElMessage.success(`开始筛选标签：${selectedNames}`);
-  closeSearchTagSelector();
+  ElMessage.success(`已选择 ${selectedSearchTags.value.length} 个标签`);
   
-  // TODO: 调用后端 API 根据标签筛选话题
-  // await fetchTopicsByTags(selectedSearchTags.value);
+  // ✅ 执行搜索
+  await handleSearch();
+  
+  // ✅ 最后关闭选择器
+  closeSearchTagSelector();
 };
 
 const changePage = async (page) => {

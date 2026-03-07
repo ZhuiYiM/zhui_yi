@@ -116,7 +116,50 @@
         >
           发消息
         </button>
+        <button 
+          @click="showReportDialog"
+          class="report-btn"
+        >
+          ⚠️ 举报
+        </button>
       </div>
+      
+      <!-- 举报对话框 -->
+      <el-dialog 
+        v-model="reportDialogVisible" 
+        title="举报用户" 
+        width="500px"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="reportForm" label-width="80px">
+          <el-form-item label="举报原因" required>
+            <el-select v-model="reportForm.reason" placeholder="请选择举报原因" style="width: 100%">
+              <el-option label="发布垃圾信息" value="spam" />
+              <el-option label="人身攻击/谩骂" value="abuse" />
+              <el-option label="欺诈/诈骗" value="fraud" />
+              <el-option label="发布违禁内容" value="illegal" />
+              <el-option label="冒充他人" value="impersonation" />
+              <el-option label="其他" value="other" />
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="详细描述">
+            <el-input
+              v-model="reportForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请提供详细说明（选填）"
+            />
+          </el-form-item>
+        </el-form>
+        
+        <template #footer>
+          <el-button @click="reportDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitReport" :loading="submitting">
+            提交
+          </el-button>
+        </template>
+      </el-dialog>
       
       <!-- 隐私受限提示 -->
       <div v-if="!canViewContent" class="privacy-restricted">
@@ -184,7 +227,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElDialog, ElForm, ElFormItem, ElInput, ElButton, ElSelect, ElOption } from 'element-plus';
 import { topicAPI } from '@/api/topic';
 
 const route = useRoute();
@@ -202,6 +245,14 @@ const participatedTopics = ref([]);
 const privacySettings = ref({
   publicVisible: true // 是否对外公开话题和参与记录
 });
+
+// 举报相关
+const reportDialogVisible = ref(false);
+const reportForm = ref({
+  reason: '',
+  description: ''
+});
+const submitting = ref(false);
 
 const defaultAvatar = 'https://placehold.co/200x200/4A90E2/FFFFFF?text=U';
 
@@ -341,19 +392,33 @@ const loadUserTopics = async () => {
   const userId = route.params.userId;
   
   try {
-    // 并行加载发布和参与的话题
+    console.log('📡 正在加载用户话题，userId:', userId);
+    
+    // 使用新的 API 接口
     const [publishedRes, participatedRes] = await Promise.all([
-      topicAPI.getUserPublishedTopics(userId),
+      topicAPI.getUserTopics(userId, { page: 1, size: 10 }),
       topicAPI.getUserParticipatedTopics(userId)
     ]);
     
-    publishedTopics.value = publishedRes.data?.topics || [];
-    participatedTopics.value = participatedRes.data?.topics || [];
+    console.log('✅ 发布的话题响应:', publishedRes);
+    console.log('✅ 参与的话题响应:', participatedRes);
     
-    console.log('✅ 用户话题已加载');
+    // 适配后端返回的数据格式
+    if (publishedRes.data) {
+      publishedTopics.value = publishedRes.data.records || publishedRes.data.topics || [];
+    }
+    if (participatedRes.data) {
+      participatedTopics.value = participatedRes.data.records || participatedRes.data.topics || [];
+    }
+    
+    console.log('✅ 用户话题已加载:', {
+      published: publishedTopics.value.length,
+      participated: participatedTopics.value.length
+    });
   } catch (error) {
-    console.error('加载用户话题失败:', error);
-    // 不显示 Mock 数据，保持空列表
+    console.error('❌ 加载用户话题失败:', error);
+    ElMessage.warning('话题列表加载失败，请稍后重试');
+    // 保持空列表
     publishedTopics.value = [];
     participatedTopics.value = [];
   } finally {
@@ -397,6 +462,35 @@ const useMockData = () => {
   };
   
   ElMessage.error('后端接口未实现，请检查后端服务');
+};
+
+// 举报相关方法
+const showReportDialog = () => {
+  reportDialogVisible.value = true;
+};
+
+const submitReport = async () => {
+  if (!reportForm.value.reason) {
+    ElMessage.warning('请选择举报原因');
+    return;
+  }
+  
+  submitting.value = true;
+  const userId = route.params.userId;
+  
+  try {
+    console.log('📡 正在举报用户，userId:', userId, 'reason:', reportForm.value.reason);
+    await topicAPI.reportUser(userId, reportForm.value);
+    
+    ElMessage.success('举报成功，我们会尽快处理');
+    reportDialogVisible.value = false;
+    reportForm.value = { reason: '', description: '' };
+  } catch (error) {
+    console.error('❌ 举报失败:', error);
+    ElMessage.error(error.response?.data?.message || '举报失败，请稍后重试');
+  } finally {
+    submitting.value = false;
+  }
 };
 
 // 处理操作
@@ -734,6 +828,15 @@ const formatTime = (date) => {
       
       &:hover {
         background: #85ce61;
+      }
+    }
+    
+    &.report-btn {
+      background: #f56c6c;
+      color: white;
+      
+      &:hover {
+        background: #e45656;
       }
     }
     

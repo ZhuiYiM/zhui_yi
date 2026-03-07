@@ -173,5 +173,34 @@ export const topicAPI = {
     // 获取用户收藏列表 (文档第 423 行)
     getUserCollections(params = {}) {
         return request.get('/topics/collections', { params });
+    },
+
+    // ========== 新增：用户话题管理接口 (文档问题 5) ==========
+    // 获取用户发布的话题
+    getUserTopics(userId, params = {}) {
+        return request.get(`/users/${userId}/topics`, { params });
+    },
+
+    // ========== 新增：用户举报接口 (文档问题 6) ==========
+    // 举报用户
+    reportUser(userId, data) {
+        return request.post(`/users/${userId}/report`, data);
+    },
+
+    // ========== 优化：点赞话题接口 (文档问题 1) ==========
+    // 按照后端正确的路径调用
+    likeTopicV2(topicId, action = 'like') {
+        return request.post(`/topics/${topicId}/like`, { action });
+    },
+
+    // ========== 优化：获取评论接口 (文档问题 2) ==========
+    // 获取话题评论列表 - 使用正确的路径
+    getCommentsV2(topicId, params = {}) {
+        return request.get(`/topics/${topicId}/comments`, { params });
+    },
+
+    // 发表评论 - 使用正确的路径
+    createCommentV2(topicId, data) {
+        return request.post(`/topics/${topicId}/comments`, data);
     }
 };

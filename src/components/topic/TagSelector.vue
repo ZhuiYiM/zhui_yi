@@ -223,15 +223,19 @@ watch(() => props.modelValue, (newVal) => {
 
 // 生命周期
 onMounted(async () => {
+  // 先加载所有标签
   await loadAllTags();
-  
-  // 如果需要自动选择一级标签
-  if (props.autoSelectLevel1 && props.userId) {
-    await autoSelectIdentity();
-  }
   
   // 标签加载完成后，同步预设的选中状态
   syncSelectedTagsWithLoadedTags();
+  
+  // 如果需要自动选择一级标签，确保在标签加载后执行
+  if (props.autoSelectLevel1 && props.userId) {
+    // 使用 setTimeout 确保 DOM 已经更新
+    setTimeout(() => {
+      autoSelectIdentity();
+    }, 0);
+  }
 });
 
 // 加载所有标签
@@ -364,6 +368,12 @@ const syncSelectedTagsWithLoadedTags = () => {
 const autoSelectIdentity = async () => {
   console.log('🔍 开始自动选择身份标签，userId:', props.userId);
   
+  // 确保标签已加载
+  if (level1Tags.value.length === 0) {
+    console.warn('⚠️ level1Tags 还未加载，等待加载完成');
+    return;
+  }
+  
   // TODO: 调用后端接口获取用户身份
   // const response = await userAPI.getIdentity(props.userId);
   // if (response.data) {
@@ -375,52 +385,56 @@ const autoSelectIdentity = async () => {
   
   // 临时方案：根据用户信息自动选择身份
   // 优先级：管理员 > 学生 > 商户 > 团体 > 个人 > 社会
-  if (level1Tags.value.length > 0) {
-    let selectedTag = null;
-    
-    // 从 localStorage 获取用户信息
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('👤 当前用户信息:', user);
-    
-    // 1. 检查是否为管理员（需要在数据库中手动设置）
-    if (user.role === 'admin' || user.isAdmin) {
-      selectedTag = level1Tags.value.find(t => t.code === 'admin');
-      console.log('✅ 识别为：管理员');
-    }
-    
-    // 2. 检查是否为学生认证（学号不为空）
-    if (!selectedTag && user.studentId) {
-      selectedTag = level1Tags.value.find(t => t.code === 'student');
-      console.log('✅ 识别为：学生（学号：' + user.studentId + '）');
-    }
-    
-    // 3. 检查是否为认证商家（待实现）
-    if (!selectedTag && user.isMerchant) {
-      selectedTag = level1Tags.value.find(t => t.code === 'merchant');
-      console.log('✅ 识别为：商户');
-    }
-    
-    // 4. 检查是否为认证团体（待实现）
-    if (!selectedTag && user.isOrganization) {
-      selectedTag = level1Tags.value.find(t => t.code === 'organization');
-      console.log('✅ 识别为：团体');
-    }
-    
-    // 5. 默认为社会用户
-    if (!selectedTag) {
-      // 优先显示"社会"标签，如果没有则选第一个
-      selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
-      console.log('✅ 默认为：社会用户');
-    }
-    
-    if (selectedTag && selectedTag.enabled) {
-      selectLevel1(selectedTag);
-      console.log('✅ 已自动选择身份标签:', selectedTag.name);
-    } else {
-      console.warn('⚠️ 未找到可用的默认身份标签');
+  let selectedTag = null;
+  
+  // 从 localStorage 获取用户信息
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  console.log('👤 当前用户信息:', user);
+  
+  // 1. 检查是否为管理员（需要在数据库中手动设置）
+  if (user.role === 'admin' || user.isAdmin) {
+    selectedTag = level1Tags.value.find(t => t.code === 'admin');
+    console.log('✅ 识别为：管理员');
+  }
+  
+  // 2. 检查是否为学生认证（学号不为空）
+  if (!selectedTag && user.studentId) {
+    selectedTag = level1Tags.value.find(t => t.code === 'student');
+    console.log('✅ 识别为：学生（学号：' + user.studentId + '）');
+  }
+  
+  // 3. 检查是否为认证商家（待实现）
+  if (!selectedTag && user.isMerchant) {
+    selectedTag = level1Tags.value.find(t => t.code === 'merchant');
+    console.log('✅ 识别为：商户');
+  }
+  
+  // 4. 检查是否为认证团体（待实现）
+  if (!selectedTag && user.isOrganization) {
+    selectedTag = level1Tags.value.find(t => t.code === 'organization');
+    console.log('✅ 识别为：团体');
+  }
+  
+  // 5. 默认为社会用户
+  if (!selectedTag) {
+    // 优先显示"社会"标签，如果没有则选第一个
+    selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
+    console.log('✅ 默认为：社会用户');
+  }
+  
+  if (selectedTag && selectedTag.enabled) {
+    selectLevel1(selectedTag);
+    console.log('✅ 已自动选择身份标签:', selectedTag.name);
+  } else if (selectedTag && !selectedTag.enabled) {
+    console.warn('⚠️ 默认身份标签不可用:', selectedTag.name);
+    // 选择一个可用的标签
+    const availableTag = level1Tags.value.find(t => t.enabled);
+    if (availableTag) {
+      selectLevel1(availableTag);
+      console.log('✅ 已选择可用身份标签:', availableTag.name);
     }
   } else {
-    console.warn('⚠️ level1Tags 还未加载');
+    console.error('❌ 未找到可用的默认身份标签');
   }
 };
 

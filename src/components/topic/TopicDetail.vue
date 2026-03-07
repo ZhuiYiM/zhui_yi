@@ -377,20 +377,29 @@ const submitComment = async () => {
 // 点赞话题
 const toggleLike = async () => {
   try {
-    const response = await axios.post(
-        `/api/topic/${route.params.id}/like`,
-        {},
-        { headers: getAuthHeaders() }
-    );
-
-    if (response.data.code === 200) {
-      topic.value.interactions.isLiked = !topic.value.interactions.isLiked;
-      topic.value.statistics.likesCount += topic.value.interactions.isLiked ? 1 : -1;
-      ElMessage.success(topic.value.interactions.isLiked ? '点赞成功' : '已取消点赞');
+    console.log('📡 开始点赞话题，ID:', topic.value.id);
+    const action = topic.value.interactions.isLiked ? 'unlike' : 'like';
+    
+    // ✅ 使用正确的 API 路径：POST /api/topics/{topicId}/like
+    const response = await topicAPI.likeTopicV2(topic.value.id, action);
+    
+    console.log('✅ 点赞响应:', response);
+    
+    if (response) {
+      // 更新本地状态
+      if (action === 'like') {
+        topic.value.statistics.likesCount++;
+        topic.value.interactions.isLiked = true;
+        ElMessage.success('点赞成功');
+      } else {
+        topic.value.statistics.likesCount--;
+        topic.value.interactions.isLiked = false;
+        ElMessage.success('已取消点赞');
+      }
     }
   } catch (error) {
-    console.error('点赞失败:', error);
-    ElMessage.error('点赞失败');
+    console.error('❌ 点赞失败:', error);
+    ElMessage.error(error.response?.data?.message || '点赞失败');
   }
 };
 
@@ -466,18 +475,22 @@ const deleteTopic = async () => {
 // 点赞评论
 const likeComment = async (comment) => {
   try {
-    const response = await axios.post(
-        `/api/topic/comments/${comment.id}/like`,
-        { action: 'like' },
-        { headers: getAuthHeaders() }
-    );
-
-    if (response.data.code === 200) {
-      comment.likesCount++;
+    console.log('📡 开始点赞评论，ID:', comment.id);
+    const response = await topicAPI.likeComment(comment.id, 'like');
+    
+    console.log('✅ 点赞评论响应:', response);
+    
+    if (response) {
+      // 更新本地评论的点赞数
+      const targetComment = comments.value.find(c => c.id === comment.id);
+      if (targetComment) {
+        targetComment.likesCount = (targetComment.likesCount || 0) + 1;
+      }
       ElMessage.success('点赞成功');
     }
   } catch (error) {
-    console.error('点赞评论失败:', error);
+    console.error('❌ 点赞评论失败:', error);
+    ElMessage.error(error.response?.data?.message || '操作失败');
   }
 };
 

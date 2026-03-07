@@ -775,18 +775,31 @@ const publishTopic = async (topicData) => {
 
 const likeTopic = async (topicId) => {
   try {
-    const response = await topicAPI.likeTopic({ topicId });
-    if (response.data) {
-      const topic = posts.value.find(p => p.id === topicId);
-      if (topic) {
-        topic.isLiked = !topic.isLiked;
-        topic.likes += topic.isLiked ? 1 : -1;
-      }
-      ElMessage.success(topic.isLiked ? '点赞成功' : '取消点赞');
+    console.log('📡 开始点赞话题，ID:', topicId);
+    
+    // 查找当前话题
+    const topic = posts.value.find(p => p.id === topicId);
+    if (!topic) {
+      console.error('❌ 未找到话题:', topicId);
+      return;
+    }
+    
+    const action = topic.isLiked ? 'unlike' : 'like';
+    
+    // ✅ 使用正确的 API 路径：POST /api/topics/{topicId}/like
+    const response = await topicAPI.likeTopicV2(topicId, action);
+    
+    console.log('✅ 点赞响应:', response);
+    
+    if (response) {
+      // 更新本地状态
+      topic.isLiked = !topic.isLiked;
+      topic.likes += action === 'like' ? 1 : -1;
+      ElMessage.success(action === 'like' ? '点赞成功' : '取消点赞');
     }
   } catch (error) {
-    console.error('点赞操作失败:', error);
-    ElMessage.error('操作失败，请稍后重试');
+    console.error('❌ 点赞操作失败:', error);
+    ElMessage.error(error.response?.data?.message || '操作失败，请稍后重试');
   }
 };
 

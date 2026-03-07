@@ -132,6 +132,8 @@ const loadComments = async () => {
   
   loading.value = true;
   try {
+    console.log('📡 开始加载评论，话题 ID:', props.topicId);
+    
     const response = await topicAPI.getTopicComments(props.topicId, {
       page: 1,
       size: 50,
@@ -139,11 +141,32 @@ const loadComments = async () => {
     });
     
     console.log('📥 评论响应:', response);
+    console.log('📋 响应数据结构:', JSON.stringify(response, null, 2));
     
-    // 适配后端返回的数据结构
+    // ✅ 适配后端返回的多种数据结构
     if (response) {
-      const commentData = response.data || response;
-      comments.value = Array.isArray(commentData) ? commentData : (commentData.records || []);
+      let commentData = response;
+      
+      // 处理嵌套结构：response.data.data.comments
+      if (response.data) {
+        commentData = response.data;
+        
+        // 如果是分页响应，提取 records 或 comments
+        if (commentData.records) {
+          comments.value = commentData.records;
+        } else if (commentData.comments) {
+          comments.value = commentData.comments;
+        } else if (Array.isArray(commentData)) {
+          comments.value = commentData;
+        } else {
+          comments.value = [];
+        }
+      } else if (Array.isArray(response)) {
+        comments.value = response;
+      } else {
+        comments.value = [];
+      }
+      
       console.log('✅ 评论已加载:', comments.value.length, '条');
     }
   } catch (error) {
@@ -164,11 +187,13 @@ const submitComment = async () => {
   
   submitting.value = true;
   try {
+    console.log('📤 开始发表评论，话题 ID:', props.topicId);
+    
     const response = await topicAPI.createComment(props.topicId, {
       content: newComment.value.trim()
     });
     
-    console.log('📤 评论响应:', response);
+    console.log('📥 评论响应:', response);
     
     if (response) {
       ElMessage.success('评论成功');

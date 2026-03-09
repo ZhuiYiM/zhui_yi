@@ -36,7 +36,7 @@
         </div>
         
         <div class="user-details">
-          <h2 class="username">{{ userInfo.basicInfo.realName || userInfo.basicInfo.username }}</h2>
+          <h2 class="username">{{ userInfo.basicInfo.username || '匿名用户' }}</h2>
           <p class="user-identity">
             <span class="identity-icon">{{ identityIcon }}</span>
             {{ identityName }}
@@ -116,6 +116,12 @@
         >
           发消息
         </button>
+        <button 
+          @click="showReportModal = true"
+          class="report-btn"
+        >
+          ⚠️ 举报
+        </button>
       </div>
       
       <!-- 隐私受限提示 -->
@@ -178,6 +184,40 @@
         </div>
       </div>
     </div>
+
+    <!-- 举报弹窗 -->
+    <div v-if="showReportModal" class="modal-overlay" @click="showReportModal = false">
+      <div class="report-modal" @click.stop>
+        <h3>⚠️ 举报该用户</h3>
+        <p class="modal-desc">请说明举报原因，我们会认真核实</p>
+        
+        <div class="form-group">
+          <label>举报类型</label>
+          <select v-model="reportType" class="form-select">
+            <option value="spam">垃圾广告</option>
+            <option value="fraud">诈骗信息</option>
+            <option value="harassment">骚扰行为</option>
+            <option value="illegal">违法违规</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>举报原因描述 <span class="required">*</span></label>
+          <textarea 
+            v-model="reportReason" 
+            class="form-textarea"
+            placeholder="请详细描述举报原因..."
+            rows="4"
+          ></textarea>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="showReportModal = false" class="cancel-btn">取消</button>
+          <button @click="submitReport" class="submit-btn">提交举报</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -186,6 +226,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { topicAPI } from '@/api/topic';
+import axios from 'axios';
 
 const route = useRoute();
 const router = useRouter();
@@ -202,6 +243,9 @@ const participatedTopics = ref([]);
 const privacySettings = ref({
   publicVisible: true // 是否对外公开话题和参与记录
 });
+const showReportModal = ref(false);
+const reportReason = ref('');
+const reportType = ref('other');
 
 const defaultAvatar = 'https://placehold.co/200x200/4A90E2/FFFFFF?text=U';
 
@@ -289,7 +333,6 @@ const loadUserInfo = async () => {
         basicInfo: {
           id: response.id || response.basicInfo?.id,
           username: response.username || response.basicInfo?.username,
-          realName: response.realName || response.basicInfo?.realName,
           avatarUrl: response.avatarUrl || response.basicInfo?.avatarUrl,
           bio: response.bio || response.basicInfo?.bio,
           college: response.college || response.basicInfo?.college
@@ -341,19 +384,29 @@ const loadUserTopics = async () => {
   const userId = route.params.userId;
   
   try {
+    console.log('📡 正在加载用户话题，userId:', userId);
+    
     // 并行加载发布和参与的话题
     const [publishedRes, participatedRes] = await Promise.all([
       topicAPI.getUserPublishedTopics(userId),
       topicAPI.getUserParticipatedTopics(userId)
     ]);
     
-    publishedTopics.value = publishedRes.data?.topics || [];
-    participatedTopics.value = participatedRes.data?.topics || [];
+    console.log('✅ 发布的话题响应:', publishedRes);
+    console.log('✅ 参与的话题响应:', participatedRes);
+    
+    // 处理后端返回的数据结构
+    publishedTopics.value = (publishedRes.data?.topics || publishedRes.data?.data?.topics || []);
+    participatedTopics.value = (participatedRes.data?.topics || participatedRes.data?.data?.topics || []);
+    
+    console.log('📋 发布的话题数量:', publishedTopics.value.length);
+    console.log('📋 参与的话题数量:', participatedTopics.value.length);
     
     console.log('✅ 用户话题已加载');
   } catch (error) {
-    console.error('加载用户话题失败:', error);
-    // 不显示 Mock 数据，保持空列表
+    console.error('❌ 加载用户话题失败:', error);
+    ElMessage.error('加载话题失败：' + (error.response?.data?.message || error.message));
+    // 保持空列表
     publishedTopics.value = [];
     participatedTopics.value = [];
   } finally {
@@ -412,6 +465,31 @@ const handleFollow = () => {
 
 const handleMessage = () => {
   ElMessage.info('消息功能开发中...');
+};
+
+const submitReport = async () => {
+  if (!reportReason.value.trim()) {
+    ElMessage.warning('请输入举报原因');
+    return;
+  }
+  
+  try {
+    const userId = route.params.userId;
+    await axios.post('/api/reports', {
+      targetId: userId,
+      targetType: 'user',
+      reportType: reportType.value,
+      reason: reportReason.value
+    });
+    
+    ElMessage.success('举报成功，我们会尽快处理');
+    showReportModal.value = false;
+    reportReason.value = '';
+    reportType.value = 'other';
+  } catch (error) {
+    console.error('举报失败:', error);
+    ElMessage.error('举报失败，请稍后重试');
+  }
 };
 
 const goBack = () => {
@@ -976,6 +1054,136 @@ const formatTime = (date) => {
         color: #999;
       }
     }
+  }
+}
+
+/* 举报弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s;
+}
+
+.report-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s;
+  
+  h3 {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    color: #333;
+  }
+  
+  .modal-desc {
+    margin: 0 0 20px 0;
+    color: #666;
+    font-size: 14px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 500;
+      
+      .required {
+        color: #f56c6c;
+        margin-left: 4px;
+      }
+    }
+    
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.3s;
+      
+      &:focus {
+        outline: none;
+        border-color: #409eff;
+        box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.1);
+      }
+    }
+    
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      
+      &.cancel-btn {
+        background: #f5f7fa;
+        color: #606266;
+        
+        &:hover {
+          background: #e6e8eb;
+        }
+      }
+      
+      &.submit-btn {
+        background: #f56c6c;
+        color: white;
+        
+        &:hover {
+          background: #f78989;
+        }
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 

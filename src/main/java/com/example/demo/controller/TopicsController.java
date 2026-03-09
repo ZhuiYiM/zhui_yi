@@ -63,7 +63,7 @@ public class TopicsController {
      */
     @PostMapping("/{id}/like")
     public ApiResult likeTopic(@PathVariable Long id,
-                           /*@Valid*/ /*@RequestBody*/ TopicLikeDTO likeDTO,
+                           @Valid @RequestBody TopicLikeDTO likeDTO,
                            HttpServletRequest request) {
         return topicsService.likeTopic(id, likeDTO, request);
     }
@@ -105,7 +105,7 @@ public class TopicsController {
      */
     @PostMapping("/{id}/comments")
     public ApiResult createComment(@PathVariable Long id,
-                               /*@Valid*/ /*@RequestBody*/ CommentCreateDTO commentDTO,
+                               @Valid @RequestBody CommentCreateDTO commentDTO,
                                HttpServletRequest request) {
         return topicCommentsService.createComment(id, commentDTO, request);
     }
@@ -205,7 +205,6 @@ public class TopicsController {
 
     /**
      * 搜索话题
-     * GET /api/topics/search?q=关键词&page=1&size=10
      */
     @GetMapping("/search")
     public ApiResult searchTopics(@RequestParam String q,
@@ -217,6 +216,22 @@ public class TopicsController {
         queryDTO.setSize(size);
         queryDTO.setSort("latest");
         return topicsService.getTopics(queryDTO);
+    }
+
+    /**
+     * 通用点赞接口 (兼容不带 ID 的路径)
+     * POST /api/topics/like
+     * 注意：此方法已被废弃，建议使用 /api/topics/{id}/like
+     */
+    @Deprecated
+    @PostMapping("/like")
+    public ApiResult likeTopicLegacy(
+            @RequestParam Long topicId,
+            @RequestParam String action,
+            HttpServletRequest request) {
+        com.example.demo.entity.dto.TopicLikeDTO likeDTO = new com.example.demo.entity.dto.TopicLikeDTO();
+        likeDTO.setAction(action);
+        return topicsService.likeTopic(topicId, likeDTO, request);
     }
 
     /**

@@ -125,18 +125,49 @@
           </div>
         </div>
 
-        <div class="topics-list">
+        <!-- 话题标签页 -->
+        <div class="topic-tabs">
+          <button 
+            @click="currentTopicTab = 'published'"
+            class="tab-btn"
+            :class="{ active: currentTopicTab === 'published' }"
+          >
+            我发布的话题
+          </button>
+          <button 
+            @click="currentTopicTab = 'participated'"
+            class="tab-btn"
+            :class="{ active: currentTopicTab === 'participated' }"
+          >
+            我参与的话题
+          </button>
+        </div>
+
+        <!-- 加载状态 -->
+        <div v-if="topicsLoading" class="loading-state">
+          <div class="spinner-small"></div>
+          <span>加载中...</span>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="getCurrentTopicList().length === 0" class="empty-topics">
+          <div class="empty-icon">💭</div>
+          <p>{{ currentTopicTab === 'published' ? '暂无发布的话题' : '暂无参与的话题' }}</p>
+        </div>
+
+        <!-- 话题列表 -->
+        <div v-else class="topics-list">
           <div
-              v-for="(topic, index) in userTopics"
-              :key="'topic-' + index"
+              v-for="(topic, index) in getCurrentTopicList()"
+              :key="'topic-' + topic.id + '-' + index"
               class="topic-item"
               @click="viewTopicDetail(topic.id)"
           >
-            <h3>{{ topic.title }}</h3>
+            <h3>{{ topic.title || topic.content.substring(0, 50) }}</h3>
             <p class="topic-content">{{ topic.content }}</p>
             <div class="topic-meta">
-              <span class="topic-time">{{ topic.time }}</span>
-              <span class="topic-stats">👍 {{ topic.likes }} | 💬 {{ topic.comments }}</span>
+              <span class="topic-time">{{ formatTime(topic.createdAt || topic.time) }}</span>
+              <span class="topic-stats">👍 {{ topic.likesCount || topic.likes }} | 💬 {{ topic.commentsCount || topic.comments }}</span>
             </div>
           </div>
         </div>
@@ -154,6 +185,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router'; // 添加路由导入
 import { userAPI } from '@/api/user';
+import { topicAPI } from '@/api/topic';
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus'; // 添加 Element Plus 组件导入
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
@@ -284,32 +316,16 @@ const recentOrders = ref([
 ]);
 
 // 用户话题数据
-const userTopics = ref([
-  {
-    id: 1,
-    title: '编程大赛心得分享',
-    content: '参加了学校编程大赛，学到了很多算法知识，分享一下经验...',
-    time: '2023-05-15 15:30',
-    likes: 12,
-    comments: 5
-  },
-  {
-    id: 2,
-    title: '食堂美食推荐',
-    content: '推荐一家超好吃的食堂窗口，位置在第三食堂二楼...',
-    time: '2023-05-10 18:45',
-    likes: 8,
-    comments: 2
-  },
-  {
-    id: 3,
-    title: '图书馆学习经验',
-    content: '分享一下图书馆的学习环境和占座经验...',
-    time: '2023-05-08 10:20',
-    likes: 15,
-    comments: 8
-  }
-]);
+const userTopics = ref([]);
+const publishedTopics = ref([]);
+const participatedTopics = ref([]);
+const currentTopicTab = ref('published'); // 'published' 或 'participated'
+const topicsLoading = ref(false);
+
+// 获取当前标签页的话题列表
+const getCurrentTopicList = () => {
+  return currentTopicTab.value === 'published' ? publishedTopics.value : participatedTopics.value;
+};
 
 // 编辑个人资料
 const editProfile = () => {
@@ -464,20 +480,59 @@ const viewTopicDetail = (topicId) => {
 // 刷新话题列表
 const refreshTopics = async () => {
   try {
-    isLoading.value = true;
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    topicsLoading.value = true;
     
-    // 这里应该调用实际的 API 获取最新话题数据
-    // const response = await userAPI.getUserTopics();
-    // userTopics.value = response.data.topics;
+    // 获取当前用户 ID
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = userData.id;
+    
+    if (!userId) {
+      ElMessage.warning('请先登录');
+      return;
+    }
+    
+    // 加载发布和参与的话题
+    const [publishedRes, participatedRes] = await Promise.all([
+      topicAPI.getUserPublishedTopics(userId),
+      topicAPI.getUserParticipatedTopics(userId)
+    ]);
+    
+    console.log('✅ 发布的话题响应:', publishedRes);
+    console.log('✅ 参与的话题响应:', participatedRes);
+    
+    // 处理后端返回的数据结构
+    publishedTopics.value = (publishedRes.data?.topics || publishedRes.data?.data?.topics || []);
+    participatedTopics.value = (participatedRes.data?.topics || participatedRes.data?.data?.topics || []);
+    
+    console.log('📋 发布的话题数量:', publishedTopics.value.length);
+    console.log('📋 参与的话题数量:', participatedTopics.value.length);
     
     ElMessage.success('话题列表已刷新');
   } catch (error) {
-    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
+    console.error('❌ 刷新话题失败:', error);
+    ElMessage.error('刷新失败：' + (error.response?.data?.message || error.message));
+    publishedTopics.value = [];
+    participatedTopics.value = [];
   } finally {
-    isLoading.value = false;
+    topicsLoading.value = false;
   }
+};
+
+// 格式化时间
+const formatTime = (date) => {
+  if (!date) return '';
+  
+  const now = new Date();
+  const diff = now - new Date(date);
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  if (hours < 24) return `${hours}小时前`;
+  if (days < 7) return `${days}天前`;
+  return new Date(date).toLocaleDateString();
 };
 
 // 用户操作
@@ -521,6 +576,9 @@ onMounted(async () => {
   console.log('个人中心页面已挂载');
   fetchUserInfo();
   console.log('用户信息初始化完成');
+  
+  // 加载用户的话题
+  await refreshTopics();
 });
 </script>
 

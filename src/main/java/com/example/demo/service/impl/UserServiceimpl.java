@@ -7,11 +7,16 @@ import com.example.demo.entity.User;
 import com.example.demo.entity.PrivacySetting;
 import com.example.demo.entity.DefaultPrivacyLevel;
 import com.example.demo.entity.UserVerification;
+import com.example.demo.entity.enums.IdentityLevel1;
+import com.example.demo.entity.Topics;
+import com.example.demo.entity.TopicComments;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.mapper.UserVerificationMapper;
 import com.example.demo.mapper.UserSecuritySettingMapper;
 import com.example.demo.mapper.PrivacySettingMapper;
 import com.example.demo.mapper.DefaultPrivacyLevelMapper;
+import com.example.demo.mapper.TopicsMapper;
+import com.example.demo.mapper.TopicCommentsMapper;
 import com.example.demo.service.FileUploadService;
 import com.example.demo.service.MailService;
 import com.example.demo.service.UserService;
@@ -49,6 +54,12 @@ public class UserServiceimpl extends ServiceImpl<UserMapper, User> implements Us
     private PrivacySettingMapper privacySettingMapper;
     @Autowired
     private DefaultPrivacyLevelMapper defaultPrivacyLevelMapper;
+    
+    @Autowired
+    private TopicsMapper topicsMapper;
+    
+    @Autowired
+    private TopicCommentsMapper topicCommentsMapper;
 
     @Override
     public Result register(RegisterDTO registerDTO) {
@@ -854,8 +865,220 @@ public class UserServiceimpl extends ServiceImpl<UserMapper, User> implements Us
      */
     private String getRealNameFromIdCard(String idCard) {
         // 这里是模拟实现，在实际项目中应该调用公安系统的身份验证接口
-        // 返回null表示跳过姓名验证，或者可以实现简单的规则验证
+        // 返回 null 表示跳过姓名验证，或者可以实现简单的规则验证
         return null; // 暂时不进行姓名验证
+    }
+
+    @Override
+    public Result getUserPublicInfo(Integer userId) {
+        try {
+            // 查询用户基本信息
+            User user = userMapper.selectById(userId);
+            if (user == null) {
+                return Result.error("用户不存在");
+            }
+
+            // 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+
+            // 基本信息
+            Map<String, Object> basicInfo = new HashMap<>();
+            basicInfo.put("id", user.getId());
+            basicInfo.put("username", user.getUsername());
+            basicInfo.put("realName", user.getRealName());
+            basicInfo.put("avatarUrl", user.getAvatarUrl());
+            basicInfo.put("bio", user.getBio());
+            basicInfo.put("college", user.getCollege());
+            result.put("basicInfo", basicInfo);
+
+            // 学术信息
+            Map<String, Object> academicInfo = new HashMap<>();
+            academicInfo.put("studentId", user.getStudentId());
+            academicInfo.put("major", user.getMajor());
+            academicInfo.put("college", user.getCollege());
+            result.put("academicInfo", academicInfo);
+
+            // 身份信息
+            Map<String, Object> identity = new HashMap<>();
+            identity.put("verified", user.getStatus() != null && user.getStatus() > 0);
+            
+            // 使用身份识别逻辑确定一级标签
+            String level1Tag = determineLevel1Tag(user);
+            identity.put("level1Tag", level1Tag);
+            result.put("identity", identity);
+
+            // 隐私设置
+            Map<String, Object> privacySettings = new HashMap<>();
+            privacySettings.put("showCollege", true);
+            privacySettings.put("showStudentId", true);
+            privacySettings.put("showMajor", true);
+            result.put("privacySettings", privacySettings);
+
+            // 统计信息
+            Map<String, Object> statistics = new HashMap<>();
+            statistics.put("postCount", 0); // TODO: 需要查询话题表
+            statistics.put("likesReceived", 0); // TODO: 需要查询点赞表
+            statistics.put("followerCount", 0); // TODO: 需要查询关注表
+            statistics.put("followingCount", 0); // TODO: 需要查询关注表
+            result.put("statistics", statistics);
+
+            // 是否可以发消息
+            result.put("canMessage", true);
+
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("获取用户公开信息失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 确定用户的一级身份标签
+     * @param user 用户对象
+     * @return 一级身份标签代码
+     */
+    private String determineLevel1Tag(User user) {
+        if (user == null) {
+            return IdentityLevel1.SOCIETY.getCode();
+        }
+        
+        // 1. 检查管理员身份（最高优先级）
+        if ("admin".equals(user.getRole()) || 
+            (user.getIsAdmin() != null && user.getIsAdmin() == 1)) {
+            return IdentityLevel1.ADMIN.getCode();
+        }
+        
+        // 2. 检查学生身份（第二优先级）
+        if (user.getStudentId() != null && !user.getStudentId().trim().isEmpty()) {
+            return IdentityLevel1.STUDENT.getCode();
+        }
+        
+        // 3. 检查商户身份（第三优先级）
+        if (user.getIsMerchant() != null && user.getIsMerchant() == 1) {
+            return IdentityLevel1.MERCHANT.getCode();
+        }
+        
+        // 4. 检查团体身份（第四优先级）
+        if (user.getIsOrganization() != null && user.getIsOrganization() == 1) {
+            return IdentityLevel1.ORGANIZATION.getCode();
+        }
+        
+        // 5. 检查是否实名认证（第五优先级）
+        if (user.getIsRealNameVerified() != null && user.getIsRealNameVerified() == 1) {
+            return IdentityLevel1.SOCIETY.getCode();
+        }
+        
+        // 6. 默认为社会用户（没有任何认证）
+        return IdentityLevel1.SOCIETY.getCode();
+    }
+
+    @Override
+    public Result getUserPublishedTopics(Integer userId, Integer page, Integer size) {
+        try {
+            // 查询用户发布的话题
+            com.baomidou.mybatisplus.extension.plugins.pagination.Page<Topics> topicsPage = 
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+            QueryWrapper<Topics> wrapper = new QueryWrapper<>();
+            wrapper.eq("user_id", userId)
+                   .eq("status", 1)  // 只查询正常状态的话题
+                   .orderByDesc("created_at");
+            
+            Page<Topics> result = topicsMapper.selectPage(topicsPage, wrapper);
+            
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("topics", result.getRecords());
+            responseData.put("total", result.getTotal());
+            responseData.put("page", result.getCurrent());
+            responseData.put("size", result.getSize());
+            responseData.put("totalPages", result.getPages());
+            
+            return Result.success(responseData);
+        } catch (Exception e) {
+            return Result.error("获取用户发布的话题失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public Result getUserParticipatedTopics(Integer userId, Integer page, Integer size) {
+        try {
+            // 查询用户参与的话题 (通过评论)
+            QueryWrapper<TopicComments> commentWrapper = new QueryWrapper<>();
+            commentWrapper.eq("user_id", userId)
+                         .eq("status", 1);  // 只查询有效的评论
+            
+            List<TopicComments> comments = topicCommentsMapper.selectList(commentWrapper);
+            
+            // 提取话题 ID 列表
+            List<Long> topicIds = new ArrayList<>();
+            for (TopicComments comment : comments) {
+                topicIds.add(comment.getTopicId());
+            }
+            
+            // 去重
+            topicIds = topicIds.stream().distinct().collect(java.util.stream.Collectors.toList());
+            
+            // 分页处理
+            int total = topicIds.size();
+            int fromIndex = (page - 1) * size;
+            int toIndex = Math.min(fromIndex + size, total);
+            
+            if (fromIndex >= total) {
+                // 超出范围，返回空列表
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("topics", new ArrayList<>());
+                responseData.put("total", 0);
+                responseData.put("page", page);
+                responseData.put("size", size);
+                responseData.put("totalPages", 0);
+                return Result.success(responseData);
+            }
+            
+            List<Long> pagedTopicIds = topicIds.subList(fromIndex, toIndex);
+            
+            // 查询话题详情
+            if (pagedTopicIds.isEmpty()) {
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("topics", new ArrayList<>());
+                responseData.put("total", 0);
+                responseData.put("page", page);
+                responseData.put("size", size);
+                responseData.put("totalPages", 0);
+                return Result.success(responseData);
+            }
+            
+            QueryWrapper<Topics> topicWrapper = new QueryWrapper<>();
+            topicWrapper.in("id", pagedTopicIds)
+                       .eq("status", 1);
+            
+            List<Topics> topics = topicsMapper.selectList(topicWrapper);
+            
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("topics", topics);
+            responseData.put("total", total);
+            responseData.put("page", page);
+            responseData.put("size", size);
+            responseData.put("totalPages", (total + size - 1) / size);
+            
+            return Result.success(responseData);
+        } catch (Exception e) {
+            return Result.error("获取用户参与的话题失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public Result reportUser(Integer reportedUserId, Integer reporterId, String reason, String description) {
+        try {
+            // TODO: 需要创建 UserReport 实体类和 Mapper
+            // 暂时返回成功，实际应该保存到数据库
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("reportId", System.currentTimeMillis());
+            result.put("status", "pending");
+            result.put("message", "举报已提交，我们会尽快处理");
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            return Result.error("举报失败：" + e.getMessage());
+        }
     }
 
 }

@@ -13,14 +13,14 @@
     
     <!-- 用户信息 -->
     <div v-else-if="userInfo" class="user-info">
-      <div class="user-header">
+      <div class="user-header" @click="viewProfile">
         <img 
           :src="userInfo.basicInfo.avatarUrl || defaultAvatar" 
           :alt="userInfo.basicInfo.username"
           class="avatar"
         >
         <div class="user-details">
-          <h4 class="username">{{ userInfo.basicInfo.realName || userInfo.basicInfo.username }}</h4>
+          <h4 class="username">{{ userInfo.basicInfo.username || '匿名用户' }}</h4>
           <p class="identity">
             <span class="identity-icon">{{ identityIcon }}</span>
             {{ identityName }}
@@ -118,7 +118,6 @@ const loadUserInfo = async () => {
         basicInfo: {
           id: response.id || response.basicInfo?.id,
           username: response.username || response.basicInfo?.username,
-          realName: response.realName || response.basicInfo?.realName,
           avatarUrl: response.avatarUrl || response.basicInfo?.avatarUrl,
           bio: response.bio || response.basicInfo?.bio,
           college: response.college || response.basicInfo?.college
@@ -152,7 +151,17 @@ const loadUserInfo = async () => {
 };
 
 const viewProfile = () => {
-  // 方法已移除，按钮已从模板中删除
+  // 获取当前登录用户 ID
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = userData.id;
+  
+  // 如果是自己，跳转到个人中心
+  if (props.userId === currentUserId) {
+    router.push('/personalcenter');
+  } else {
+    // 否则跳转到用户对外展示页
+    router.push(`/user/${props.userId}`);
+  }
 };
 </script>
 
@@ -209,6 +218,14 @@ const viewProfile = () => {
   display: flex;
   align-items: center;
   margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  padding: 5px;
+  border-radius: 8px;
+  
+  &:hover {
+    background: #f5f7fa;
+  }
 }
 
 .avatar {

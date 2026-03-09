@@ -38,7 +38,7 @@
                   @mouseleave="showAuthorTooltip = false"
               >
               <div class="author-details">
-                <span class="author-name">{{ topic.author.realName || topic.author.username }}</span>
+                <span class="author-name">{{ topic.author.username || '匿名用户' }}</span>
                 <!-- 显示身份标签 -->
                 <span v-if="topic.author.level1Tag" class="identity-tag" :class="topic.author.level1Tag">
                   {{ getIdentityTagName(topic.author.level1Tag) }}
@@ -52,7 +52,7 @@
               <div class="tooltip-content">
                 <img :src="authorPublicInfo.basicInfo.avatarUrl || defaultAvatar" class="tooltip-avatar">
                 <div class="tooltip-info">
-                  <h4>{{ authorPublicInfo.basicInfo.realName || authorPublicInfo.basicInfo.username }}</h4>
+                  <h4>{{ authorPublicInfo.basicInfo.username || '匿名用户' }}</h4>
                   <p v-if="authorPublicInfo.basicInfo.college">{{ authorPublicInfo.basicInfo.college }}</p>
                   <p v-if="authorPublicInfo.academicInfo.major">{{ authorPublicInfo.academicInfo.major }}</p>
                   <div class="tooltip-stats">
@@ -400,22 +400,14 @@ const submitComment = async () => {
   }
 
   try {
-    const response = await axios.post(
-        `/api/topic/${route.params.id}/comment`,
-        { content: newComment.value },
-        { headers: getAuthHeaders() }
-    );
+    const response = await topicAPI.createComment(route.params.id, { content: newComment.value });
+    
+    ElMessage.success('评论成功');
+    newComment.value = '';
+    await fetchComments();
 
-    if (response.data.code === 200) {
-      ElMessage.success('评论成功');
-      newComment.value = '';
-      await fetchComments();
-
-      // 重新获取话题详情以更新评论数
-      await fetchTopicDetail();
-    } else {
-      ElMessage.error(response.data.message || '评论失败');
-    }
+    // 重新获取话题详情以更新评论数
+    await fetchTopicDetail();
   } catch (error) {
     console.error('评论失败:', error);
     ElMessage.error('评论失败');
@@ -425,17 +417,12 @@ const submitComment = async () => {
 // 点赞话题
 const toggleLike = async () => {
   try {
-    const response = await axios.post(
-        `/api/topic/${route.params.id}/like`,
-        {},
-        { headers: getAuthHeaders() }
-    );
-
-    if (response.data.code === 200) {
-      topic.value.interactions.isLiked = !topic.value.interactions.isLiked;
-      topic.value.statistics.likesCount += topic.value.interactions.isLiked ? 1 : -1;
-      ElMessage.success(topic.value.interactions.isLiked ? '点赞成功' : '已取消点赞');
-    }
+    const action = topic.value.interactions.isLiked ? 'unlike' : 'like';
+    const response = await topicAPI.likeTopic(route.params.id, action);
+    
+    topic.value.interactions.isLiked = !topic.value.interactions.isLiked;
+    topic.value.statistics.likesCount += topic.value.interactions.isLiked ? 1 : -1;
+    ElMessage.success(topic.value.interactions.isLiked ? '点赞成功' : '已取消点赞');
   } catch (error) {
     console.error('点赞失败:', error);
     ElMessage.error('点赞失败');

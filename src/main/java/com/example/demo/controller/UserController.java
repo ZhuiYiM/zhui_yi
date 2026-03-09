@@ -8,6 +8,7 @@ import com.example.demo.entity.dto.UserProfileDTO;
 import com.example.demo.service.MailService;
 import com.example.demo.service.UserService;
 import com.example.demo.service.SmsService;
+import com.example.demo.service.IdentityService;
 import com.example.demo.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,9 @@ public class UserController {
     
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private IdentityService identityService;
     // 发送邮箱验证码
     @PostMapping("/send-verification-code")
     public Result sendVerificationCode(@RequestParam String email) {
@@ -513,6 +517,92 @@ public class UserController {
             return Result.error(401, "用户未登录");
         }
         return userService.unbindSocial(platform, userId);
+    }
+
+    /**
+     * 获取用户公开信息
+     * GET /api/user/{userId}/public-info
+     */
+    @GetMapping("/{userId}/public-info")
+    public Result getUserPublicInfo(@PathVariable Integer userId) {
+        return userService.getUserPublicInfo(userId);
+    }
+
+    /**
+     * 获取用户身份信息
+     * GET /api/user/{userId}/identity
+     */
+    @GetMapping("/{userId}/identity")
+    public Result getUserIdentity(@PathVariable Integer userId) {
+        return identityService.getIdentityInfo(userId);
+    }
+
+    /**
+     * 获取当前登录用户的身份信息
+     * GET /api/user/identity
+     */
+    @GetMapping("/identity")
+    public Result getCurrentUserIdentity(HttpServletRequest request) {
+        Integer userId = extractUserIdFromToken(request);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+        return identityService.getIdentityInfo(userId);
+    }
+
+    /**
+     * 获取用户发布的话题
+     * GET /api/user/{userId}/published-topics
+     */
+    @GetMapping("/{userId}/published-topics")
+    public Result getUserPublishedTopics(@PathVariable Integer userId,
+                                         @RequestParam(defaultValue = "1") Integer page,
+                                         @RequestParam(defaultValue = "10") Integer size) {
+        return userService.getUserPublishedTopics(userId, page, size);
+    }
+
+    /**
+     * 获取用户参与的话题
+     * GET /api/user/{userId}/participated-topics
+     */
+    @GetMapping("/{userId}/participated-topics")
+    public Result getUserParticipatedTopics(@PathVariable Integer userId,
+                                            @RequestParam(defaultValue = "1") Integer page,
+                                            @RequestParam(defaultValue = "10") Integer size) {
+        return userService.getUserParticipatedTopics(userId, page, size);
+    }
+
+    /**
+     * 举报用户
+     * POST /api/user/{userId}/report
+     */
+    @PostMapping("/{userId}/report")
+    public Result reportUser(@PathVariable Integer userId,
+                             @RequestBody Map<String, String> requestBody,
+                             HttpServletRequest request) {
+        try {
+            // 提取当前用户 ID
+            Integer reporterId = extractUserIdFromToken(request);
+            if (reporterId == null) {
+                return Result.error(401, "用户未登录");
+            }
+
+            // 不能举报自己
+            if (userId.equals(reporterId)) {
+                return Result.error(400, "不能举报自己");
+            }
+
+            String reason = requestBody.get("reason");
+            String description = requestBody.get("description");
+
+            if (reason == null || reason.trim().isEmpty()) {
+                return Result.error(400, "举报原因不能为空");
+            }
+
+            return userService.reportUser(userId, reporterId, reason, description);
+        } catch (Exception e) {
+            return Result.error(500, "举报失败：" + e.getMessage());
+        }
     }
 
 }

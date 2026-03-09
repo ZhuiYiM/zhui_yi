@@ -17,7 +17,7 @@ export const tagAPI = {
         return request.get('/topic/tags/level3', { params });
     },
 
-    // 获取四级标签 (自定义标签)
+    // 获取四级标签列表 (支持搜索和分页)
     getLevel4Tags(params = {}) {
         return request.get('/topic/tags/level4', { params });
     },
@@ -47,7 +47,7 @@ export const topicAPI = {
 
     // 发布新话题 (带多级标签)
     createTopic(data) {
-        return request.post('/topic/publish', data, {
+        return request.post('/topics', data, {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
@@ -57,17 +57,12 @@ export const topicAPI = {
 
     // 获取话题详情 (含热评)
     getTopicDetail(id) {
-        return request.get(`/topic/${id}`);
+        return request.get(`/topics/${id}`);
     },
 
     // 点赞话题
-    likeTopic(data) {
-        return request.post('/topics/like', data, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+    likeTopic(topicId, action) {
+        return request.post(`/topics/${topicId}/like`, { action });
     },
 
     // 获取热门标签
@@ -82,17 +77,17 @@ export const topicAPI = {
 
     // 获取话题评论列表
     getTopicComments(topicId, params = {}) {
-        return request.get(`/topic/${topicId}/comments`, { params });
+        return request.get(`/topics/${topicId}/comments`, { params });
     },
 
     // 发布评论
     createComment(topicId, data) {
-        return request.post(`/topic/${topicId}/comment`, data);
+        return request.post(`/topics/${topicId}/comments`, data);
     },
 
     // 删除话题
     deleteTopic(id) {
-        return request.delete(`/topic/${id}`);
+        return request.delete(`/topics/${id}`);
     },
 
     // 获取用户公开信息

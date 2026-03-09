@@ -95,6 +95,11 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             // 创建话题
             Topics topic = new Topics();
             topic.setUserId(userId);
+            
+            // 自动提取标题（取内容的前 50 个字符）
+            String content = topicDTO.getContent().trim();
+            topic.setTitle(content.length() > 50 ? content.substring(0, 50) : content);
+            
             topic.setContent(topicDTO.getContent());
             topic.setImages(convertListToJson(topicDTO.getImages()));
             topic.setTags(convertListToJson(topicDTO.getTags()));

@@ -34,4 +34,10 @@ public class User {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private String department;
+    
+    // 身份标识字段
+    private String role;                // 角色：admin, user
+    private Integer isAdmin;            // 是否管理员：0-否，1-是
+    private Integer isMerchant;         // 是否商户：0-否，1-是
+    private Integer isOrganization;     // 是否团体：0-否，1-是
 }

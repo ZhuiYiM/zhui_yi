@@ -131,7 +131,7 @@ public class TopicCommentsServiceImpl extends ServiceImpl<TopicCommentsMapper, T
             
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("comments", commentsWithUserInfo);
-            responseData.put("total", result.getTotal());
+            responseData.put("total", result.getTotal() > 0 ? result.getTotal() : commentsWithUserInfo.size());
             responseData.put("page", result.getCurrent());
             responseData.put("size", result.getSize());
             

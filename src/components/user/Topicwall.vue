@@ -620,7 +620,7 @@ const fetchTopics = async () => {
           createdAt: topic.createdAt,
           author: {
             id: topic.author.id,
-            name: topic.author.realName || topic.author.username || '匿名用户',
+            name: topic.author.username || '匿名用户',
             username: topic.author.username,
             studentId: topic.author.studentId,
             avatar: topic.author.avatarUrl || '',
@@ -775,14 +775,17 @@ const publishTopic = async (topicData) => {
 
 const likeTopic = async (topicId) => {
   try {
-    const response = await topicAPI.likeTopic({ topicId });
-    if (response.data) {
-      const topic = posts.value.find(p => p.id === topicId);
-      if (topic) {
-        topic.isLiked = !topic.isLiked;
-        topic.likes += topic.isLiked ? 1 : -1;
+    const topic = posts.value.find(p => p.id === topicId);
+    const action = topic?.isLiked ? 'unlike' : 'like';
+    const response = await topicAPI.likeTopic(topicId, action);
+    
+    if (response) {
+      const updatedTopic = posts.value.find(p => p.id === topicId);
+      if (updatedTopic) {
+        updatedTopic.isLiked = !updatedTopic.isLiked;
+        updatedTopic.likes += updatedTopic.isLiked ? 1 : -1;
       }
-      ElMessage.success(topic.isLiked ? '点赞成功' : '取消点赞');
+      ElMessage.success(updatedTopic?.isLiked ? '点赞成功' : '取消点赞');
     }
   } catch (error) {
     console.error('点赞操作失败:', error);
@@ -800,10 +803,12 @@ const getUserInfo = () => {
   if (token) {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     currentUser.value = {
+      id: user.id,
       name: user.name || user.username || '',
       studentId: user.studentId || user.student_id || '',
       avatar: user.avatar || ''
     };
+    console.log('👤 当前用户信息:', currentUser.value);
   } else {
     // 未登录时设置为 null
     currentUser.value = null;
@@ -946,7 +951,7 @@ const fetchTopicsWithFilters = async () => {
         createdAt: topic.createdAt,
         author: {
           id: topic.author.id,
-          name: topic.author.realName || topic.author.username || '匿名用户',
+          name: topic.author.username || '匿名用户',
           username: topic.author.username,
           studentId: topic.author.studentId,
           avatar: topic.author.avatarUrl || '',
@@ -1084,16 +1089,16 @@ const publishPost = async () => {
     // 获取选中的标签
     const selectedTags = tagSelectorRef.value?.getSelectedTags();
     
-    // 构建请求数据
+    // 构建请求数据 - 按照后端 TopicCreateDTO 的字段
     const topicData = {
       content: newPostContent.value,
       images: postImages.value,
-      tags: {
-        level1: selectedTags.level1?.code || null,
-        level2: selectedTags.level2.map(t => t.code),
-        level3: selectedTags.level3.map(t => t.code),
-        level4: selectedTags.level4.map(t => t.code)
-      },
+      // tags: [],  // 不再使用旧的 tags 字段
+      // 使用分级标签字段
+      level1TagCode: selectedTags.level1?.code || null,
+      level2TagCodes: (selectedTags.level2 || []).map(t => t.code),
+      level3TagCodes: (selectedTags.level3 || []).map(t => t.code),
+      level4TagCodes: (selectedTags.level4 || []).map(t => t.code),
       anonymous: false
     };
 
@@ -1120,7 +1125,17 @@ const publishPost = async () => {
 
 // 查看用户主页
 const viewUserProfile = (userId) => {
-  router.push(`/user/${userId}`);
+  // 获取当前登录用户 ID
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = userData.id;
+  
+  // 如果是自己，跳转到个人中心
+  if (userId === currentUserId) {
+    router.push('/personalcenter');
+  } else {
+    // 否则跳转到用户对外展示页
+    router.push(`/user/${userId}`);
+  }
 };
 
 // 处理头像悬浮（桌面端）
@@ -1174,8 +1189,11 @@ const publishQuickPost = async () => {
 
   const topicData = {
     content: quickPostContent.value,
-    tags: [],
-    images: []
+    images: [],
+    level1TagCode: null,  // 快速发布不设置标签
+    level2TagCodes: [],
+    level3TagCodes: [],
+    level4TagCodes: []
   };
 
   try {

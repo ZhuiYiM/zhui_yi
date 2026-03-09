@@ -224,14 +224,6 @@ watch(() => props.modelValue, (newVal) => {
 // 生命周期
 onMounted(async () => {
   await loadAllTags();
-  
-  // 如果需要自动选择一级标签
-  if (props.autoSelectLevel1 && props.userId) {
-    await autoSelectIdentity();
-  }
-  
-  // 标签加载完成后，同步预设的选中状态
-  syncSelectedTagsWithLoadedTags();
 });
 
 // 加载所有标签
@@ -260,16 +252,27 @@ const loadAllTags = async () => {
 };
 
 const loadLevel1Tags = async () => {
-  const response = await tagAPI.getLevel1Tags();
-  console.log('📥 TagSelector - Level1 原始响应:', response);
-  
-  level1Tags.value = (Array.isArray(response) ? response : []).map(tag => ({
-    ...tag,
-    enabled: tag.isActive !== undefined ? tag.isActive : true,
-    icon: getIconEmoji(tag.code) || tag.icon || '👤'
-  }));
-  
-  console.log('✅ TagSelector - Level1 标签已加载:', level1Tags.value);
+  try {
+    const response = await tagAPI.getLevel1Tags();
+    console.log('📥 TagSelector - Level1 原始响应:', response);
+    
+    // 确保 response 是数组
+    level1Tags.value = (Array.isArray(response) ? response : []).map(tag => ({
+      ...tag,
+      enabled: tag.isActive !== undefined ? tag.isActive : true,
+      icon: getIconEmoji(tag.code) || tag.icon || '👤'
+    }));
+    
+    console.log('✅ TagSelector - Level1 标签已加载:', level1Tags.value);
+    
+    // 如果标签加载成功且需要自动选择，则触发自动选择
+    if (props.autoSelectLevel1 && props.userId && level1Tags.value.length > 0) {
+      await autoSelectIdentity();
+    }
+  } catch (error) {
+    console.error('❌ 加载一级标签失败:', error);
+    ElMessage.error('加载身份标签失败');
+  }
 };
 
 // 获取标签对应的 emoji 图标
@@ -364,17 +367,12 @@ const syncSelectedTagsWithLoadedTags = () => {
 const autoSelectIdentity = async () => {
   console.log('🔍 开始自动选择身份标签，userId:', props.userId);
   
-  // TODO: 调用后端接口获取用户身份
-  // const response = await userAPI.getIdentity(props.userId);
-  // if (response.data) {
-  //   const identityTag = level1Tags.value.find(t => t.code === response.data.identity);
-  //   if (identityTag) {
-  //     selectLevel1(identityTag);
-  //   }
-  // }
+  // 等待一级标签加载完成
+  if (level1Tags.value.length === 0) {
+    console.warn('⚠️ 一级标签还未加载，等待中...');
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
   
-  // 临时方案：根据用户信息自动选择身份
-  // 优先级：管理员 > 学生 > 商户 > 团体 > 个人 > 社会
   if (level1Tags.value.length > 0) {
     let selectedTag = null;
     
@@ -420,7 +418,8 @@ const autoSelectIdentity = async () => {
       console.warn('⚠️ 未找到可用的默认身份标签');
     }
   } else {
-    console.warn('⚠️ level1Tags 还未加载');
+    console.error('❌ 一级标签加载失败');
+    ElMessage.error('身份标签加载失败，请刷新重试');
   }
 };
 

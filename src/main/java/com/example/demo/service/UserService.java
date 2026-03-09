@@ -71,6 +71,16 @@ public interface UserService extends IService<User> {
     Result getVerificationApplications(Integer userId, Integer page, Integer size);
     Result cancelVerificationApplication(Integer applicationId, Integer userId);
 
+    // 用户公开信息相关方法
+    Result getUserPublicInfo(Integer userId);
+
+    // 用户话题相关方法
+    Result getUserPublishedTopics(Integer userId, Integer page, Integer size);
+    Result getUserParticipatedTopics(Integer userId, Integer page, Integer size);
+
+    // 举报用户相关方法
+    Result reportUser(Integer reportedUserId, Integer reporterId, String reason, String description);
+
     // 工具方法
     String encryptPassword(String password);
 

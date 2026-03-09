@@ -19,12 +19,20 @@ public class Topics {
     
     private Long userId;
     
+    private String title; // 话题标题
+    
     private String content;
     
-    private String images; // JSON格式存储图片URL数组
-    
-    private String tags; // JSON格式存储标签数组
-    
+    private String images; // JSON 格式存储图片 URL 数组
+        
+    private String tags; // JSON 格式存储标签数组
+        
+    // 分级标签字段
+    private String level1TagCode;      // 一级标签代码
+    private String level2TagCodes;     // JSON 格式存储二级标签代码数组
+    private String level3TagCodes;     // JSON 格式存储三级标签代码数组
+    private String level4TagCodes;     // JSON 格式存储四级标签代码数组
+        
     private Integer likesCount;
     
     private Integer commentsCount;

@@ -62,7 +62,12 @@ export const topicAPI = {
 
     // 点赞话题
     likeTopic(topicId, action) {
-        return request.post(`/topics/${topicId}/like`, { action });
+        return request.post(`/topics/${topicId}/like`, { action }, {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            noAuth: false  // 明确需要认证
+        });
     },
 
     // 获取热门标签
@@ -106,12 +111,17 @@ export const topicAPI = {
     },
 
     // 获取用户参与的话题
-    getUserParticipatedTopics(userId, params = {}) {
-        return request.get(`/user/${userId}/participated-topics`, { params });
+   getUserParticipatedTopics(userId, params = {}) {
+       return request.get(`/user/${userId}/participated-topics`, { params });
+    },
+
+    // 获取用户点赞的话题
+   getUserLikedTopics(userId, params = {}) {
+       return request.get(`/topics/users/${userId}/liked-topics`, { params });
     },
 
     // 收藏话题
-    collectTopic(topicId) {
+   collectTopic(topicId) {
         return request.post(`/topics/${topicId}/collect`);
     },
 

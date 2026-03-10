@@ -136,17 +136,24 @@
         <div class="topic-tabs">
           <button 
             @click="currentTab = 'published'"
-            class="tab-btn"
+          class="tab-btn"
             :class="{ active: currentTab === 'published' }"
           >
-            发布的话题
+         发布的话题
           </button>
           <button 
             @click="currentTab = 'participated'"
-            class="tab-btn"
+          class="tab-btn"
             :class="{ active: currentTab === 'participated' }"
           >
-            参与的话题
+         参与的话题
+          </button>
+          <button 
+            @click="currentTab = 'liked'"
+          class="tab-btn"
+            :class="{ active: currentTab === 'liked' }"
+          >
+            点赞的话题
           </button>
         </div>
         
@@ -159,7 +166,11 @@
         <!-- 空状态 -->
         <div v-else-if="getTopicsList.length === 0" class="empty-topics">
           <div class="empty-icon">💭</div>
-          <p>{{ currentTab === 'published' ? '暂无发布的话题' : '暂无参与的话题' }}</p>
+          <p>{{ 
+            currentTab === 'published' ? '暂无发布的话题' : 
+            currentTab === 'liked' ? '暂无点赞的话题' : 
+            '暂无参与的话题' 
+          }}</p>
         </div>
         
         <!-- 话题列表 -->
@@ -236,10 +247,11 @@ const loading = ref(false);
 const error = ref(null);
 const userInfo = ref(null);
 const isFollowing = ref(false);
-const currentTab = ref('published'); // 'published' 或 'participated'
+const currentTab = ref('published'); // 'published'、'participated' 或 'liked'
 const topicsLoading = ref(false);
 const publishedTopics = ref([]);
 const participatedTopics = ref([]);
+const likedTopics = ref([]); // 新增：点赞的话题
 const privacySettings = ref({
   publicVisible: true // 是否对外公开话题和参与记录
 });
@@ -304,7 +316,13 @@ const canViewContent = computed(() => {
 
 // 获取当前标签页的话题列表
 const getTopicsList = computed(() => {
-  return currentTab.value === 'published' ? publishedTopics.value : participatedTopics.value;
+  if (currentTab.value === 'published') {
+   return publishedTopics.value;
+  } else if (currentTab.value === 'liked') {
+   return likedTopics.value;
+  } else {
+   return participatedTopics.value;
+  }
 });
 
 // 生命周期
@@ -373,45 +391,53 @@ const loadUserInfo = async () => {
   }
 };
 
-// 加载用户发布和参与的话题
+// 加载用户话题（并行请求）
 const loadUserTopics = async () => {
-  // 如果是当前用户自己，或者用户设置了公开，则加载话题
-  if (!canViewContent.value && !isCurrentUser.value) {
-    return;
-  }
-  
-  topicsLoading.value = true;
-  const userId = route.params.userId;
-  
-  try {
-    console.log('📡 正在加载用户话题，userId:', userId);
-    
-    // 并行加载发布和参与的话题
-    const [publishedRes, participatedRes] = await Promise.all([
-      topicAPI.getUserPublishedTopics(userId),
-      topicAPI.getUserParticipatedTopics(userId)
-    ]);
-    
-    console.log('✅ 发布的话题响应:', publishedRes);
-    console.log('✅ 参与的话题响应:', participatedRes);
-    
-    // 处理后端返回的数据结构
-    publishedTopics.value = (publishedRes.data?.topics || publishedRes.data?.data?.topics || []);
-    participatedTopics.value = (participatedRes.data?.topics || participatedRes.data?.data?.topics || []);
-    
-    console.log('📋 发布的话题数量:', publishedTopics.value.length);
-    console.log('📋 参与的话题数量:', participatedTopics.value.length);
-    
-    console.log('✅ 用户话题已加载');
-  } catch (error) {
-    console.error('❌ 加载用户话题失败:', error);
-    ElMessage.error('加载话题失败：' + (error.response?.data?.message || error.message));
-    // 保持空列表
-    publishedTopics.value = [];
-    participatedTopics.value = [];
-  } finally {
-    topicsLoading.value = false;
-  }
+ if (!canViewContent.value && !isCurrentUser.value) {
+ return;
+ }
+ 
+ topicsLoading.value = true;
+ const userId = route.params.userId;
+ 
+ try {
+ console.log('📡 正在加载用户话题，userId:', userId);
+ 
+ // 并行加载发布、参与和点赞的话题
+ const [publishedRes, participatedRes, likedRes] = await Promise.all([
+   topicAPI.getUserPublishedTopics(userId),
+   topicAPI.getUserParticipatedTopics(userId),
+   topicAPI.getUserLikedTopics(userId)
+ ]);
+ 
+ console.log('✅ 发布的话题响应:', publishedRes);
+console.log('✅ 参与的话题响应:', participatedRes);
+console.log('✅ 点赞的话题响应:', likedRes);
+ 
+ // 处理后端返回的数据结构
+ const publishedData = publishedRes.data || publishedRes;
+const participatedData = participatedRes.data || participatedRes;
+const likedData = likedRes.data || likedRes;
+ 
+ publishedTopics.value = (publishedData.topics || publishedData.data?.topics || []);
+ participatedTopics.value = (participatedData.topics || participatedData.data?.topics || []);
+ likedTopics.value = (likedData.topics || likedData.data?.topics || []);
+ 
+ console.log('📋 发布的话题数量:', publishedTopics.value.length);
+console.log('📋 参与的话题数量:', participatedTopics.value.length);
+console.log('📋 点赞的话题数量:', likedTopics.value.length);
+ 
+ console.log('✅ 用户话题已加载');
+ } catch (error) {
+ console.error('❌ 加载用户话题失败:', error);
+ ElMessage.error('加载话题失败：' + (error.response?.data?.message || error.message));
+ // 保持空列表
+ publishedTopics.value = [];
+ participatedTopics.value = [];
+ likedTopics.value = [];
+ } finally {
+ topicsLoading.value = false;
+ }
 };
 
 // 使用 Mock 数据预览
@@ -807,22 +833,23 @@ const formatTime = (date) => {
     }
     
     &.message-btn {
-      background: #67c23a;
-      color: white;
+     background: #67c23a;
+     color: white;
       
       &:hover {
-        background: #85ce61;
+       background: #85ce61;
       }
     }
     
-    &.back-btn {
-      background: #f5f7fa;
-      color: #606266;
+    &.report-btn {
+     background: #f56c6c;
+     color: white;
       
       &:hover {
-        background: #e6e8eb;
+       background: #f78989;
       }
     }
+
   }
 }
 

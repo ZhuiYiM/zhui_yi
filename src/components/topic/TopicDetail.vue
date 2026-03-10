@@ -417,35 +417,64 @@ const submitComment = async () => {
 // 点赞话题
 const toggleLike = async () => {
   try {
-    const action = topic.value.interactions.isLiked ? 'unlike' : 'like';
-    const response = await topicAPI.likeTopic(route.params.id, action);
+   const action = topic.value.interactions.isLiked ? 'unlike' : 'like';
+   const responseData = await topicAPI.likeTopic(route.params.id, action);
     
+    // 更新为后端返回的最新状态
     topic.value.interactions.isLiked = !topic.value.interactions.isLiked;
     topic.value.statistics.likesCount += topic.value.interactions.isLiked ? 1 : -1;
+    
+    if (responseData) {
+      topic.value.statistics.likesCount = responseData.likesCount || topic.value.statistics.likesCount;
+      topic.value.interactions.isLiked = responseData.isLiked !== undefined ? responseData.isLiked : topic.value.interactions.isLiked;
+    }
+    
     ElMessage.success(topic.value.interactions.isLiked ? '点赞成功' : '已取消点赞');
   } catch (error) {
-    console.error('点赞失败:', error);
-    ElMessage.error('点赞失败');
+   console.error('点赞失败:', error);
+    // 409 表示重复点赞或取消点赞（状态冲突）
+    if (error.response?.status === 409) {
+     const msg = error.response.data?.message || (topic.value.interactions.isLiked ? '您已点过赞了' : '您还未点过赞');
+      ElMessage.warning(msg);
+    } else {
+      ElMessage.error('点赞失败，请稍后重试');
+    }
   }
 };
 
 // 收藏话题
 const toggleCollect = async () => {
   try {
-    const response = await axios.post(
-        `/api/topic/${route.params.id}/collect`,
-        {},
-        { headers: getAuthHeaders() }
-    );
-
-    if (response.data.code === 200) {
-      topic.value.interactions.isCollected = !topic.value.interactions.isCollected;
-      topic.value.statistics.collectionsCount += topic.value.interactions.isCollected ? 1 : -1;
-      ElMessage.success(topic.value.interactions.isCollected ? '收藏成功' : '已取消收藏');
+  const action = topic.value.interactions.isCollected ? '取消收藏' : '收藏';
+    
+    // 乐观更新 UI
+  const originalState = topic.value.interactions.isCollected;
+    topic.value.interactions.isCollected = !topic.value.interactions.isCollected;
+    topic.value.statistics.collectionsCount += topic.value.interactions.isCollected ? 1 : -1;
+    
+    // 调用 API
+  const responseData = await topicAPI.collectTopic(route.params.id);
+    
+    // 更新为后端返回的最新状态
+    if (responseData) {
+      topic.value.statistics.collectionsCount = responseData.collectionsCount || topic.value.statistics.collectionsCount;
+      topic.value.interactions.isCollected = responseData.isCollected !== undefined ? responseData.isCollected: topic.value.interactions.isCollected;
     }
+    
+    ElMessage.success(action === '收藏' ? '收藏成功' : '已取消收藏');
   } catch (error) {
-    console.error('收藏失败:', error);
-    ElMessage.error('收藏失败');
+  console.error('收藏失败:', error);
+    // 恢复原状态
+    topic.value.interactions.isCollected = !topic.value.interactions.isCollected;
+    topic.value.statistics.collectionsCount += topic.value.interactions.isCollected ? 1 : -1;
+    
+    // 409 表示重复操作（状态冲突）
+    if (error.response?.status === 409) {
+   const msg = error.response.data?.message || '操作失败';
+      ElMessage.warning(msg);
+    } else {
+      ElMessage.error('收藏失败，请稍后重试');
+    }
   }
 };
 

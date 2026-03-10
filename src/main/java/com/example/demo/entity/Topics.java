@@ -34,12 +34,14 @@ public class Topics {
     private String level4TagCodes;     // JSON 格式存储四级标签代码数组
         
     private Integer likesCount;
-    
+        
     private Integer commentsCount;
-    
+        
     private Integer viewsCount;
-    
-    private Integer isEssence; // 是否精华 0-否, 1-是
+        
+    private Integer collectionsCount; // 收藏数量
+        
+    private Integer isEssence; // 是否精华 0-否，1-是
     
     private Integer isTop; // 是否置顶 0-否, 1-是
     

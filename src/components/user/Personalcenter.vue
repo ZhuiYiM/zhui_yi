@@ -40,7 +40,6 @@
       <section class="auth-section">
         <div class="section-header">
           <h2>认证中心</h2>
-          <button class="refresh-btn" @click="refreshAuthStatus">🔄 刷新</button>
         </div>
 
         <div class="auth-status">
@@ -84,11 +83,8 @@
       <section class="orders-section">
         <div class="section-header">
           <h2>我的订单</h2>
-          <div class="header-actions">
-            <button class="refresh-btn" @click="refreshOrders">🔄 刷新</button>
-            <button v-if="!isMobile" class="view-more-btn" @click="viewAllOrders">查看全部</button>
-            <span v-else class="view-more" @click="viewAllOrders">查看更多 ></span>
-          </div>
+          <button v-if="!isMobile" class="view-more-btn" @click="viewAllOrders">查看全部</button>
+          <span v-else class="view-more" @click="viewAllOrders">查看更多 ></span>
         </div>
 
         <div class="orders-grid">
@@ -117,29 +113,40 @@
       <!-- 我的话题区域 -->
       <section class="topics-section">
         <div class="section-header">
-          <h2>我的话题</h2>
-          <div class="header-actions">
-            <button class="refresh-btn" @click="refreshTopics">🔄 刷新</button>
-            <button v-if="!isMobile" class="view-more-btn" @click="viewAllTopics">查看全部</button>
-            <span v-else class="view-more" @click="viewAllTopics">查看更多 ></span>
-          </div>
+          <h2 style="color: #000000;">我的话题</h2>
+          <button v-if="!isMobile" class="view-more-btn" @click="viewAllTopics">查看全部</button>
+          <span v-else class="view-more" @click="viewAllTopics">查看更多 ></span>
         </div>
 
         <!-- 话题标签页 -->
         <div class="topic-tabs">
           <button 
             @click="currentTopicTab = 'published'"
-            class="tab-btn"
+           class="tab-btn"
             :class="{ active: currentTopicTab === 'published' }"
           >
-            我发布的话题
+            📝 我发布的话题
           </button>
           <button 
             @click="currentTopicTab = 'participated'"
-            class="tab-btn"
+           class="tab-btn"
             :class="{ active: currentTopicTab === 'participated' }"
           >
-            我参与的话题
+            💬 我参与的话题
+          </button>
+          <button 
+            @click="currentTopicTab = 'liked'"
+           class="tab-btn"
+            :class="{ active: currentTopicTab === 'liked' }"
+          >
+            👍 我点赞的话题
+          </button>
+          <button 
+            @click="currentTopicTab = 'collected'"
+           class="tab-btn"
+            :class="{ active: currentTopicTab === 'collected' }"
+          >
+            ⭐ 我收藏的话题
           </button>
         </div>
 
@@ -152,7 +159,12 @@
         <!-- 空状态 -->
         <div v-else-if="getCurrentTopicList().length === 0" class="empty-topics">
           <div class="empty-icon">💭</div>
-          <p>{{ currentTopicTab === 'published' ? '暂无发布的话题' : '暂无参与的话题' }}</p>
+          <p>{{ 
+            currentTopicTab === 'published' ? '暂无发布的话题' : 
+            currentTopicTab === 'liked' ? '暂无点赞的话题' :
+            currentTopicTab === 'collected' ? '暂无收藏的话题' :
+            '暂无参与的话题' 
+          }}</p>
         </div>
 
         <!-- 话题列表 -->
@@ -319,12 +331,22 @@ const recentOrders = ref([
 const userTopics = ref([]);
 const publishedTopics = ref([]);
 const participatedTopics = ref([]);
-const currentTopicTab = ref('published'); // 'published' 或 'participated'
+const likedTopics = ref([]); // 我点赞的话题
+const collectedTopics = ref([]); // 我收藏的话题
+const currentTopicTab = ref('published'); // 'published'、'participated'、'liked' 或 'collected'
 const topicsLoading = ref(false);
 
 // 获取当前标签页的话题列表
 const getCurrentTopicList = () => {
-  return currentTopicTab.value === 'published' ? publishedTopics.value : participatedTopics.value;
+  if (currentTopicTab.value === 'published') {
+   return publishedTopics.value;
+  } else if (currentTopicTab.value === 'liked') {
+   return likedTopics.value;
+  } else if (currentTopicTab.value === 'collected') {
+   return collectedTopics.value;
+  } else {
+   return participatedTopics.value;
+  }
 };
 
 // 编辑个人资料
@@ -391,34 +413,6 @@ const toggleVerification = async () => {
   }
 };
 
-// 刷新认证状态
-const refreshAuthStatus = async () => {
-  try {
-    isLoading.value = true;
-    // 获取最新的用户信息
-    const freshUserData = await userAPI.getCurrentUser();
-    
-    // 更新用户信息和认证状态
-    const updatedUserInfo = {
-      ...userInfo.value,
-      ...freshUserData,
-      isVerified: !!freshUserData.studentId, // 通过学号是否存在判断身份认证
-      isRealNameVerified: !!(freshUserData.realName || freshUserData.name) // 通过真实姓名是否存在判断实名认证
-    };
-    
-    userInfo.value = updatedUserInfo;
-    
-    // 更新localStorage
-    localStorage.setItem('user', JSON.stringify(updatedUserInfo));
-    
-    ElMessage.success('认证状态已刷新');
-  } catch (error) {
-    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
-  } finally {
-    isLoading.value = false;
-  }
-};
-
 // 实名认证
 const toggleRealNameVerification = async () => {
   try {
@@ -433,25 +427,6 @@ const toggleRealNameVerification = async () => {
     }
   } catch (error) {
     ElMessage.error(error.message || '操作失败');
-  }
-};
-
-// 刷新订单列表
-const refreshOrders = async () => {
-  try {
-    isLoading.value = true;
-    // 模拟 API 调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // 这里应该调用实际的 API 获取最新订单数据
-    // const response = await userAPI.getUserOrders();
-    // recentOrders.value = response.data.orders;
-    
-    ElMessage.success('订单列表已刷新');
-  } catch (error) {
-    ElMessage.error('刷新失败：' + (error.message || '网络错误'));
-  } finally {
-    isLoading.value = false;
   }
 };
 
@@ -473,48 +448,71 @@ const viewAllTopics = () => {
 };
 
 const viewTopicDetail = (topicId) => {
-  console.log(`查看话题详情: ${topicId}`);
-  // 实际项目中可以跳转到话题详情页面
+  console.log(`查看话题详情：${topicId}`);
+  // 跳转到话题详情页面
+  router.push(`/topic/${topicId}`);
 };
 
-// 刷新话题列表
-const refreshTopics = async () => {
+// 加载用户话题
+const loadUserTopics = async () => {
   try {
-    topicsLoading.value = true;
+   topicsLoading.value = true;
     
     // 获取当前用户 ID
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    const userId = userData.id;
+   const userData = JSON.parse(localStorage.getItem('user') || '{}');
+   const userId = userData.id;
     
-    if (!userId) {
-      ElMessage.warning('请先登录');
-      return;
+   if (!userId) {
+     ElMessage.warning('请先登录');
+     return;
     }
     
-    // 加载发布和参与的话题
-    const [publishedRes, participatedRes] = await Promise.all([
-      topicAPI.getUserPublishedTopics(userId),
-      topicAPI.getUserParticipatedTopics(userId)
+    // 并行加载发布、参与、点赞和收藏的话题
+  const [publishedRes, participatedRes, likedRes, collectedRes] = await Promise.all([
+     topicAPI.getUserPublishedTopics(userId),
+     topicAPI.getUserParticipatedTopics(userId),
+     topicAPI.getUserLikedTopics(userId),
+     topicAPI.getCollections()
     ]);
     
-    console.log('✅ 发布的话题响应:', publishedRes);
-    console.log('✅ 参与的话题响应:', participatedRes);
+  console.log('✅ 发布的话题响应:', publishedRes);
+  console.log('✅ 参与的话题响应:', participatedRes);
+  console.log('✅ 点赞的话题响应:', likedRes);
+  console.log('✅ 收藏的话题响应:', collectedRes);
     
-    // 处理后端返回的数据结构
-    publishedTopics.value = (publishedRes.data?.topics || publishedRes.data?.data?.topics || []);
-    participatedTopics.value = (participatedRes.data?.topics || participatedRes.data?.data?.topics || []);
+    // 处理后端返回的数据结构 - 支持多种格式
+  const publishedData = publishedRes.data || publishedRes;
+  const participatedData = participatedRes.data || participatedRes;
+  const likedData = likedRes.data || likedRes;
+  const collectedData = collectedRes.data || collectedRes;
     
-    console.log('📋 发布的话题数量:', publishedTopics.value.length);
-    console.log('📋 参与的话题数量:', participatedTopics.value.length);
+    publishedTopics.value = (publishedData.topics || publishedData.data?.topics || []);
+    participatedTopics.value = (participatedData.topics || participatedData.data?.topics || []);
+    likedTopics.value = (likedData.topics || likedData.data?.topics || []);
     
-    ElMessage.success('话题列表已刷新');
+    // 收藏的话题数据结构不同，需要转换
+  if (collectedData.collections && Array.isArray(collectedData.collections)) {
+   collectedTopics.value = collectedData.collections.map(col => ({
+      ...col.topic,
+    collectedAt: col.collectedAt
+    }));
+   } else {
+   collectedTopics.value = [];
+   }
+    
+  console.log('📋 发布的话题数量:', publishedTopics.value.length);
+  console.log('📋 参与的话题数量:', participatedTopics.value.length);
+  console.log('📋 点赞的话题数量:', likedTopics.value.length);
+  console.log('📋 收藏的话题数量:', collectedTopics.value.length);
   } catch (error) {
-    console.error('❌ 刷新话题失败:', error);
-    ElMessage.error('刷新失败：' + (error.response?.data?.message || error.message));
+  console.error('❌ 加载话题失败:', error);
+   ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
     publishedTopics.value = [];
     participatedTopics.value = [];
+    likedTopics.value = [];
+  collectedTopics.value = [];
   } finally {
-    topicsLoading.value = false;
+   topicsLoading.value = false;
   }
 };
 
@@ -578,7 +576,7 @@ onMounted(async () => {
   console.log('用户信息初始化完成');
   
   // 加载用户的话题
-  await refreshTopics();
+  await loadUserTopics();
 });
 </script>
 
@@ -1218,24 +1216,51 @@ onMounted(async () => {
 /* 话题区域样式 */
 .topics-section {
   background: white;
-  margin: 15px;
+ margin: 15px;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   flex-shrink: 0;
 }
 
-.topics-section .section-header {
+/* 话题标签页样式 - 优化字体和背景颜色 */
+.topic-tabs {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  gap: 15px;
+ margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 10px;
 }
 
-.topics-section h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
-  color: #333;
+.tab-btn {
+  padding: 10px 20px;
+  background: #f5f7fa;
+  color: #606266;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+ cursor: pointer;
+  transition: all 0.3s;
+}
+
+.tab-btn:hover {
+  background: #e3f2fd;
+  color: #4A90E2;
+  transform: translateY(-2px);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #4A90E2 0%, #357abd 100%);
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+  transform: translateY(-2px);
+}
+
+.tab-btn.active:hover {
+  background: linear-gradient(135deg, #357abd 0%, #2c6aa8 100%);
+  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
 }
 
 .topics-list {

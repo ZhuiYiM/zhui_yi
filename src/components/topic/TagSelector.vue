@@ -115,14 +115,29 @@
       <div class="tag-search-create">
         <div class="search-box">
           <input
-            v-model="tagSearchQuery"
+          v-model="tagSearchQuery"
             type="text"
             placeholder="搜索标签池..."
             @keyup.enter="searchTags"
-            class="search-input"
+         class="search-input"
           >
           <button @click="searchTags" class="search-btn">🔍</button>
         </div>
+
+        <!-- 已选择的标签显示在搜索框下方 -->
+        <div class="selected-tags-container" v-if="selectedTags.level4 && selectedTags.level4.length > 0">
+          <div class="selected-tags-title">已选择标签 ({{ selectedTags.level4.length }}/{{ MAX_LEVEL4 }})</div>
+          <div class="selected-tags-list">
+           <div
+           v-for="(tag, index) in selectedTags.level4"
+             :key="index"
+          class="selected-tag-item"
+           >
+             <span class="tag-text">{{ tag.name }}</span>
+             <button @click="removeLevel4(index)" class="remove-tag-btn" title="移除">×</button>
+           </div>
+         </div>
+       </div>
 
         <div class="create-new-tag" v-if="showCreateNewTag">
           <input
@@ -774,26 +789,16 @@ defineExpose({
   font-size: 13px;
 }
 
+.tag-options .tag-option.chip .tag-name {
+  color: #2c3e50; /* 黑色文字，区别于背景 */
+  font-weight: 500;
+}
+
 .tag-options .tag-option.chip .check-mark {
-  display: none;
-}
-
-.tag-options .tag-option.chip.location {
-  background: #f0f9ff;
-  border-color: #00bcd4;
-}
-
-.tag-options .tag-option.chip.location.selected {
-  background: #e0f7fa;
-}
-
-.tag-options .tag-option.chip.custom {
-  background: #fff7e6;
-  border-color: #ffa726;
-}
-
-.tag-options .tag-option.chip.custom.selected {
-  background: #ffe0b2;
+  display: inline-block;
+  margin-left: 4px;
+  font-weight: bold;
+  color: #2c3e50;
 }
 
 .tag-pool {
@@ -887,34 +892,56 @@ defineExpose({
   cursor: not-allowed;
 }
 
-.selected-tags {
+/* 已选择标签容器 - 显示在搜索框下方 */
+.selected-tags-container {
+  margin: 12px 0;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dcdfe6;
+}
+
+.selected-tags-title {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.selected-tags-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
-  padding: 12px;
-  background: #f8f9fa;
-  border-radius: 4px;
 }
 
-.selected-tags .selected-tag {
+.selected-tag-item {
   display: inline-flex;
   align-items: center;
   padding: 6px 12px;
-  background: #ecf5ff;
-  border: 1px solid #d9ecff;
-  border-radius: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius:16px;
   font-size: 13px;
-  color: #409eff;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+  transition: all 0.3s;
 }
 
-.selected-tags .selected-tag .remove-btn {
+.selected-tag-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.selected-tag-item .tag-text {
+  font-weight: 500;
+}
+
+.selected-tag-item .remove-tag-btn {
   margin-left: 6px;
   width: 18px;
   height: 18px;
   border: none;
-  background: transparent;
-  color: #409eff;
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
   cursor: pointer;
   border-radius: 50%;
   display: flex;
@@ -922,10 +949,45 @@ defineExpose({
   justify-content: center;
   font-size: 16px;
   line-height: 1;
+  transition: all 0.2s;
 }
 
-.selected-tags .selected-tag .remove-btn:hover {
-  background: #409eff;
-  color: white;
+.selected-tag-item .remove-tag-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
 }
+
+/* 原来的已选择标签样式隐藏 */
+.selected-tags {
+  display: none;
+}
+
+.tag-options .tag-option.chip.location {
+  background: #f0f9ff;
+  border-color: #00bcd4;
+}
+
+.tag-options .tag-option.chip.location .tag-name {
+  color: #2c3e50; /* 黑色文字 */
+}
+
+.tag-options .tag-option.chip.location.selected {
+  background: #e0f7fa;
+  border-color: #0097a7;
+}
+
+.tag-options .tag-option.chip.custom {
+  background: #fff7e6;
+  border-color: #ffa726;
+}
+
+.tag-options .tag-option.chip.custom .tag-name {
+  color: #2c3e50; /* 黑色文字 */
+}
+
+.tag-options .tag-option.chip.custom.selected {
+  background: #ffe0b2;
+  border-color: #ff9800;
+}
+
 </style>

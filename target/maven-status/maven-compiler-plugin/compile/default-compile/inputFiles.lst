@@ -54,6 +54,8 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\UserFollowsMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\config\RedisConfig.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\CommentsMapper.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\ReportMapper.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\ReportController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TopicCollection.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TopicComments.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\common\ApiResult.java
@@ -70,6 +72,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Tag
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Location.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\RegisterDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\FileUploadServiceImpl.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\ReportCreateDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TagLevel2Mapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\SearchServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Comments.java
@@ -81,12 +84,14 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\To
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\TagService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\common\Result.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Tags.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\ReportService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\LikeMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\SearchService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\interceptor\TokenInterceptor.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TopicTags.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\exception\GlobalExceptionHandler.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\TopicDTO.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Report.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\SmsServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TagLevel2.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\MessageController.java
@@ -108,6 +113,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\im
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\DefaultPrivacyLevel.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\MessageService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\TopicsServiceImpl.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\ReportServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\VerificationCode.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\UserVerificationMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\MessageServiceImpl.java

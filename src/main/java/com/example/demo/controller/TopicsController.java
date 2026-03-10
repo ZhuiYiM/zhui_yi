@@ -311,6 +311,16 @@ public class TopicsController {
     }
 
     /**
+     * 获取用户点赞的话题列表
+     */
+    @GetMapping("/users/{userId}/liked-topics")
+    public ApiResult getUserLikedTopics(@PathVariable Long userId,
+                                        @RequestParam(defaultValue = "1") Integer page,
+                                        @RequestParam(defaultValue = "10") Integer size) {
+      return topicsService.getUserLikedTopics(userId, page, size);
+    }
+
+    /**
      * 从请求中提取用户 ID 的辅助方法
      */
     private Long extractUserIdFromRequest(HttpServletRequest request) {

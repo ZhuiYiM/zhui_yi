@@ -14,69 +14,23 @@
     <main class="main-content">
       <!-- 头部区域 -->
       <header class="page-header">
-        <div class="header-content">
-          <h1 class="page-title">{{ isMobile ? '校园话题墙' : '校园话题墙' }}</h1>
-
-          <!-- 搜索区域 -->
-          <div class="search-section">
-            <!-- 搜索框和刷新按钮在同一行 -->
-            <div class="search-row">
-              <div class="search-box-wrapper">
-                <div class="search-box">
-                  <input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="搜索话题、标签或用户..."
-                    @keyup.enter="handleSearch"
-                    @focus="handleSearchFocus"
-                    @blur="handleSearchBlur"
-                    class="search-input"
-                    ref="searchInputRef"
-                  >
-                  <button @click="handleSearch" class="search-btn">🔍</button>
-                </div>
-                
-                <!-- 搜索标签选择器（点击搜索框时显示） -->
-                <div v-if="showSearchTagSelector" class="search-tag-selector">
-                  <div class="tag-selector-header">
-                    <span>选择标签进行搜索</span>
-                    <button @click="closeSearchTagSelector" class="close-selector-btn">✕</button>
-                  </div>
-                  <div class="search-tags-grid">
-                    <div
-                      v-for="tag in allTagsForSearch"
-                      :key="tag.code"
-                      @click="selectTagForSearch(tag)"
-                      class="search-tag-item"
-                      :class="{ active: selectedSearchTags.includes(tag.code) }"
-                    >
-                      <span class="tag-icon">{{ tag.icon || '🏷️' }}</span>
-                      <span class="tag-name">{{ tag.name }}</span>
-                      <span v-if="selectedSearchTags.includes(tag.code)" class="check-mark">✓</span>
-                    </div>
-                  </div>
-                  <div class="search-tag-actions">
-                    <button @click="clearSearchTags" class="clear-tags-btn">清空</button>
-                    <button @click="applySearchTags" class="apply-tags-btn">应用筛选</button>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 刷新按钮 (桌面端) -->
-              <button
-                v-if="!isMobile"
-                @click="refreshAllData"
-                class="refresh-btn"
-                :disabled="loading"
-              >
-                <span v-if="loading" class="loading-spinner"></span>
-                <span v-else>🔄 刷新</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <UnifiedSearch
+            v-model="searchQuery"
+            :selected-tags-model="selectedSearchTags"
+            :active-quick-filters="quickFilters"
+            :available-tags="allTagsForSearch"
+            :quick-filter-options="quickFilterTags"
+            placeholder="搜索话题、标签或用户..."
+            tag-selector-title="选择标签进行搜索"
+            :show-quick-filters="true"
+            :show-clear-button="true"
+            :has-active-filters="hasActiveFilters"
+            @search="handleSearch"
+            @apply-tags="applySearchTags"
+            @clear-tags="clearSearchTags"
+            @clear-filters="clearAllFilters"
+        />
       </header>
-
       <!-- 内容区域 -->
       <div
         class="content-wrapper"
@@ -221,7 +175,7 @@
                   </div>
 
                   <div class="post-actions">
-                    <button @click="toggleLike(post)" class="action-btn" :class="{ liked: post.isLiked }">
+                    <button @click="toggleLike(post)" class="action-btn like-btn" :class="{ liked: post.isLiked }">
                       👍 {{ post.likes }}
                     </button>
                     <button @click="commentPost(post.id)" class="action-btn">
@@ -414,7 +368,7 @@ import TagSelector from '@/components/topic/TagSelector.vue';
 import UserPopoverCard from '@/components/user/UserPopoverCard.vue';
 import { topicAPI, tagAPI } from '@/api/topic';
 import { isMobile as isMobileDevice } from '@/utils/device';
-
+import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 const router = useRouter();
 
 // 响应式数据
@@ -431,19 +385,22 @@ const isRefreshing = ref(false);
 const pullDistance = ref(0);
 const maxPullDistance = ref(80);
 
+// 保持现有的搜索相关逻辑
+const searchQuery = ref('');
+const selectedSearchTags = ref([]);
+const quickFilters = ref([]);
+
 // 用户信息
 const currentUser = ref(null);
 
 const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U';
 
 // 搜索和筛选
-const searchQuery = ref('');
 const activeTag = ref('');
 const currentSort = ref('latest');
 
 // 搜索标签选择器
 const showSearchTagSelector = ref(false);
-const selectedSearchTags = ref([]);
 const showQuickTagSelector = ref(false);
 const quickSelectedTags = ref([]);
 const searchInputRef = ref(null); // 搜索框引用
@@ -777,19 +734,43 @@ const likeTopic = async (topicId) => {
   try {
     const topic = posts.value.find(p => p.id === topicId);
     const action = topic?.isLiked ? 'unlike' : 'like';
-    const response = await topicAPI.likeTopic(topicId, action);
+
+    // 乐观更新：先更新 UI
+    const originalState = topic?.isLiked;
+    if (topic) {
+      topic.isLiked = !topic.isLiked;
+      topic.likes += topic.isLiked ? 1 : -1;
+    }
+
+    const responseData = await topicAPI.likeTopic(topicId, action);
+
+    // 响应拦截器已经处理了业务错误，这里只需要处理成功情况
+    // 能到达这里说明已经是 code===200 的成功响应
+    ElMessage.success(action === 'like' ? '点赞成功' : '取消点赞');
     
-    if (response) {
-      const updatedTopic = posts.value.find(p => p.id === topicId);
-      if (updatedTopic) {
-        updatedTopic.isLiked = !updatedTopic.isLiked;
-        updatedTopic.likes += updatedTopic.isLiked ? 1 : -1;
+    // 更新数据为后端返回的最新状态
+    if (responseData) {
+      if (topic) {
+        topic.likes = responseData.likesCount || topic.likes;
+        topic.isLiked = responseData.isLiked !== undefined ? responseData.isLiked : topic.isLiked;
       }
-      ElMessage.success(updatedTopic?.isLiked ? '点赞成功' : '取消点赞');
     }
   } catch (error) {
     console.error('点赞操作失败:', error);
-    ElMessage.error('操作失败，请稍后重试');
+    // 恢复原状态
+    const topic = posts.value.find(p => p.id === topicId);
+    if (topic) {
+      topic.isLiked = !topic.isLiked;
+      topic.likes += topic.isLiked ? 1 : -1;
+    }
+    
+    // 409 表示重复点赞或取消点赞（状态冲突）
+    if (error.response?.status === 409) {
+      const msg = error.response.data?.message || (action === 'like' ? '您已点过赞了' : '您还未点过赞');
+      ElMessage.warning(msg);
+    } else {
+      ElMessage.error(error.message || '操作失败，请稍后重试');
+    }
   }
 };
 
@@ -984,6 +965,8 @@ const changeSort = async (sortType) => {
 };
 
 const toggleLike = async (post) => {
+  // 阻止事件冒泡，避免触发话题详情的点击事件
+  event?.stopPropagation();
   await likeTopic(post.id);
 };
 
@@ -2256,9 +2239,17 @@ onUnmounted(() => {
   background: #e3f2fd;
 }
 
-.action-btn.liked {
-  background: #ffebee;
-  color: #f44336;
+/* 点赞按钮特殊样式 - 已点赞状态 */
+.action-btn.like-btn.liked {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+  transform: translateY(-2px);
+}
+
+.action-btn.like-btn.liked:hover {
+  background: linear-gradient(135deg, #ff5252 0%, #e04563 100%);
+  box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5);
 }
 
 .post-content p {

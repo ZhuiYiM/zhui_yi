@@ -179,9 +179,6 @@
               >
                 {{ topic.interactions.isCollected ? '⭐' : '☆' }} 收藏
               </button>
-              <button @click="shareTopic" class="interact-btn share">
-                ↗️ 分享
-              </button>
             </div>
           </footer>
         </article>

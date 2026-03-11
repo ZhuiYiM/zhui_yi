@@ -166,7 +166,6 @@
     <PublishTopicModal
         v-model:visible="showPublishModal"
         :userId="currentUser?.id"
-        :share-info="shareInfo"
         @published="handlePublished"
         @closed="handleModalClosed"
     />
@@ -208,7 +207,6 @@ const loading = ref(false);
 const showPublishModal = ref(false);
 const showImagePreview = ref(false);
 const previewImageUrl = ref('');
-const shareInfo = ref(null); // 分享信息
 
 // 刷新相关数据
 const contentWrapper = ref(null);
@@ -678,28 +676,6 @@ onMounted(async () => {
   
   // 检查是否从分享跳转而来
   handleShareFromQuery();
-  
-  // 读取 sessionStorage 中的分享数据
-  const storedShareData = sessionStorage.getItem('shareData');
-  if (storedShareData) {
-    try {
-      const shareData = JSON.parse(storedShareData);
-      shareInfo.value = {
-        originalTopicId: shareData.originalTopicId,
-        content: shareData.content,
-        author: shareData.author
-      };
-      console.log('📋 读取到分享数据:', shareInfo.value);
-      
-      // 自动打开发布弹窗
-      showPublishModal.value = true;
-      
-      // 清除 sessionStorage（避免重复使用）
-      sessionStorage.removeItem('shareData');
-    } catch (error) {
-      console.error('解析分享数据失败:', error);
-    }
-  }
 });
 
 onUnmounted(() => {

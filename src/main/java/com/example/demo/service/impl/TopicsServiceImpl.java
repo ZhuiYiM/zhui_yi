@@ -1060,18 +1060,6 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
            tagInfo.put("code", code);
            tagInfo.put("name", code); // TODO: 从数据库查询名称
            tagInfo.put("category", "tech"); // TODO: 从数据库查询分类
-           
-           // 如果是分享标签，尝试从内容中提取原话题 ID
-           if ("share".equals(code) && content != null && !content.isEmpty()) {
-               // 匹配 <!--FORWARD_FROM:123--> 格式
-               java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("<!--FORWARD_FROM:(\\d+)-->");
-               java.util.regex.Matcher matcher = pattern.matcher(content);
-               if (matcher.find()) {
-                   String topicId = matcher.group(1);
-                   tagInfo.put("topicId", Long.parseLong(topicId));
-               }
-           }
-           
            result.add(tagInfo);
         }
        return result;
@@ -1080,69 +1068,5 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
     // 重载方法，保持向后兼容
     private List<Map<String, Object>> buildLevel4TagInfos(List<String> codes) {
         return buildLevel4TagInfos(codes, null);
-    }
-    
-    @Override
-    public ApiResult generateShareUrl(Long topicId, HttpServletRequest request) {
-        try {
-            Topics topic = this.getById(topicId);
-            if (topic == null || topic.getStatus() != 1) {
-                return ApiResult.error(404, "话题不存在");
-            }
-            
-            // 获取基础 URL（从请求中获取域名）
-            String baseUrl = request.getScheme() + "://" + request.getServerName();
-            int port = request.getServerPort();
-            if (("http".equals(request.getScheme()) && port != 80) || 
-                ("https".equals(request.getScheme()) && port != 443)) {
-                baseUrl += ":" + port;
-            }
-            
-            // 构建分享链接
-            String shareUrl = baseUrl + "/topic/" + topicId;
-            
-            // 获取作者信息
-            User author = userMapper.selectById(topic.getUserId());
-            String title = topic.getTitle();
-            String description = topic.getContent().length() > 100 ? 
-                topic.getContent().substring(0, 100) + "..." : topic.getContent();
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("shareUrl", shareUrl);
-            result.put("title", title);
-            result.put("description", description);
-            result.put("imageUrl", author != null ? author.getAvatarUrl() : null);
-            result.put("shareType", "topic");
-            result.put("targetId", topicId);
-            
-            return ApiResult.success(result);
-        } catch (Exception e) {
-            return ApiResult.error(500, "生成分享链接失败：" + e.getMessage());
-        }
-    }
-    
-    @Override
-    public ApiResult getShareInfo(Long topicId) {
-        try {
-            Topics topic = this.getById(topicId);
-            if (topic == null || topic.getStatus() != 1) {
-                return ApiResult.error(404, "话题不存在");
-            }
-            
-            // 获取作者信息
-            User author = userMapper.selectById(topic.getUserId());
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("id", topicId);
-            result.put("title", topic.getTitle());
-            result.put("content", topic.getContent());
-            result.put("author", author != null ? author.getUsername() : "未知用户");
-            result.put("avatarUrl", author != null ? author.getAvatarUrl() : null);
-            result.put("shareType", "topic");
-            
-            return ApiResult.success(result);
-        } catch (Exception e) {
-            return ApiResult.error(500, "获取分享信息失败：" + e.getMessage());
-        }
     }
 }

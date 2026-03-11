@@ -84,21 +84,6 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  // 是否为分享模式
-  isShareMode: {
-    type: Boolean,
-    default: false
-  },
-  // 分享信息
-  shareInfo: {
-    type: Object,
-    default: null
-  },
-  // 是否只读内容（分享模式下使用）
- readonlyContent: {
-    type: Boolean,
-    default: false
-  },
   // 当前用户 ID
   userId: {
     type: [Number, String],
@@ -107,7 +92,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['update:visible', 'published', 'closed', 'update:shareInfo']);
+const emit = defineEmits(['update:visible', 'published', 'closed']);
 
 // 本地数据
 const localContent = ref('');
@@ -122,39 +107,6 @@ const publishing = ref(false);
 const canPublish = ref(true);
 const tagSelectorRef = ref(null);
 
-// 初始化时检查 sessionStorage 中的分享数据
-const initShareData = () => {
-  const shareDataStr = sessionStorage.getItem('shareData');
-  if (shareDataStr) {
-    try {
-      const shareData = JSON.parse(shareDataStr);
-      if (shareData.sourceType === 'topic') {
-        // 构建分享内容格式（移除原文链接）
-        const shareContent = `【分享自话题】@${shareData.author}：${shareData.content.substring(0, 100)}${shareData.content.length > 100 ? '...' : ''}`;
-        localContent.value = shareContent;
-        
-        console.log('📦 初始化分享数据:', shareData);
-        
-        // 设置分享信息用于显示
-        emit('update:shareInfo', {
-          author: shareData.author,
-          sourceType: shareData.sourceType,
-          sourceId: shareData.sourceId,
-          originalTopicId: shareData.originalTopicId // 传递原话题 ID
-        });
-        
-        // 清除 sessionStorage（避免重复使用）
-        sessionStorage.removeItem('shareData');
-      }
-    } catch (error) {
-      console.error('解析分享数据失败:', error);
-    }
-  }
-};
-
-// 组件挂载时立即初始化分享数据
-initShareData();
-
 // 监听初始内容变化
 watch(() => props.initialContent, (newVal) => {
   if (newVal) {
@@ -162,36 +114,9 @@ watch(() => props.initialContent, (newVal) => {
   }
 }, { immediate: true });
 
-// 监听 visible 变化，处理分享数据
+// 监听 visible 变化，关闭弹窗时清空内容
 watch(() => props.visible, (newVal) => {
-  if (newVal && !localContent.value) {
-    // 只有在没有内容时才从 sessionStorage 读取（防止重复）
-    const shareDataStr = sessionStorage.getItem('shareData');
-    if (shareDataStr && !props.isShareMode) {
-      try {
-        const shareData = JSON.parse(shareDataStr);
-        if (shareData.sourceType === 'topic') {
-          // 构建分享内容格式（移除原文链接）
-          const shareContent = `【分享自话题】@${shareData.author}：${shareData.content.substring(0, 100)}${shareData.content.length > 100 ? '...' : ''}`;
-          localContent.value = shareContent;
-          
-          // 设置分享信息用于显示
-          emit('update:shareInfo', {
-            author: shareData.author,
-            sourceType: shareData.sourceType,
-            sourceId: shareData.sourceId,
-            originalTopicId: shareData.originalTopicId // 传递原话题 ID
-          });
-        }
-      } catch (error) {
-        console.error('解析分享数据失败:', error);
-      }
-    } else {
-      // 不是分享模式或没有分享数据时，清空内容
-      localContent.value = '';
-    }
-  } else if (!newVal) {
-    // 关闭弹窗时清空内容
+  if (!newVal) {
     localContent.value = '';
   }
 });
@@ -259,64 +184,24 @@ const handlePublish = async () => {
     // 获取选中的标签
     const selectedTagsData = tagSelectorRef.value?.getSelectedTags();
     
-    // 检测是否为分享内容
-    const isShareContent = localContent.value.includes('【分享自话题】');
-    
-    console.log('🔍 检测分享模式:', {
-      isShareContent,
-      content: localContent.value.substring(0, 50) + '...',
-      originalTopicId: props.shareInfo?.originalTopicId
-    });
-    
-    // 如果是分享内容，自动添加"转发"二级标签和"分享"四级标签（固定选项）
-    let level2Tags = (selectedTagsData.level2 || []).map(t => t.code);
-    let level4Tags = (selectedTagsData.level4 || []).map(t => t.code);
-    
-    if (isShareContent) {
-      // 强制添加"转发"二级标签
-      if (!level2Tags.includes('forward')) {
-        level2Tags.unshift('forward'); // 添加到最前面
-      }
-      // 强制添加"分享"四级标签
-      if (!level4Tags.includes('share')) {
-        level4Tags.unshift('share'); // 添加到最前面
-      }
-    }
-    
     // 构建请求数据
-    let finalContent = localContent.value;
-    
-    // 如果是分享模式且有原话题 ID，将其附加到内容末尾（隐藏格式）
-    const originalTopicId = props.shareInfo?.originalTopicId;
-    if (isShareContent && originalTopicId) {
-      console.log('📝 分享模式，原话题 ID:', originalTopicId);
-      // 在内容末尾添加特殊标记，便于后续提取
-      finalContent = localContent.value + `\n\n<!--FORWARD_FROM:${originalTopicId}-->`;
-      console.log('📝 最终发布内容:', finalContent);
-    } else if (isShareContent && !originalTopicId) {
-      console.warn('⚠️ 检测到分享模式但没有原话题 ID，可能导致无法跳转');
-    }
-    
     const topicData = {
-      content: finalContent,
+      content: localContent.value,
       images: localImages.value,
       level1TagCode: selectedTagsData.level1?.code || null,
-      level2TagCodes: level2Tags,
+      level2TagCodes: (selectedTagsData.level2 || []).map(t => t.code),
       level3TagCodes: (selectedTagsData.level3 || []).map(t => t.code),
-      level4TagCodes: level4Tags,
+      level4TagCodes: (selectedTagsData.level4 || []).map(t => t.code),
       anonymous: false
     };
 
-    console.log('📤 发布话题，数据:', topicData);
-    
     const response = await topicAPI.createTopic(topicData);
     
-    if (response.data) {
-      ElMessage.success('发布成功!');
-      emit('published', response.data);
-      // 确保关闭弹窗
-      handleClose();
-    }
+    // 发布成功（request.js 拦截器已经处理了标准响应，直接返回的是 data 字段）
+    ElMessage.success('发布成功!');
+    emit('published', response.data || response);
+    // 确保关闭弹窗
+    handleClose();
   } catch(error) {
     console.error('❌ 发布失败:', error);
     if (error.response?.data?.message) {
@@ -465,49 +350,6 @@ const handlePublish = async () => {
   border-color: #4A90E2;
   color: #4A90E2;
   background: #f0f7ff;
-}
-
-.share-info-box {
-  display: flex;
-  gap: 15px;
-  padding: 15px;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
-  border-radius: 8px;
-  border-left: 4px solid #4A90E2;
-  margin-top: 15px;
-}
-
-.info-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.info-content {
-  flex: 1;
-}
-
-.info-title {
-  margin: 0 0 8px 0;
-  font-weight: 600;
-  color: #333;
-  font-size: 14px;
-}
-
-.info-text {
-  margin: 0 0 6px 0;
-  color: #666;
-  font-size: 13px;
-  
-  strong {
-    color: #4A90E2;
-  }
-}
-
-.info-hint {
-  margin: 0;
-  color: #999;
-  font-size: 12px;
-  font-style: italic;
 }
 
 .modal-footer {

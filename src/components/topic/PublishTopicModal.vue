@@ -41,6 +41,7 @@
             v-model="selectedTags"
             :auto-select-level1="true"
             :read-only-level1="true"
+            :is-share-mode="isShareMode"
             :userId="userId"
             @change="handleTagChange"
           />
@@ -88,6 +89,21 @@ const props = defineProps({
   userId: {
     type: [Number, String],
     default: null
+  },
+  // 是否为转发模式
+  isShareMode: {
+    type: Boolean,
+    default: false
+  },
+  // 分享信息
+  shareInfo: {
+    type: Object,
+    default: null
+  },
+  // 是否只读内容
+  readonlyContent: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -194,6 +210,12 @@ const handlePublish = async () => {
       level4TagCodes: (selectedTagsData.level4 || []).map(t => t.code),
       anonymous: false
     };
+    
+    // 如果是转发模式，添加转发相关字段
+    if (props.isShareMode && props.shareInfo) {
+      topicData.isForwarded = true;
+      topicData.forwardedFromTopicId = parseInt(props.shareInfo.sourceId);
+    }
 
     const response = await topicAPI.createTopic(topicData);
     
@@ -350,6 +372,52 @@ const handlePublish = async () => {
   border-color: #4A90E2;
   color: #4A90E2;
   background: #f0f7ff;
+}
+
+/* 分享信息提示框 */
+.share-info-box {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+  border: 2px solid #4A90E2;
+  border-radius: 8px;
+}
+
+.info-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.info-content {
+  flex: 1;
+}
+
+.info-title {
+  font-weight: 600;
+  color: #000000; /* 修改为黑色 */
+  margin: 0 0 8px 0;
+  font-size: 1rem;
+}
+
+.info-text {
+  color: #000000; /* 修改为黑色 */
+  margin: 0 0 6px 0;
+  font-size: 0.95rem;
+}
+
+.info-text strong {
+  color: #4A90E2;
+  font-weight: 600;
+}
+
+.info-hint {
+  color: #000000; /* 修改为黑色 */
+  margin: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+  opacity: 0.8;
 }
 
 .modal-footer {

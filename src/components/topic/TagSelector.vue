@@ -43,6 +43,14 @@
         <span class="required">*</span> 话题分类
         <span class="hint">(最多选 3 个)</span>
       </label>
+      
+      <!-- 只读的转发标签 -->
+      <div v-if="isShareMode" class="readonly-forward-tag">
+        <span class="tag-icon">🔁</span>
+        <span class="tag-name">转发</span>
+        <span class="tag-hint">（该标签为系统自动添加，不可修改）</span>
+      </div>
+      
       <div class="tag-options multi-select">
         <div
           v-for="tag in level2Tags"
@@ -192,7 +200,8 @@ const props = defineProps({
   showLevel4: { type: Boolean, default: true },
   autoSelectLevel1: { type: Boolean, default: false }, // 是否自动选择一级标签
   readOnlyLevel1: { type: Boolean, default: false }, // 一级标签是否只读
-  userId: { type: Number, default: null }
+  userId: { type: Number, default: null },
+  isShareMode: { type: Boolean, default: false } // 是否为分享模式
 });
 
 // Emit
@@ -990,4 +999,32 @@ defineExpose({
   border-color: #ff9800;
 }
 
+/* 只读的转发标签样式 */
+.readonly-forward-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+  border: 2px solid #4A90E2;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.tag-icon {
+  font-size: 1.3rem;
+}
+
+.tag-name {
+  font-weight: 600;
+  color: #4A90E2;
+}
+
+.tag-hint {
+  color: #999;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-left: auto;
+}
 </style>

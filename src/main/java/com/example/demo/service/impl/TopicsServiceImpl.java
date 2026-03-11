@@ -104,11 +104,20 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             topic.setImages(convertListToJson(topicDTO.getImages()));
             topic.setTags(convertListToJson(topicDTO.getTags()));
                 
-            // ✅ 设置自动识别的一级标签
+            // 设置自动识别的一级标签
             topic.setLevel1TagCode(level1TagCode);
             topic.setLevel2TagCodes(convertListToJson(topicDTO.getLevel2TagCodes()));
             topic.setLevel3TagCodes(convertListToJson(topicDTO.getLevel3TagCodes()));
             topic.setLevel4TagCodes(convertListToJson(topicDTO.getLevel4TagCodes()));
+            
+            // 处理转发逻辑
+            if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded() && 
+                topicDTO.getForwardedFromTopicId() != null) {
+                topic.setIsForwarded(true);
+                topic.setForwardedFromTopicId(topicDTO.getForwardedFromTopicId());
+            } else {
+                topic.setIsForwarded(false);
+            }
                 
             topic.setLikesCount(0);
             topic.setCommentsCount(0);
@@ -341,24 +350,23 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             result.put("images", parseJsonToList(topic.getImages()));
             result.put("tags", parseJsonToList(topic.getTags()));
             
-            // 添加分级标签信息
+            // 添加分级标签信息 - 直接返回字符串数组
             result.put("level1TagCode", topic.getLevel1TagCode());
             result.put("level2TagCodes", parseJsonToList(topic.getLevel2TagCodes()));
             result.put("level3TagCodes", parseJsonToList(topic.getLevel3TagCodes()));
             result.put("level4TagCodes", parseJsonToList(topic.getLevel4TagCodes()));
             
-            // 构建完整的标签对象（包含 name 和 code）
-            Map<String, Object> tagsObject = new HashMap<>();
-            tagsObject.put("level2Tags", buildLevel2TagInfos(parseJsonToList(topic.getLevel2TagCodes())));
-            tagsObject.put("level3Tags", buildLevel3TagInfos(parseJsonToList(topic.getLevel3TagCodes())));
-            tagsObject.put("level4Tags", buildLevel4TagInfos(parseJsonToList(topic.getLevel4TagCodes()), topic.getContent()));
-            result.put("tagsObject", tagsObject);
+            // 移除 tagsObject，避免返回 Map 对象导致前端类型转换错误
+            // 前端可以直接使用 level2TagCodes、level3TagCodes、level4TagCodes 字符串数组
             
             result.put("likesCount", topic.getLikesCount());
             result.put("commentsCount", topic.getCommentsCount());
             result.put("viewsCount", topic.getViewsCount());
             result.put("collectionsCount", topic.getCollectionsCount());
             result.put("isEssence", topic.getIsEssence());
+            result.put("isTop", topic.getIsTop() != null ? topic.getIsTop() : 0);
+            result.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
+            result.put("forwardedFromTopicId", topic.getForwardedFromTopicId());
             result.put("createdAt", topic.getCreatedAt());
             result.put("isLiked", isLiked);
             result.put("isCollected", isCollected);
@@ -370,6 +378,9 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
                 authorInfo.put("realName", author.getRealName());
                 authorInfo.put("avatarUrl", author.getAvatarUrl());
                 authorInfo.put("studentId", author.getStudentId());
+                // 添加 level1Tag 字段
+                String level1Tag = determineUserLevel1Tag(author);
+                authorInfo.put("level1Tag", level1Tag);
                 result.put("author", authorInfo);
             }
             
@@ -681,11 +692,11 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         map.put("images", parseJsonToList(topic.getImages()));
         map.put("tags", parseJsonToList(topic.getTags()));
         
-        // 添加分级标签
-        map.put("level1Tag", buildLevel1TagInfo(topic.getLevel1TagCode()));
-        map.put("level2Tags", buildLevel2TagInfos(parseJsonToList(topic.getLevel2TagCodes())));
-        map.put("level3Tags", buildLevel3TagInfos(parseJsonToList(topic.getLevel3TagCodes())));
-        map.put("level4Tags", buildLevel4TagInfos(parseJsonToList(topic.getLevel4TagCodes()), topic.getContent()));
+            // 添加分级标签 - 直接返回字符串数组，不使用 Map
+        
+        // 添加转发信息（始终返回，即使为 false）
+        map.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
+        map.put("forwardedFromTopicId", topic.getForwardedFromTopicId());
         
         map.put("likesCount", topic.getLikesCount());
         map.put("commentsCount", topic.getCommentsCount());
@@ -898,6 +909,10 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         // 添加身份信息
         Map<String, Object> identityInfo = buildIdentityInfo(author);
         authorInfo.put("identity", identityInfo);
+        
+        // 直接添加 level1Tag 字段，方便前端读取
+        String level1Tag = determineUserLevel1Tag(author);
+        authorInfo.put("level1Tag", level1Tag);
         
         return authorInfo;
     }

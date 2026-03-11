@@ -308,23 +308,6 @@ public class TopicsController {
     }
     
     /**
-     * 生成分享链接
-     */
-    @PostMapping("/{id}/share-url")
-    public ApiResult generateShareUrl(@PathVariable Long id,
-                                     HttpServletRequest request) {
-        return topicsService.generateShareUrl(id, request);
-    }
-    
-    /**
-     * 获取分享信息
-     */
-    @GetMapping("/{id}/share-info")
-    public ApiResult getShareInfo(@PathVariable Long id) {
-        return topicsService.getShareInfo(id);
-    }
-
-    /**
      * 从请求中提取用户 ID 的辅助方法
      */
     private Long extractUserIdFromRequest(HttpServletRequest request) {

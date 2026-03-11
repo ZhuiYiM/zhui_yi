@@ -165,6 +165,8 @@
     <!-- 发布话题模态框 -->
     <PublishTopicModal
         v-model:visible="showPublishModal"
+        :is-share-mode="shareInfo !== null"
+        :share-info="shareInfo"
         :userId="currentUser?.id"
         @published="handlePublished"
         @closed="handleModalClosed"
@@ -207,6 +209,9 @@ const loading = ref(false);
 const showPublishModal = ref(false);
 const showImagePreview = ref(false);
 const previewImageUrl = ref('');
+
+// 分享相关
+const shareInfo = ref(null);
 
 // 刷新相关数据
 const contentWrapper = ref(null);
@@ -351,6 +356,8 @@ const fetchTopicsWithFilters = async () => {
         isLiked: false,
         isTop: topic.isTop || 0,
         isEssence: topic.isEssence || 0,
+        isForwarded: topic.isForwarded || false, // 添加转发标识
+        forwardedFromTopicId: topic.forwardedFromTopicId || null, // 添加被转发的话题 ID
         createdAt: topic.createdAt,
         author: {
           id: topic.author.id,
@@ -365,6 +372,12 @@ const fetchTopicsWithFilters = async () => {
         level3Tags: topic.level3Tags || [],
         level4Tags: topic.level4Tags || []
       }));
+      
+      // 调试：打印转发相关字段
+      if (posts.value.length > 0) {
+        // 检查是否有转发话题
+        const forwardedTopics = posts.value.filter(p => p.isForwarded);
+      }
       
       totalPosts.value = topicsData.total || 0;
     }
@@ -654,12 +667,24 @@ const loadMoreTopics = async () => {
 const handleShareFromQuery = () => {
   const routeParams = router.currentRoute.value.query;
   if (routeParams.from === 'share' && routeParams.sourceType === 'topic' && routeParams.sourceId) {
-    // 打开分享弹窗
-    setTimeout(() => {
-      showPublishModal.value = true;
-      // 清理 URL 参数
-      router.replace({ query: {} });
-    }, 500);
+    // 从 sessionStorage 获取分享数据
+    const shareData = sessionStorage.getItem('shareData');
+    if (shareData) {
+      try {
+        const parsedData = JSON.parse(shareData);
+        shareInfo.value = parsedData;
+        
+        // 打开分享弹窗
+        setTimeout(() => {
+          showPublishModal.value = true;
+          // 清理 URL 参数
+          router.replace({ query: {} });
+        }, 500);
+      } catch (error) {
+        console.error('解析分享数据失败:', error);
+        ElMessage.error('分享数据加载失败');
+      }
+    }
   }
 };
 

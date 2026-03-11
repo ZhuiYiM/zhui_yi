@@ -29,4 +29,8 @@ public class TopicCreateDTO {
     private List<String> level2TagCodes;  // 二级标签代码列表
     private List<String> level3TagCodes;  // 三级标签代码列表
     private List<String> level4TagCodes;  // 四级标签代码列表
+    
+    // 转发相关字段
+    private Boolean isForwarded;  // 是否为转发话题
+    private Long forwardedFromTopicId;  // 被转发的话题 ID（如果是转发）
 }

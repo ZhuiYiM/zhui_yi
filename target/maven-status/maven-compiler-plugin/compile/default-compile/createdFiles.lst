@@ -17,6 +17,7 @@ com\example\demo\service\impl\TopicCommentsServiceImpl.class
 com\example\demo\entity\DefaultPrivacyLevel.class
 com\example\demo\entity\PrivacySetting.class
 com\example\demo\entity\Tags.class
+com\example\demo\entity\dto\ShareRequestDTO.class
 com\example\demo\mapper\LocationMapper.class
 com\example\demo\entity\dto\IdentityInfoDTO.class
 com\example\demo\mapper\MessageMapper.class
@@ -131,4 +132,5 @@ com\example\demo\common\Result.class
 com\example\demo\controller\ProductController.class
 com\example\demo\service\impl\TagServiceImpl.class
 com\example\demo\mapper\UserMapper.class
+com\example\demo\entity\dto\ShareResponseDTO.class
 com\example\demo\entity\TopicTags.class

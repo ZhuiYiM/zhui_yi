@@ -43,10 +43,14 @@ public class Topics {
         
     private Integer isEssence; // 是否精华 0-否，1-是
     
-    private Integer isTop; // 是否置顶 0-否, 1-是
-    
-    private Integer status; // 状态 1-正常, 0-删除
-    
+    private Integer isTop; // 是否置顶 0-否，1-是
+        
+    private Integer status; // 状态 1-正常，0-删除
+        
+    // 转发相关字段
+    private Boolean isForwarded; // 是否为转发话题
+    private Long forwardedFromTopicId; // 被转发的话题 ID
+        
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;

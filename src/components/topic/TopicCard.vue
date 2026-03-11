@@ -36,19 +36,12 @@
     <div class="post-content">
       <p>{{ post.content }}</p>
 
-      <!-- 被转发的话题引用 -->
-      <div v-if="forwardedTopic" class="forwarded-topic-card" @click.stop="viewForwardedTopic">
-        <div class="forwarded-topic-header">
-          <span class="forwarded-icon">📝</span>
-          <span class="forwarded-label">转发自</span>
-          <span class="forwarded-author">@{{ forwardedTopic.authorName }}</span>
-        </div>
-        <p class="forwarded-topic-content">{{ forwardedTopic.content }}</p>
-        <div class="forwarded-topic-footer">
-          <span class="forwarded-topic-time">{{ formatTime(forwardedTopic.createdAt) }}</span>
-          <span class="forwarded-topic-link">点击查看原话题 →</span>
-        </div>
-      </div>
+      <!-- 被转发的话题引用（使用新组件） -->
+      <ForwardedTopicCard
+        v-if="post.isForwarded && post.forwardedFromTopicId"
+        :forwarded-from-topic-id="post.forwardedFromTopicId"
+        @click="(topicId) => emit('view-forwarded-topic', topicId)"
+      />
 
       <!-- 图片展示 -->
       <div v-if="post.images && post.images.length > 0" class="post-images">
@@ -123,6 +116,7 @@
 import { computed, ref } from 'vue';
 import { topicAPI } from '@/api/topic';
 import { ElMessage } from 'element-plus';
+import ForwardedTopicCard from './ForwardedTopicCard.vue';
 
 // Props
 const props = defineProps({
@@ -468,81 +462,4 @@ const handleAvatarHover= (event, userId) => {
   border: 1px solid #e4e7ed;
 }
 
-/* 被转发的话题卡片 */
-.forwarded-topic-card {
-  margin: 15px 0;
-  padding: 15px;
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  border-left: 4px solid #4A90E2;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.forwarded-topic-card:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
-  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-}
-
-.forwarded-topic-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: #666;
-}
-
-.forwarded-icon {
-  font-size: 16px;
-}
-
-.forwarded-label {
-  font-weight: 500;
-}
-
-.forwarded-author {
-  color: #4A90E2;
-  font-weight: 600;
-}
-
-.forwarded-topic-content {
-  margin: 10px 0;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #555;
-  max-height: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-.forwarded-topic-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  font-size: 12px;
-  color: #999;
-}
-
-.forwarded-topic-time {
-  font-style: italic;
-}
-
-.forwarded-topic-link {
-  color: #4A90E2;
-  font-weight: 600;
-  transition: color 0.3s;
-}
-
-.forwarded-topic-link:hover {
-  color: #357ABD;
-}
 </style>

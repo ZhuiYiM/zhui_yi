@@ -486,19 +486,12 @@ const loadUserTopics = async () => {
   const likedData = likedRes.data || likedRes;
   const collectedData = collectedRes.data || collectedRes;
     
-    publishedTopics.value = (publishedData.topics || publishedData.data?.topics || []);
+   publishedTopics.value = (publishedData.topics || publishedData.data?.topics || []);
     participatedTopics.value = (participatedData.topics || participatedData.data?.topics || []);
     likedTopics.value = (likedData.topics || likedData.data?.topics || []);
     
-    // 收藏的话题数据结构不同，需要转换
-  if (collectedData.collections && Array.isArray(collectedData.collections)) {
-   collectedTopics.value = collectedData.collections.map(col => ({
-      ...col.topic,
-    collectedAt: col.collectedAt
-    }));
-   } else {
-   collectedTopics.value = [];
-   }
+    // 收藏的话题数据结构 - 直接是 topics 数组
+ collectedTopics.value = (collectedData.topics || collectedData.data?.topics || []);
     
   console.log('📋 发布的话题数量:', publishedTopics.value.length);
   console.log('📋 参与的话题数量:', participatedTopics.value.length);
@@ -506,13 +499,13 @@ const loadUserTopics = async () => {
   console.log('📋 收藏的话题数量:', collectedTopics.value.length);
   } catch (error) {
   console.error('❌ 加载话题失败:', error);
-   ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
-    publishedTopics.value = [];
+  ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
+   publishedTopics.value = [];
     participatedTopics.value = [];
     likedTopics.value = [];
   collectedTopics.value = [];
   } finally {
-   topicsLoading.value = false;
+  topicsLoading.value = false;
   }
 };
 

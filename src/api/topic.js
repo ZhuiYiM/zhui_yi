@@ -143,5 +143,15 @@ export const topicAPI = {
     // 获取平台统计
     getStats() {
         return request.get('/topics/stats');
+    },
+    
+    // 生成分享链接
+    generateShareUrl(topicId) {
+        return request.post(`/topics/${topicId}/share-url`);
+    },
+    
+    // 获取分享信息
+    getShareInfo(topicId) {
+        return request.get(`/topics/${topicId}/share-info`);
     }
 };

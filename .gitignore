@@ -68,3 +68,14 @@ __vue-devtools__
 *.tmp
 *.temp
 ~*
+
+# Maven
+target/
+*.class
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.propertie

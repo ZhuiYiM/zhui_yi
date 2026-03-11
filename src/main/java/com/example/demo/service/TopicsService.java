@@ -79,13 +79,23 @@ public interface TopicsService extends IService<Topics> {
      */
     ApiResult getUserCollections(Long userId, Integer page, Integer size);
    
-   /**
-    * 获取用户点赞的话题列表
-    */
-   ApiResult getUserLikedTopics(Long userId, Integer page, Integer size);
-    
+    /**
+     * 获取用户点赞的话题列表
+     */
+    ApiResult getUserLikedTopics(Long userId, Integer page, Integer size);
+   
     /**
      * 根据多级标签筛选话题
      */
     ApiResult filterTopics(TopicQueryDTO queryDTO);
+    
+    /**
+     * 生成分享链接
+     */
+    ApiResult generateShareUrl(Long topicId, HttpServletRequest request);
+    
+    /**
+     * 获取分享信息
+     */
+    ApiResult getShareInfo(Long topicId);
 }

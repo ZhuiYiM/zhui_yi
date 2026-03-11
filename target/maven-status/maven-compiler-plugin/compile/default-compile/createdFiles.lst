@@ -55,7 +55,6 @@ com\example\demo\mapper\TopicTagsMapper.class
 com\example\demo\service\TagService.class
 com\example\demo\entity\dto\DeviceDTO.class
 com\example\demo\entity\Product.class
-com\example\demo\controller\TopicController.class
 com\example\demo\entity\dto\UserProfileDTO.class
 com\example\demo\entity\TagLevel4.class
 com\example\demo\service\FileUploadService.class

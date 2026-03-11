@@ -53,9 +53,11 @@ public class TopicsController {
      * 获取话题详情
      */
     @GetMapping("/{id}")
-    public ApiResult getTopicDetail(@PathVariable Long id,
-                                @RequestParam(required = false) Long userId) {
-        return topicsService.getTopicDetail(id, userId);
+  public ApiResult getTopicDetail(@PathVariable Long id,
+                                HttpServletRequest request) {
+        // 从请求头中提取 userId（如果已登录）
+        Long userId = extractUserIdFromRequest(request);
+   return topicsService.getTopicDetail(id, userId);
     }
 
     /**
@@ -180,42 +182,42 @@ public class TopicsController {
      * 收藏/取消收藏话题
      */
     @PostMapping("/{id}/collect")
-    public ApiResult toggleTopicCollect(@PathVariable Long id,
+  public ApiResult toggleTopicCollect(@PathVariable Long id,
                                        HttpServletRequest request) {
-        Long userId = extractUserIdFromRequest(request);
-        if (userId == null || userId == 0L) {
-            return ApiResult.error(401, "用户未登录");
-        }
-        return topicsService.toggleTopicCollect(id, userId);
+       Long userId = extractUserIdFromRequest(request);
+       if (userId == null || userId == 0L) {
+         return ApiResult.error(401, "用户未登录");
+       }
+   return topicsService.toggleTopicCollect(id, userId);
     }
         
     /**
-     * 获取用户收藏列表
+     * 获取用户收藏的话题列表
      */
     @GetMapping("/collections")
-    public ApiResult getUserCollections(HttpServletRequest request,
-                                       @RequestParam(defaultValue = "1") Integer page,
-                                       @RequestParam(defaultValue = "10") Integer size) {
-        Long userId = extractUserIdFromRequest(request);
-        if (userId == null || userId == 0L) {
-            return ApiResult.error(401, "用户未登录");
-        }
-        return topicsService.getUserCollections(userId, page, size);
+  public ApiResult getUserCollections(@RequestParam(defaultValue = "1") Integer page,
+                                        @RequestParam(defaultValue = "10") Integer size,
+                                        HttpServletRequest request) {
+     Long userId = extractUserIdFromRequest(request);
+     if (userId == null) {
+     return ApiResult.error(401, "用户未登录");
+     }
+ return topicsService.getUserCollections(userId, page, size);
     }
 
     /**
      * 搜索话题
      */
     @GetMapping("/search")
-    public ApiResult searchTopics(@RequestParam String q,
-                                  @RequestParam(defaultValue = "1") Integer page,
-                                  @RequestParam(defaultValue = "10") Integer size) {
-        TopicQueryDTO queryDTO = new TopicQueryDTO();
-        queryDTO.setSearch(q);
-        queryDTO.setPage(page);
-        queryDTO.setSize(size);
-        queryDTO.setSort("latest");
-        return topicsService.getTopics(queryDTO);
+  public ApiResult searchTopics(@RequestParam String q,
+                                @RequestParam(defaultValue = "1") Integer page,
+                                @RequestParam(defaultValue = "10") Integer size) {
+     TopicQueryDTO queryDTO = new TopicQueryDTO();
+     queryDTO.setSearch(q);
+     queryDTO.setPage(page);
+     queryDTO.setSize(size);
+     queryDTO.setSort("latest");
+ return topicsService.getTopics(queryDTO);
     }
 
     /**
@@ -269,33 +271,18 @@ public class TopicsController {
 
     /**
      * 根据多级标签筛选话题
-     * GET /api/topics/filter?level1=student&level2=study,life&level3=library,dorm&page=1&size=10
-     * POST /api/topics/filter (JSON body)
      */
     @GetMapping("/filter")
-    @PostMapping("/filter")
-    public ApiResult filterTopics(
-            @RequestParam(required = false) String level1,
-            @RequestParam(required = false) String level2,
-            @RequestParam(required = false) String level3,
-            @RequestBody(required = false) TopicQueryDTO requestBody,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
-        
+   public ApiResult filterTopics(@RequestParam(required = false) String level1,
+                                   @RequestParam(required = false) String level2,
+                                   @RequestParam(required = false) String level3,
+                                   @RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "10") Integer size) {
         TopicQueryDTO queryDTO = new TopicQueryDTO();
         
-        // 如果是 POST 请求，从 body 获取参数
-        if (requestBody != null) {
-            queryDTO.setLevel1Tag(requestBody.getLevel1Tag());
-            queryDTO.setLevel2Tags(requestBody.getLevel2Tags());
-            queryDTO.setLevel3Tags(requestBody.getLevel3Tags());
-            queryDTO.setPage(requestBody.getPage());
-            queryDTO.setSize(requestBody.getSize());
-            queryDTO.setSort(requestBody.getSort());
-        } else {
-            // GET 请求，从 URL 参数获取
+        if (level1 != null && !level1.trim().isEmpty()) {
             queryDTO.setLevel1Tag(level1);
-            // 将逗号分隔的字符串转为数组
+            
             if (level2 != null && !level2.trim().isEmpty()) {
                 queryDTO.setLevel2Tags(level2.split(","));
             }
@@ -307,17 +294,34 @@ public class TopicsController {
             queryDTO.setSort("latest");
         }
         
-        return topicsService.filterTopics(queryDTO);
+      return topicsService.filterTopics(queryDTO);
     }
 
     /**
      * 获取用户点赞的话题列表
      */
     @GetMapping("/users/{userId}/liked-topics")
-    public ApiResult getUserLikedTopics(@PathVariable Long userId,
+  public ApiResult getUserLikedTopics(@PathVariable Long userId,
                                         @RequestParam(defaultValue = "1") Integer page,
                                         @RequestParam(defaultValue = "10") Integer size) {
-      return topicsService.getUserLikedTopics(userId, page, size);
+   return topicsService.getUserLikedTopics(userId, page, size);
+    }
+    
+    /**
+     * 生成分享链接
+     */
+    @PostMapping("/{id}/share-url")
+    public ApiResult generateShareUrl(@PathVariable Long id,
+                                     HttpServletRequest request) {
+        return topicsService.generateShareUrl(id, request);
+    }
+    
+    /**
+     * 获取分享信息
+     */
+    @GetMapping("/{id}/share-info")
+    public ApiResult getShareInfo(@PathVariable Long id) {
+        return topicsService.getShareInfo(id);
     }
 
     /**
@@ -325,9 +329,9 @@ public class TopicsController {
      */
     private Long extractUserIdFromRequest(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
-        if (token != null && token.startsWith("Bearer ")) {
-            token = token.substring(7);
+        if (token != null && token.startsWith("Bearer")) {
+           token = token.substring(7);
         }
-        return jwtUtil.getUserIdFromToken(token) != null ? jwtUtil.getUserIdFromToken(token).longValue() : 0L;
+     return jwtUtil.getUserIdFromToken(token) != null ? jwtUtil.getUserIdFromToken(token).longValue() : 0L;
     }
 }

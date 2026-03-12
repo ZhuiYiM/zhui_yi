@@ -71,7 +71,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import TagSelector from './TagSelector.vue';
+import TagSelector from '../tag/TagSelector.vue';
 import { topicAPI } from '@/api/topic';
 
 // Props

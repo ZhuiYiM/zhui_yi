@@ -14,6 +14,8 @@ import UserProfile from "../components/user/UserProfile.vue";
 
 // 懒加载组件
 const TopicDetail = () => import('../components/topic/TopicDetail.vue');
+const ProductDetail = () => import('../components/mall/ProductDetail.vue');
+const PublishProduct = () => import('../components/mall/PublishProduct.vue');
 
 const routes = [
     {
@@ -86,6 +88,18 @@ const routes = [
         name: 'UserProfile',
         component: UserProfile,
         meta: { requiresAuth: false }  // 用户主页游客也可访问
+    },
+    {
+        path: '/product/:id',
+        name: 'ProductDetail',
+        component: ProductDetail,
+        meta: { requiresAuth: false }  // 商品详情页游客也可访问
+    },
+    {
+        path: '/publish',
+        name: 'PublishProduct',
+        component: PublishProduct,
+        meta: { requiresAuth: true }   // 发布商品需要认证
     },
     {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由

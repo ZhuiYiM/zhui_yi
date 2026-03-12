@@ -12,13 +12,13 @@
 
     <!-- 主要内容区域 -->
     <main :class="['main-content', { 'full-width': isMobile }]">
-      <!-- 头部 - 移动端显示标题在搜索栏上方 -->
+      <!-- 头部搜索栏 -->
       <header class="header">
         <h1 v-if="isMobile">交易中心</h1>
         <div class="search-bar">
           <div v-if="isMobile" class="mobile-search-header">
             <div class="user-avatar-mini">
-              <img :src="currentUser.avatar || 'https://placehold.co/24x24/4A90E2/FFFFFF?text=' + (currentUser.name?.charAt(0) || 'U')" :alt="currentUser.name">
+              <img :src="currentUser.avatar || defaultAvatar" :alt="currentUser.name">
             </div>
             <input
                 type="text"
@@ -39,6 +39,12 @@
         </div>
       </header>
 
+      <!-- 广告栏 -->
+      <AdBanner 
+        :is-mobile="isMobile" 
+        @ad-click="handleAdClick"
+      />
+
       <!-- 分类导航区域 -->
       <section class="categories-section">
         <div class="section-header">
@@ -48,8 +54,8 @@
         <!-- 移动端分类导航 -->
         <div v-if="isMobile" class="category-mobile-grid">
           <div
-              v-for="(category, index) in categories"
-              :key="'cat-' + index"
+              v-for="category in categories"
+              :key="category.id"
               class="category-mobile-item"
               @click="selectCategory(category.id)"
           >
@@ -61,8 +67,8 @@
         <!-- 桌面端分类导航 -->
         <div v-else class="category-grid">
           <div
-              v-for="(category, index) in categories"
-              :key="'cat-' + index"
+              v-for="category in categories"
+              :key="category.id"
               class="category-item"
               @click="selectCategory(category.id)"
           >
@@ -73,68 +79,81 @@
         </div>
       </section>
 
-      <!-- 热门商品/服务区域 -->
-      <section class="hot-deals-section">
+      <!-- 商品列表区域 -->
+      <section class="products-section">
         <div class="section-header">
-          <h2>热门交易</h2>
-          <button v-if="!isMobile" class="view-more-btn" @click="goToPage('hotdeals')">查看更多</button>
-          <span v-else class="view-more" @click="goToPage('hotdeals')">查看更多 ></span>
-        </div>
-
-        <!-- 移动端网格 -->
-        <div v-if="isMobile" class="hot-deals-mobile-grid">
-          <div
-              v-for="(deal, index) in hotDeals"
-              :key="'deal-' + index"
-              class="hot-deal-mobile-item"
-              @click="goToDeal(deal.id)"
-          >
-            <img :src="deal.image" :alt="deal.title" class="deal-image">
-            <div class="deal-info">
-              <h3>{{ deal.title }}</h3>
-              <p class="deal-price">¥{{ deal.price }}</p>
-              <div class="deal-meta">
-                <span class="deal-location">{{ deal.location }}</span>
-                <span class="deal-time">{{ deal.time }}</span>
-              </div>
-            </div>
+          <h2>全部商品</h2>
+          <div class="header-actions">
+            <!-- 一级标签筛选 -->
+            <el-select 
+              v-model="filters.level1Tag" 
+              placeholder="身份标签" 
+              clearable
+              @change="applyFilters"
+              class="level1-tag-filter"
+            >
+              <el-option label="全部" value="" />
+              <el-option label="学生" value="student" />
+              <el-option label="商家" value="merchant" />
+              <el-option label="管理员" value="admin" />
+              <el-option label="团体" value="organization" />
+              <el-option label="社会" value="society" />
+            </el-select>
+            
+            <button 
+              v-if="!isMobile && showFilters" 
+              class="filter-toggle-btn" 
+              @click="toggleFilters"
+            >
+              {{ showFilters ? '隐藏筛选' : '显示筛选' }}
+            </button>
+            <button class="publish-btn" @click="createNewTrade">
+              ➕ 发布商品
+            </button>
           </div>
         </div>
 
-        <!-- 桌面端网格 -->
-        <div v-else class="hot-deals-grid">
-          <div
-              v-for="(deal, index) in hotDeals"
-              :key="'deal-' + index"
-              class="hot-deal-item"
-              @click="goToDeal(deal.id)"
-          >
-            <img :src="deal.image" :alt="deal.title" class="deal-image">
-            <div class="deal-info">
-              <h3>{{ deal.title }}</h3>
-              <p class="deal-price">¥{{ deal.price }}</p>
-              <div class="deal-meta">
-                <span class="deal-location">{{ deal.location }}</span>
-                <span class="deal-time">{{ deal.time }}</span>
-              </div>
-            </div>
-          </div>
+        <!-- 筛选条件 -->
+        <div v-if="showFilters" class="filters-bar">
+          <el-select v-model="filters.categoryId" placeholder="全部分类" clearable @change="applyFilters">
+            <el-option
+              v-for="cat in categories"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.id"
+            />
+          </el-select>
+          
+          <el-select v-model="filters.sort" placeholder="排序方式" @change="applyFilters">
+            <el-option label="最新发布" value="newest" />
+            <el-option label="最热门" value="hotest" />
+            <el-option label="价格从低到高" value="price-asc" />
+            <el-option label="价格从高到低" value="price-desc" />
+          </el-select>
         </div>
+
+        <!-- 商品列表组件 -->
+        <ProductList
+          :products="displayProducts"
+          :is-mobile="isMobile"
+          :loading="productsLoading"
+          :has-more="hasMore"
+          :columns="4"
+          :mobile-columns="2"
+          :show-load-more="true"
+          empty-text="暂无相关商品"
+          @product-click="goToProduct"
+          @favorite-change="handleFavoriteChange"
+          @load-more="loadMore"
+        />
       </section>
 
-      <!-- 发布交易区域 -->
-      <section class="post-trade-section">
-        <div class="post-form">
-          <div class="post-header">
-            <img src="https://via.placeholder.com/40x40" alt="用户头像" class="avatar">
-            <span class="username">当前用户</span>
-          </div>
-          <div class="post-actions">
-            <button @click="createNewTrade('item')">📦 发布物品交易</button>
-            <button @click="createNewTrade('service')">🚗 发布服务需求</button>
-          </div>
-        </div>
-      </section>
+      <!-- 发布入口（移动端） -->
+      <div v-if="isMobile" class="mobile-fab">
+        <button @click="createNewTrade">
+          ➕ 发布
+        </button>
+      </div>
 
       <!-- 桌面端底部版权信息 -->
       <footer v-if="!isMobile" class="desktop-footer">
@@ -145,17 +164,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { productAPI } from '@/api/product';
-import { uploadAPI } from '@/api/upload';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import AdBanner from '../mall/AdBanner.vue';
+import ProductList from '../mall/ProductList.vue';
+import { productAPI } from '@/api/product';
 
-const router = useRouter(); // 创建路由实例
+const router = useRouter();
 
 // 用户信息
 const currentUser = ref(null);
+const defaultAvatar = 'https://placehold.co/24x24/4A90E2/FFFFFF?text=U';
+
+// 设备检测
+const isMobile = ref(false);
+const updateDeviceDetection = () => {
+  isMobile.value = window.innerWidth < 768;
+};
 
 // 获取用户信息
 const getUserInfo = () => {
@@ -168,171 +195,435 @@ const getUserInfo = () => {
       avatar: user.avatar || ''
     };
   } else {
-    // 未登录时设置为 null
     currentUser.value = null;
   }
 };
-
-// 设备检测相关
-const isMobile = ref(false);
-
-// 更新设备检测状态
-const updateDeviceDetection = () => {
-  isMobile.value = window.innerWidth < 768;
-};
-
-onMounted(() => {
-  updateDeviceDetection();
-  getUserInfo();
-  window.addEventListener('resize', updateDeviceDetection);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateDeviceDetection);
-});
 
 // 搜索相关
 const searchQuery = ref('');
 const performSearch = () => {
   console.log('搜索:', searchQuery.value);
-  // 实际项目中可以调用API进行搜索
+  filters.keyword = searchQuery.value;
+  fetchProducts();
 };
 
 // 分类数据
 const categories = ref([
-  {
-    id: 'items',
-    name: '二手交易',
-    description: '书籍、电子设备、生活用品等',
-    icon: '📚'
-  },
-  {
-    id: 'jobs',
-    name: '兼职平台',
-    description: '校内外兼职机会',
-    icon: '💼'
-  },
-  {
-    id: 'services',
-    name: '跑腿拼车',
-    description: '代取快递、拼车出行',
-    icon: '🚗'
-  },
-  {
-    id: 'food',
-    name: '美食外卖',
-    description: '校内外美食分享',
-    icon: '🍔'
-  },
-  {
-    id: 'other',
-    name: '其他服务',
-    description: '各类生活服务',
-    icon: '🔧'
-  }
+  { id: 1, name: '二手物品', icon: '📚', description: '书籍、电子设备等' },
+  { id: 2, name: '服务需求', icon: '🚗', description: '代取快递、跑腿' },
+  { id: 3, name: '兼职信息', icon: '💼', description: '校内外兼职' },
+  { id: 4, name: '拼车出行', icon: '🚙', description: '节假日拼车' },
+  { id: 5, name: '美食外卖', icon: '🍔', description: '美食分享' },
+  { id: 6, name: '书籍教材', icon: '📖', description: '教材、辅导书等' },
+  { id: 7, name: '电子设备', icon: '💻', description: '手机、电脑等' },
+  { id: 8, name: '生活用品', icon: '🏠', description: '日用品、家居' },
+  { id: 9, name: '代取快递', icon: '📦', description: '快递代取服务' },
+  { id: 10, name: '跑腿服务', icon: '🏃', description: '代办事项' },
+  { id: 99, name: '其他', icon: '📦', description: '其他类别' }
 ]);
 
-// 热门交易数据
-const hotDeals = ref([
-  {
-    id: 1,
-    title: '二手MacBook Pro，9成新',
-    price: 4500,
-    location: '教学楼A',
-    time: '2小时前',
-    image: 'https://via.placeholder.com/300x200/4A90E2/FFFFFF?text=MacBook+Pro'
-  },
-  {
-    id: 2,
-    title: '寻找拼车去火车站',
-    price: 30,
-    location: '南门',
-    time: '1小时前',
-    image: 'https://via.placeholder.com/300x200/50C878/FFFFFF?text=拼车'
-  },
-  {
-    id: 3,
-    title: '代取快递，校内配送',
-    price: 5,
-    location: '宿舍区',
-    time: '30分钟前',
-    image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=快递代取'
-  },
-  {
-    id: 4,
-    title: '英语四六级资料转让',
-    price: 25,
-    location: '图书馆',
-    time: '3小时前',
-    image: 'https://via.placeholder.com/300x200/9B59B6/FFFFFF?text=学习资料'
-  }
-]);
-
-// 商品数据
-const products = ref([]);
-const loading = ref(false);
-const currentPage = ref(1);
-const pageSize = ref(12);
-const totalProducts = ref(0);
-const searchParams = ref({
-  keyword: '',
-  category: '',
-  minPrice: '',
-  maxPrice: ''
+// 筛选条件
+const showFilters = ref(true);
+const filters = reactive({
+  categoryId: null,
+  level1Tag: '', // 一级标签筛选
+  sort: 'newest',
+  keyword: ''
 });
 
+const toggleFilters = () => {
+  showFilters.value = !showFilters.value;
+};
+
+const applyFilters = () => {
+  fetchProducts();
+};
+
+// 商品数据
+const productsLoading = ref(false);
+const allProducts = ref([]);
+const displayProducts = ref([]);
+const currentPage = ref(1);
+const pageSize = 12;
+const hasMore = ref(true);
+
 // 获取商品列表
-const fetchProducts = async (page = 1) => {
-  loading.value = true;
+const fetchProducts = async () => {
+  productsLoading.value = true;
   try {
     const params = {
-      page,
-      size: pageSize.value,
-      ...searchParams.value
+      page: 1,
+      size: pageSize,
+      ...filters
+    };
+    
+    console.log('🔍 获取商品列表参数:', params); // 调试日志
+    
+    const response = await productAPI.getProducts(params);
+    console.log('📦 商品列表响应:', response); // 调试日志
+    
+    if (response && response.records && response.records.length > 0) {
+      // 后端有数据，使用后端数据
+      allProducts.value = response.records.map(item => ({
+        ...item,
+        isHot: item.viewCount > 100, // 浏览量超过 100 标记为热门
+        isFavorite: false
+      }));
+      displayProducts.value = allProducts.value;
+      currentPage.value = 1;
+      hasMore.value = response.records.length === pageSize;
+      console.log('✅ 使用后端数据:', response.records.length, '个');
+    } else {
+      // 后端返回空数据，使用模拟数据
+      console.log('⚠️ 后端数据为空，加载预设测试数据');
+      loadMockProducts();
+    }
+  } catch (error) {
+    console.error('❌ 获取商品列表失败:', error);
+    ElMessage.error('获取商品列表失败，已切换至测试模式');
+    // 请求失败，使用模拟数据
+    loadMockProducts();
+  } finally {
+    productsLoading.value = false;
+  }
+};
+
+// 加载更多
+const loadMore = async () => {
+  if (!hasMore.value || productsLoading.value) return;
+  
+  productsLoading.value = true;
+  try {
+    currentPage.value++;
+    const params = {
+      page: currentPage.value,
+      size: pageSize,
+      ...filters
     };
     
     const response = await productAPI.getProducts(params);
-    products.value = response.data;
-    totalProducts.value = response.total;
-    currentPage.value = page;
+    
+    if (response && response.records) {
+      const newProducts = response.records.map(item => ({
+        ...item,
+        isHot: item.viewCount > 100,
+        isFavorite: false
+      }));
+      
+      allProducts.value = [...allProducts.value, ...newProducts];
+      displayProducts.value = allProducts.value;
+      hasMore.value = response.records.length === pageSize;
+    } else {
+      hasMore.value = false;
+    }
   } catch (error) {
-    console.error('获取商品列表失败:', error);
-    ElMessage.error('获取商品列表失败');
+    console.error('加载更多失败:', error);
+    hasMore.value = false;
   } finally {
-    loading.value = false;
+    productsLoading.value = false;
   }
 };
 
-// 搜索商品
-const searchProducts = () => {
-  fetchProducts(1);
+// 加载模拟数据（用于测试）
+const loadMockProducts = () => {
+  const now = Date.now();
+  
+  const mockData = [
+    // 二手物品
+    {
+      id: 1,
+      title: '二手 MacBook Pro，9 成新',
+      description: '2020 款，i5 处理器，16G 内存，512G SSD，电池健康度 90%，无划痕，箱说全',
+      price: 4500,
+      images: ['https://placehold.co/300x200/4A90E2/FFFFFF?text=MacBook'],
+      viewCount: 235,
+      likeCount: 18,
+      categoryId: 7, // 电子设备
+      status: 1,
+      createdAt: new Date(now - 2 * 3600 * 1000).toISOString(),
+      isHot: true,
+      seller: {
+        id: 101,
+        name: '张同学',
+        avatar: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=张',
+        level1Tag: 'student' // 学生
+      }
+    },
+    {
+      id: 2,
+      title: 'iPhone 12 二手手机',
+      description: '国行在保，128G 黑色，9 成新，轻微使用痕迹，功能完好',
+      price: 2800,
+      images: ['https://placehold.co/300x200/FF6B6B/FFFFFF?text=iPhone'],
+      viewCount: 189,
+      likeCount: 15,
+      categoryId: 7,
+      status: 1,
+      createdAt: new Date(now - 5 * 3600 * 1000).toISOString(),
+      isHot: true,
+      seller: {
+        id: 102,
+        name: '李同学',
+        avatar: 'https://placehold.co/100x100/50C878/FFFFFF?text=李',
+        level1Tag: 'student'
+      }
+    },
+    {
+      id: 3,
+      title: '高等数学教材上下册',
+      description: '同济第七版，几乎全新，有少量笔记，适合考研复习',
+      price: 25,
+      images: ['https://placehold.co/300x200/50C878/FFFFFF?text=数学教材'],
+      viewCount: 156,
+      likeCount: 8,
+      categoryId: 6, // 书籍教材
+      status: 1,
+      createdAt: new Date(now - 1.5 * 3600 * 1000).toISOString(),
+      isHot: true,
+      seller: {
+        id: 103,
+        name: '王同学',
+        avatar: 'https://placehold.co/100x100/FF6B6B/FFFFFF?text=王',
+        level1Tag: 'student'
+      }
+    },
+    {
+      id: 4,
+      title: '小米台灯护眼灯',
+      description: '买多了，全新未拆封，智能控制，三档调色',
+      price: 45,
+      images: ['https://placehold.co/300x200/FFA500/FFFFFF?text=台灯'],
+      viewCount: 98,
+      likeCount: 5,
+      categoryId: 8, // 生活用品
+      status: 1,
+      createdAt: new Date(now - 0.5 * 3600 * 1000).toISOString(),
+      isHot: false,
+      seller: {
+        id: 104,
+        name: '赵同学',
+        avatar: 'https://placehold.co/100x100/FFA500/FFFFFF?text=赵',
+        level1Tag: 'student'
+      }
+    },
+    {
+      id: 5,
+      title: '罗技 MX Master 3 鼠标',
+      description: '用了半年，功能正常，微磨损，手感依然很好',
+      price: 350,
+      images: ['https://placehold.co/300x200/9B59B6/FFFFFF?text=鼠标'],
+      viewCount: 145,
+      likeCount: 12,
+      categoryId: 7,
+      status: 1,
+      createdAt: new Date(now - 8 * 3600 * 1000).toISOString(),
+      isHot: true,
+      seller: {
+        id: 105,
+        name: '校园数码店',
+        avatar: 'https://placehold.co/100x100/9B59B6/FFFFFF?text=店',
+        level1Tag: 'merchant' // 商家
+      }
+    },
+    // 服务需求
+    {
+      id: 6,
+      title: '代取快递，校内配送',
+      description: '快速便捷，送货上门，大件小件都可接单',
+      price: 5,
+      images: ['https://placehold.co/300x200/FF6B6B/FFFFFF?text=快递代取'],
+      viewCount: 312,
+      likeCount: 25,
+      categoryId: 9, // 代取快递
+      status: 1,
+      createdAt: new Date(now - 3 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    {
+      id: 7,
+      title: '校园跑腿服务',
+      description: '代买饭、代排队、代办事项，价格面议',
+      price: 10,
+      images: ['https://placehold.co/300x200/4A90E2/FFFFFF?text=跑腿服务'],
+      viewCount: 267,
+      likeCount: 20,
+      categoryId: 10, // 跑腿服务
+      status: 1,
+      createdAt: new Date(now - 4 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    {
+      id: 8,
+      title: '电脑清灰换硅脂',
+      description: '专业工具，细心操作，让电脑重获新生',
+      price: 30,
+      images: ['https://placehold.co/300x200/50C878/FFFFFF?text=电脑维护'],
+      viewCount: 178,
+      likeCount: 14,
+      categoryId: 2, // 服务需求
+      status: 1,
+      createdAt: new Date(now - 6 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    // 兼职信息
+    {
+      id: 9,
+      title: '周末家教兼职',
+      description: '初中数理化辅导，有经验，耐心负责，周末有时间',
+      price: 100,
+      images: ['https://placehold.co/300x200/FF9500/FFFFFF?text=家教'],
+      viewCount: 423,
+      likeCount: 35,
+      categoryId: 3,
+      status: 1,
+      createdAt: new Date(now - 10 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    {
+      id: 10,
+      title: '图书馆整理员',
+      description: '学校图书馆招聘学生助理，工作时间灵活',
+      price: 15,
+      images: ['https://placehold.co/300x200/4A90E2/FFFFFF?text=图书馆'],
+      viewCount: 389,
+      likeCount: 28,
+      categoryId: 3,
+      status: 1,
+      createdAt: new Date(now - 12 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    // 拼车出行
+    {
+      id: 11,
+      title: '寻找拼车去火车站',
+      description: '本周五下午出发，还有 2 个空位',
+      price: 30,
+      images: ['https://placehold.co/300x200/50C878/FFFFFF?text=拼车'],
+      viewCount: 201,
+      likeCount: 16,
+      categoryId: 4,
+      status: 1,
+      createdAt: new Date(now - 1 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    {
+      id: 12,
+      title: '清明节回家拼车',
+      description: '4 月 3 日上午出发，目的地市区，可送到小区',
+      price: 50,
+      images: ['https://placehold.co/300x200/FF6B6B/FFFFFF?text=清明拼车'],
+      viewCount: 167,
+      likeCount: 13,
+      categoryId: 4,
+      status: 1,
+      createdAt: new Date(now - 7 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    // 美食外卖
+    {
+      id: 13,
+      title: '自制手工饼干',
+      description: '纯手工制作，无添加，多种口味可选，送礼自用两相宜',
+      price: 25,
+      images: ['https://placehold.co/300x200/FFB6C1/FFFFFF?text=饼干'],
+      viewCount: 289,
+      likeCount: 22,
+      categoryId: 5,
+      status: 1,
+      createdAt: new Date(now - 9 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    {
+      id: 14,
+      title: '家乡特产腊肠',
+      description: '正宗四川风味，麻辣鲜香，真空包装，保证新鲜',
+      price: 35,
+      images: ['https://placehold.co/300x200/DC143C/FFFFFF?text=腊肠'],
+      viewCount: 234,
+      likeCount: 19,
+      categoryId: 5,
+      status: 1,
+      createdAt: new Date(now - 11 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    // 已售出商品
+    {
+      id: 15,
+      title: 'Switch 游戏机（已售出）',
+      description: '国行续航版，已破解，送 10 款热门游戏，成色新',
+      price: 1800,
+      images: ['https://placehold.co/300x200/E6E6FA/FFFFFF?text=Switch'],
+      viewCount: 567,
+      likeCount: 45,
+      categoryId: 7,
+      status: 2, // 已售出
+      createdAt: new Date(now - 15 * 3600 * 1000).toISOString(),
+      isHot: true
+    },
+    // 下架商品
+    {
+      id: 16,
+      title: '某考研资料（已下架）',
+      description: '因版权问题暂时下架',
+      price: 50,
+      images: ['https://placehold.co/300x200/CCCCCC/FFFFFF?text=资料'],
+      viewCount: 123,
+      likeCount: 10,
+      categoryId: 6,
+      status: 0, // 已下架
+      createdAt: new Date(now - 20 * 3600 * 1000).toISOString(),
+      isHot: true
+    }
+  ];
+  
+  console.log('📦 加载模拟商品数据:', mockData.length, '个');
+  allProducts.value = mockData;
+  displayProducts.value = mockData;
+  hasMore.value = false;
+  productsLoading.value = false;
 };
 
-// 分类选择功能
+// 选择分类
 const selectCategory = (categoryId) => {
-  console.log(`选择分类: ${categoryId}`);
-  // 实际项目中可以跳转到对应分类页面
+  filters.categoryId = categoryId === filters.categoryId ? null : categoryId;
+  fetchProducts();
+};
+
+// 跳转到商品详情
+const goToProduct = (product) => {
+  console.log('🔍 点击商品:', product);
+  console.log('🆔 商品 ID:', product.id);
+  
+  if (!product.id) {
+    console.error('❌ 商品 ID 不存在');
+    ElMessage.warning('商品信息不完整');
+    return;
+  }
+  
+  const targetPath = `/product/${product.id}`;
+  console.log('🚀 准备跳转到:', targetPath);
+  
+  router.push(targetPath);
+};
+
+// 处理广告点击
+const handleAdClick = (ad) => {
+  console.log('广告点击:', ad);
+};
+
+// 处理收藏变化
+const handleFavoriteChange = (data) => {
+  console.log('收藏变化:', data);
+  // 实际项目中调用 API
 };
 
 // 发布商品
-const createNewTrade = async (type) => {
-  // 跳转到发布页面或打开模态框
-  router.push(`/publish?type=${type}`);
+const createNewTrade = () => {
+  router.push('/publish');
 };
 
-// 商品详情跳转
-const goToDeal = (productId) => {
-  router.push(`/product/${productId}`);
-};
-
-// 页面初始化
-onMounted(() => {
-  fetchProducts(1);
-});
-
-// 导航相关
+// 页面跳转
 const goToPage = (page) => {
-  console.log(`跳转到${page}页面`);
   switch(page) {
     case 'home':
       router.push('/');
@@ -340,7 +631,7 @@ const goToPage = (page) => {
     case 'map':
       router.push('/map');
       break;
-    case 'trade':  // 这是当前页面，可以刷新或滚动到顶部
+    case 'trade':
       router.push('/mall');
       break;
     case 'topic':
@@ -352,147 +643,41 @@ const goToPage = (page) => {
     case 'profile':
       router.push('/personalcenter');
       break;
-    case 'hotdeals':
-      // 可以滚动到热门交易部分或跳转到专门的页面
-      document.querySelector('.hot-deals-section')?.scrollIntoView({ behavior: 'smooth' });
-      break;
     default:
-      console.log(`未知页面: ${page}`);
+      console.log(`未知页面：${page}`);
   }
 };
+
+onMounted(() => {
+  updateDeviceDetection();
+  getUserInfo();
+  console.log('🏪 交易中心页面已加载');
+  console.log('💡 提示：如果后端无数据，将自动显示预设测试数据');
+  console.log('📦 测试数据包含：16 个商品，覆盖 5 个大类');
+  fetchProducts();
+  window.addEventListener('resize', updateDeviceDetection);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDeviceDetection);
+});
 </script>
 
 <style scoped>
 .mall-page {
   min-height: 100vh;
   background-color: #f0f2f5;
-  display: grid;
-  grid-template-columns: 0px 1fr; /* 增加侧边栏宽度 */
-  grid-template-areas: "sidebar main";
-}
-
-.mall-page.mobile {
-  grid-template-columns: 1fr;
-  grid-template-areas: "main";
-  padding-bottom: 80px; /* 为移动底部导航留出空间 */
-}
-
-/* 桌面端布局 */
-.sidebar {
-  grid-area: sidebar;
-  background-color: white;
-  padding: 20px;
-  border-right: 1px solid #e0e0e0;
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 1001;
-  width: 200px;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.05);
-}
-
-.logo h1 {
-  color: #4A90E2;
-  margin: 0 0 25px 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* 用户信息区域样式 */
-.user-info {
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  background-color: #f8f9fa;
-}
-
-.user-avatar img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #4A90E2;
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.username {
-  font-weight: 600;
-  color: #333;
-  font-size: 1.1rem;
-  margin-bottom: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.student-id {
-  color: #666;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 统一导航栏样式 */
-.nav-menu ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.nav-menu li {
-  padding: 15px 20px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.3s ease;
-  color: #666;
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
-.nav-menu li:hover {
-  background-color: #f0f7ff;
-  color: #4A90E2;
-  transform: translateX(5px);
-}
-
-.nav-menu li.active {
-  background-color: #4A90E2;
-  color: white;
-  font-weight: 600;
-}
-
-.nav-menu span:first-child {
-  font-size: 1.2rem;
-  min-width: 24px;
-  text-align: center;
 }
 
 .main-content {
-  grid-area: main;
   padding: 0px;
-  overflow-y: auto;
-  margin-left: 210px; /* 调整主内容区左边距以匹配新的侧边栏宽度 */
+  margin-left: 210px;
   display: flex;
   flex-direction: column;
 }
 
 .main-content.full-width {
   margin-left: 0;
-  padding-bottom: 80px; /* 为移动底部导航留出空间 */
 }
 
 .header {
@@ -503,7 +688,6 @@ const goToPage = (page) => {
   flex-direction: column;
   align-items: flex-start;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  flex-shrink: 0;
 }
 
 .header h1 {
@@ -511,82 +695,28 @@ const goToPage = (page) => {
   font-size: 1.8rem;
 }
 
-/* 移动端底部导航样式 */
-.mobile-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  padding: 10px 15px;
-  border-radius: 8px 8px 0 0;
-  box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-  z-index: 1000;
-  flex-shrink: 0;
-}
-
-.mobile-nav .nav-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-}
-
-.mobile-nav .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-}
-
-.mobile-nav .nav-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #e3f2fd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  margin-bottom: 2px;
-}
-
-/* 桌面端底部样式 - 现在位于main-content内部 */
-.desktop-footer {
-  background-color: #333;
-  color: white;
-  text-align: center;
-  padding: 15px;
-  margin-top: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin: 15px;
-  flex-shrink: 0;
-}
-
-/* 公共样式 - 搜索栏 */
 .search-bar {
   display: flex;
   gap: 10px;
   width: 100%;
 }
 
-.search-bar input {
+.desktop-search {
+  display: flex;
+  gap: 10px;
+  flex: 1;
+}
+
+.desktop-search input {
   flex: 1;
   padding: 10px;
   border: 2px solid #e1e5f2;
   border-radius: 8px;
   font-size: 1rem;
-  transition: all 0.3s ease;
 }
 
-.search-bar input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.search-bar button {
-  padding: 10px 15px;
+.desktop-search button {
+  padding: 10px 20px;
   background-color: #667eea;
   color: white;
   border: none;
@@ -596,18 +726,40 @@ const goToPage = (page) => {
   transition: background-color 0.3s ease;
 }
 
-.search-bar button:hover {
+.desktop-search button:hover {
   background-color: #764ba2;
 }
 
-/* 分类区域样式 */
+.mobile-search-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.user-avatar-mini img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid white;
+}
+
+.mobile-search-header input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid #e1e5f2;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+/* 分类区域 */
 .categories-section {
   background: white;
   margin: 15px;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-shrink: 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .categories-section .section-header {
@@ -618,21 +770,21 @@ const goToPage = (page) => {
 }
 
 .categories-section h2 {
-  margin: 0 0 15px 0;
+  margin: 0;
   font-size: 1.2rem;
   color: #333;
 }
 
 .category-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 15px;
+  grid-template-columns: repeat(6, 1fr); /* 从 5 列改为 6 列，确保两行显示完 11 个分类 */
+  gap: 8px; /* 保持紧凑间距 */
 }
 
 .category-item {
   background: #f8f9fa;
-  border-radius: 8px;
-  padding: 15px;
+  border-radius: 4px;
+  padding: 3px; /* 进一步减小 padding 到 3px */
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -640,31 +792,30 @@ const goToPage = (page) => {
 }
 
 .category-item:hover {
-  transform: translateY(-3px);
+  transform: translateY(-1px); /* 悬停效果更轻微 */
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
   background: #e9f7fe;
   border-color: #4A90E2;
 }
 
 .category-icon {
-  font-size: 2rem;
-  margin-bottom: 10px;
+  font-size: 1.1rem; /* 图标继续减小 */
+  margin-bottom: 2px; /* 间距更小 */
   display: block;
 }
 
 .category-item h3 {
-  margin: 10px 0 5px;
-  font-size: 1rem;
+  margin: 2px 0 2px; /* 间距进一步减小 */
+  font-size: 0.65rem; /* 标题文字更小 */
   color: #333;
 }
 
 .category-item p {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.55rem; /* 描述文字极小化 */
   color: #666;
 }
 
-/* 移动端分类网格 - 修改为5列 */
 .category-mobile-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -678,17 +829,9 @@ const goToPage = (page) => {
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
   display: flex;
   flex-direction: column;
   align-items: center;
-}
-
-.category-mobile-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  background: #e9f7fe;
-  border-color: #4A90E2;
 }
 
 .category-mobile-item .category-icon {
@@ -701,340 +844,134 @@ const goToPage = (page) => {
   color: #333;
 }
 
-/* 热门交易区域样式 */
-.hot-deals-section {
+/* 商品列表区域 */
+.products-section {
   background: white;
   margin: 15px;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-shrink: 0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.hot-deals-section .section-header {
+.products-section .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
 }
 
-.hot-deals-section h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
-  color: #333;
+.products-section .header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-.view-more {
-  color: #4A90E2;
-  font-size: 0.9rem;
-  cursor: pointer;
+.level1-tag-filter {
+  width: 120px;
 }
 
-.view-more-btn {
+.publish-btn {
+  padding: 10px 20px;
   background-color: #4A90E2;
   color: white;
   border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.hot-deals-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-}
-
-.hot-deal-item {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: transform 0.3s;
-  border: 1px solid #eee;
-}
-
-.hot-deal-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-}
-
-.deal-image {
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-  display: block;
-}
-
-.deal-info {
-  padding: 15px;
-}
-
-.deal-info h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-  color: #333;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.deal-price {
-  margin: 0 0 10px;
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #e74c3c;
-}
-
-.deal-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  color: #777;
-}
-
-.deal-location {
-  flex: 1;
-}
-
-.deal-time {
-  flex: 1;
-  text-align: right;
-}
-
-/* 移动端热门交易网格 */
-.hot-deals-mobile-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
-}
-
-.hot-deal-mobile-item {
-  display: flex;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: transform 0.3s;
-  border: 1px solid #eee;
-}
-
-.hot-deal-mobile-item .deal-image {
-  width: 120px;
-  height: 120px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.hot-deal-mobile-item .deal-info {
-  padding: 10px;
-  flex: 1;
-}
-
-/* 发布交易区域 */
-.post-trade-section {
-  background: white;
-  margin: 15px;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-shrink: 0;
-}
-
-.post-form {
-  border: 1px solid #e1e5f2;
-  border-radius: 8px;
-  padding: 15px;
-  background-color: #f9fafc;
-}
-
-.post-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.username {
+  border-radius: 25px;
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #333;
-}
-
-.post-actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.post-actions button {
-  flex: 1;
-  padding: 12px 15px;
-  border: 2px solid #e1e5f2;
-  border-radius: 8px;
-  background-color: white;
-  color: #667eea;
-  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 
-.post-actions button:hover {
-  background-color: #667eea;
+.publish-btn:hover {
+  background-color: #5a9fd6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+}
+
+.products-section h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.filters-bar {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.filter-toggle-btn {
+  padding: 8px 15px;
+  background-color: white;
+  color: #4A90E2;
+  border: 2px solid #4A90E2;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.filter-toggle-btn:hover {
+  background-color: #4A90E2;
   color: white;
 }
 
-/* 移动端顶部用户信息样式 */
-.mobile-user-header {
-  background-color: white;
-  padding: 10px 15px;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+/* 移动端悬浮按钮 */
+.mobile-fab {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  z-index: 1000;
 }
 
-.user-info-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.user-avatar-small img {
-  width: 30px;
-  height: 30px;
+.mobile-fab button {
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #4A90E2;
+  background-color: #4A90E2;
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.user-text-top {
-  flex: 1;
-  min-width: 0;
+.mobile-fab button:hover {
+  transform: scale(1.1);
 }
 
-.username-small {
-  font-weight: 500;
-  color: #333;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 桌面端底部 */
+.desktop-footer {
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 15px;
+  margin: 15px;
+  border-radius: 8px;
 }
 
-.student-id-small {
-  color: #666;
-  font-size: 0.8rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* 移动端适配 */
+.mall-page.mobile .header {
+  padding: 15px 20px;
 }
 
-/* 移动端搜索框样式 */
-.mobile-search-header {
-  display: flex;
-  align-items: center;
+.mall-page.mobile .header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+}
+
+.mall-page.mobile .category-grid,
+.mall-page.mobile .category-mobile-grid {
+  gap: 8px;
+}
+
+.mall-page.mobile .filters-bar {
+  flex-direction: column;
   gap: 10px;
-  width: 100%;
-}
-
-.user-avatar-mini img {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid #4A90E2;
-}
-
-.mobile-search-header input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 2px solid #e1e5f2;
-  border-radius: 20px;
-  font-size: 0.9rem;
-}
-
-/* 移动端布局调整 */
-@media (max-width: 767px) {
-  .mall-page {
-    padding-top: 0;
-    padding-bottom: 70px;
-  }
-  
-  .mobile-user-header {
-    display: none;
-  }
-  
-  .sidebar {
-    display: none;
-  }
-  
-  .main-content {
-    margin-top: 0;
-    margin-left: 0;
-    padding: 15px;
-  }
-  
-  .header {
-    padding: 15px 20px;
-    align-items: stretch;
-  }
-  
-  .header h1 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-  }
-  
-  .section {
-    margin: 15px 10px;
-    padding: 15px;
-  }
-  
-  .category-mobile-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-  }
-  
-  .category-mobile-item {
-    padding: 12px 8px;
-    font-size: 0.8rem;
-  }
-  
-  .hot-deals-mobile-grid {
-    grid-template-columns: 1fr;
-    gap: 15px;
-  }
-  
-  .hot-deal-mobile-item {
-    padding: 15px;
-  }
-  
-  .post-form {
-    padding: 15px;
-  }
-  
-  .post-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .post-actions button {
-    width: 100%;
-  }
 }
 </style>
-
-/* 桌面端样式 */
-@media (min-width: 768px) {
-  .mobile-nav {
-    display: none;
-  }
-}

@@ -338,7 +338,7 @@ const handleCopyLink = (url) => {
 };
 
 // 查看被转发的话题
-const viewForwardedTopic = (forwardedFromTopicId) => {
+const viewForwardedTopic = async (forwardedFromTopicId) => {
   if (forwardedFromTopicId) {
     const targetId = forwardedFromTopicId;
     const currentId = route.params.id;
@@ -347,7 +347,28 @@ const viewForwardedTopic = (forwardedFromTopicId) => {
       return;
     }
     
-    router.push(`/topic/${targetId}`);
+    try {
+      // 先尝试获取话题详情
+      const response = await topicAPI.getTopicDetail(targetId);
+      
+      if (response && response.id) {
+        // 话题存在，跳转到详情页
+        router.push(`/topic/${targetId}`);
+      } else {
+        throw new Error('话题不存在');
+      }
+    } catch (error) {
+      console.error('查看转发话题失败:', error);
+      // 话题不存在或已删除，显示提示框
+      ElMessageBox.alert(
+        '该话题已被删除或不存在',
+        '话题不存在',
+        {
+          confirmButtonText: '确定',
+          type: 'warning'
+        }
+      );
+    }
   } else {
     ElMessage.warning('无法获取原话题信息');
   }

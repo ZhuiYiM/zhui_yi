@@ -79,19 +79,23 @@ apiClient.interceptors.response.use(
         // 统一处理成功响应
         const responseData = response.data;
         
-        // 如果后端返回标准Result结构
+        // 如果后端返回标准 Result 结构
         if (responseData && responseData.code !== undefined) {
             if (responseData.code === 200) {
                 return responseData.data; // 返回实际数据
             } else {
-                // 业务错误
+                // 业务错误 - 检查是否需要全局显示
                 const errorMsg = responseData.message || '请求失败';
-                window.$message?.error(errorMsg) || console.error(errorMsg);
+                const noGlobalError = response.config.noGlobalError === true;
+                
+                if (!noGlobalError) {
+                    window.$message?.error(errorMsg) || console.error(errorMsg);
+                }
                 return Promise.reject(new Error(errorMsg));
             }
         }
         
-        // 如果没有code字段，直接返回原始数据
+        // 如果没有 code 字段，直接返回原始数据
         return responseData;
     },
     error => {
@@ -99,17 +103,22 @@ apiClient.interceptors.response.use(
         
         // 统一处理错误响应
         const { response } = error;
+        const noGlobalError = error.config?.noGlobalError === true;
         
         if (response) {
             const { status, data } = response;
             
             switch (status) {
                 case 400:
-                    window.$message?.error(data?.message || '请求参数错误') || console.error(data?.message || '请求参数错误');
+                    if (!noGlobalError) {
+                        window.$message?.error(data?.message || '请求参数错误') || console.error(data?.message || '请求参数错误');
+                    }
                     break;
                 case 401:
-                    // Token过期或无效
-                    window.$message?.error('登录已过期，请重新登录') || console.error('登录已过期，请重新登录');
+                    // Token 过期或无效
+                    if (!noGlobalError) {
+                        window.$message?.error('登录已过期，请重新登录') || console.error('登录已过期，请重新登录');
+                    }
                     localStorage.removeItem('token');
                     localStorage.removeItem('user');
                     // 延迟跳转避免重复跳转
@@ -118,35 +127,55 @@ apiClient.interceptors.response.use(
                     }, 100);
                     break;
                 case 403:
-                    window.$message?.error('权限不足或跨域请求被拒绝') || console.error('权限不足或跨域请求被拒绝');
+                    if (!noGlobalError) {
+                        window.$message?.error('权限不足或跨域请求被拒绝') || console.error('权限不足或跨域请求被拒绝');
+                    }
                     break;
                 case 404:
-                    window.$message?.error('请求的资源不存在') || console.error('请求的资源不存在');
+                    if (!noGlobalError) {
+                        window.$message?.error('请求的资源不存在') || console.error('请求的资源不存在');
+                    }
                     break;
                 case 408:
-                    window.$message?.error('请求超时') || console.error('请求超时');
+                    if (!noGlobalError) {
+                        window.$message?.error('请求超时') || console.error('请求超时');
+                    }
                     break;
                 case 500:
-                    window.$message?.error('服务器内部错误') || console.error('服务器内部错误');
+                    if (!noGlobalError) {
+                        window.$message?.error('服务器内部错误') || console.error('服务器内部错误');
+                    }
                     break;
                 case 502:
-                    window.$message?.error('网关错误') || console.error('网关错误');
+                    if (!noGlobalError) {
+                        window.$message?.error('网关错误') || console.error('网关错误');
+                    }
                     break;
                 case 503:
-                    window.$message?.error('服务暂时不可用') || console.error('服务暂时不可用');
+                    if (!noGlobalError) {
+                        window.$message?.error('服务暂时不可用') || console.error('服务暂时不可用');
+                    }
                     break;
                 case 504:
-                    window.$message?.error('网关超时') || console.error('网关超时');
+                    if (!noGlobalError) {
+                        window.$message?.error('网关超时') || console.error('网关超时');
+                    }
                     break;
                 default:
-                    window.$message?.error(data?.message || `请求失败 (${status})`) || console.error(data?.message || `请求失败 (${status})`);
+                    if (!noGlobalError) {
+                        window.$message?.error(data?.message || `请求失败 (${status})`) || console.error(data?.message || `请求失败 (${status})`);
+                    }
             }
         } else if (error.request) {
             // 网络错误
-            window.$message?.error('网络连接异常，请检查网络设置') || console.error('网络连接异常，请检查网络设置');
+            if (!noGlobalError) {
+                window.$message?.error('网络连接异常，请检查网络设置') || console.error('网络连接异常，请检查网络设置');
+            }
         } else {
             // 其他错误
-            window.$message?.error(error.message || '未知错误') || console.error(error.message || '未知错误');
+            if (!noGlobalError) {
+                window.$message?.error(error.message || '未知错误') || console.error(error.message || '未知错误');
+            }
         }
         
         return Promise.reject(error);

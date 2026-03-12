@@ -360,12 +360,12 @@ const fetchTopicsWithFilters = async () => {
         forwardedFromTopicId: topic.forwardedFromTopicId || null, // 添加被转发的话题 ID
         createdAt: topic.createdAt,
         author: {
-          id: topic.author.id,
-          name: topic.author.username || '匿名用户',
-          username: topic.author.username,
-          studentId: topic.author.studentId,
-          avatar: topic.author.avatarUrl || '',
-          level1Tag: topic.author.level1Tag || topic.author.identity?.level1Tag || null
+          id: topic.author?.id || null,
+          name: topic.author?.username || topic.author?.realName || '匿名用户',
+          username: topic.author?.username || '',
+          studentId: topic.author?.studentId || '',
+          avatar: topic.author?.avatarUrl || '',
+          level1Tag: topic.author?.level1Tag || topic.author?.identity?.level1Tag || null
         },
         level1Tag: topic.level1Tag || null,
         level2Tags: topic.level2Tags || [],
@@ -497,8 +497,29 @@ const commentPost = (postId) => {
   router.push(`/topic/${postId}`);
 };
 
-const viewForwardedTopic = (topicId) => {
-  router.push(`/topic/${topicId}`);
+const viewForwardedTopic = async (topicId) => {
+  try {
+    // 先尝试获取话题详情
+    const response = await topicAPI.getTopicDetail(topicId);
+    
+    if (response && response.id) {
+      // 话题存在，跳转到详情页
+      router.push(`/topic/${topicId}`);
+    } else {
+      throw new Error('话题不存在');
+    }
+  } catch (error) {
+    console.error('查看转发话题失败:', error);
+    // 话题不存在或已删除，显示提示框
+    ElMessageBox.alert(
+      '该话题已被删除或不存在',
+      '话题不存在',
+      {
+        confirmButtonText: '确定',
+        type: 'warning'
+      }
+    );
+  }
 };
 
 const viewUserProfile = (userId) => {
@@ -664,7 +685,7 @@ const loadMoreTopics = async () => {
 };
 
 // 处理分享参数
-const handleShareFromQuery = () => {
+const handleShareFromQuery = async () => {
   const routeParams = router.currentRoute.value.query;
   if (routeParams.from === 'share' && routeParams.sourceType === 'topic' && routeParams.sourceId) {
     // 从 sessionStorage 获取分享数据
@@ -682,9 +703,14 @@ const handleShareFromQuery = () => {
         }, 500);
       } catch (error) {
         console.error('解析分享数据失败:', error);
-        ElMessage.error('分享数据加载失败');
+        // 不显示错误提示，静默处理
       }
+    } else {
+      // 如果没有分享数据，也静默处理，不显示错误
+      console.log('未找到分享数据，可能已被清除');
     }
+    // 清理 URL 参数，避免刷新时重复处理
+    router.replace({ query: {} });
   }
 };
 

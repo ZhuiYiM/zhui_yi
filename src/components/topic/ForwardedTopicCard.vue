@@ -50,7 +50,10 @@ const isDeleted = ref(false); // 标记原话题是否已删除
 const loadForwardedTopic = async () => {
   loading.value = true;
   try {
-    const response = await topicAPI.getTopicDetail(props.forwardedFromTopicId);
+    // 使用自定义配置，不在拦截器中显示 404 错误
+    const response = await topicAPI.getTopicDetail(props.forwardedFromTopicId, { 
+      noGlobalError: true 
+    });
     
     // ✅ request.js 拦截器已经返回了 responseData.data，直接使用 response
     const topicData = response;

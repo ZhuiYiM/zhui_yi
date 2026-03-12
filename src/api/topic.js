@@ -56,8 +56,8 @@ export const topicAPI = {
     },
 
     // 获取话题详情 (含热评)
-    getTopicDetail(id) {
-        return request.get(`/topics/${id}`);
+    getTopicDetail(id, config = {}) {
+        return request.get(`/topics/${id}`, config);
     },
 
     // 点赞话题

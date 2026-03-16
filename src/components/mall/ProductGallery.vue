@@ -4,6 +4,7 @@
       <img 
         :src="currentImage || (images && images[0]) || defaultImage" 
         :alt="title"
+        @click="$emit('preview-image', currentImage || (images && images[0]))"
       >
     </div>
     
@@ -39,7 +40,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:index']);
+const emit = defineEmits(['update:index', 'preview-image']);
 
 const defaultImage = 'https://placehold.co/500x500/4A90E2/FFFFFF?text=商品图片';
 

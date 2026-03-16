@@ -61,6 +61,12 @@
           +{{ post.images.length - 4 }}
         </div>
       </div>
+      
+      <!-- 调试信息：如果没有图片但应该有 -->
+      <div v-else-if="!post.images && post.imageCount > 0" class="debug-info" style="color: #999; font-size: 12px; padding: 10px; background: #f5f5f5; border-radius: 4px;">
+        ⚠️ 数据异常：imageCount={{ post.imageCount }} 但 images 数组为空
+        <br>完整数据：{{ JSON.stringify(post, null, 2) }}
+      </div>
 
       <!-- 标签 -->
       <div class="topic-tags-container">
@@ -113,7 +119,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { topicAPI } from '@/api/topic';
 import { ElMessage } from 'element-plus';
 import ForwardedTopicCard from './ForwardedTopicCard.vue';
@@ -125,6 +131,16 @@ const props = defineProps({
     required: true
   }
 });
+
+// 调试：监听 post 变化
+watch(() => props.post, (newVal) => {
+  console.log('📝 TopicCard 收到话题数据:', newVal);
+  if (newVal && newVal.images) {
+    console.log('🖼️ 图片数据:', newVal.images);
+    console.log('🖼️ 图片数量:', newVal.images.length);
+    console.log('🖼️ 图片 URLs:', newVal.images);
+  }
+}, { immediate: true, deep: true });
 
 // Emits
 const emit = defineEmits([

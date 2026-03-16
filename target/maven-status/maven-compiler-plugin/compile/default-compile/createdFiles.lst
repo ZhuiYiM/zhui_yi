@@ -13,6 +13,7 @@ com\example\demo\entity\dto\TopicLikeDTO.class
 com\example\demo\entity\dto\UserPublicInfoDTO.class
 com\example\demo\mapper\TopicMapper.class
 com\example\demo\entity\Message.class
+com\example\demo\mapper\ProductFavoriteMapper.class
 com\example\demo\service\impl\TopicCommentsServiceImpl.class
 com\example\demo\entity\DefaultPrivacyLevel.class
 com\example\demo\entity\PrivacySetting.class
@@ -22,6 +23,7 @@ com\example\demo\mapper\LocationMapper.class
 com\example\demo\entity\dto\IdentityInfoDTO.class
 com\example\demo\mapper\MessageMapper.class
 com\example\demo\service\SearchService.class
+com\example\demo\entity\ProductFavorite.class
 com\example\demo\entity\TagLevel2.class
 com\example\demo\entity\dto\LoginResponseDTO.class
 com\example\demo\entity\dto\TopicCreateDTO.class

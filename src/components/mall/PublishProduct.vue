@@ -79,17 +79,14 @@
 
           <!-- 商品图片 -->
           <el-form-item label="商品图片" prop="images">
-            <el-upload
-              v-model:file-list="imageFileList"
-              list-type="picture-card"
-              :auto-upload="false"
-              :on-change="handleImageChange"
-              :on-remove="handleImageRemove"
+            <ImageUploader
+              v-model="productForm.images"
+              :multiple="true"
               :limit="9"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-upload>
-            <div class="upload-tip">最多可上传 9 张图片，第一张将作为封面图</div>
+              hint="最多可上传 9 张图片，第一张将作为封面图"
+              :auto-upload="false"
+              @change="handleImageChange"
+            />
           </el-form-item>
 
           <!-- 联系信息 -->
@@ -130,9 +127,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElLoading } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import ImageUploader from '@/components/common/ImageUploader.vue';
 import { productAPI } from '@/api/product';
 import { uploadAPI } from '@/api/upload';
 
@@ -142,7 +140,7 @@ const submitting = ref(false);
 const isMobile = ref(window.innerWidth <= 768);
 const currentUser = ref(null);
 const categories = ref([]);
-const imageFileList = ref([]);
+const imageFileList = ref([]); // 存储文件对象列表
 
 // 商品表单数据
 const productForm = reactive({
@@ -227,8 +225,13 @@ const fetchCategories = async () => {
 };
 
 // 处理图片变化
-const handleImageChange = (file) => {
-  // 可以在这里进行图片压缩等处理
+const handleImageChange = (data) => {
+  console.log('🖼️ 商品图片变化:', data);
+  if (data && data.files) {
+    // 存储文件对象用于后续上传
+    imageFileList.value = data.files;
+    console.log('💾 保存文件对象:', imageFileList.value.length, '个');
+  }
 };
 
 // 处理图片移除
@@ -238,24 +241,59 @@ const handleImageRemove = () => {
 
 // 上传图片到服务器
 const uploadImages = async () => {
+  if (!imageFileList.value || imageFileList.value.length === 0) {
+    return [];
+  }
+  
   const uploadedUrls = [];
   
-  for (const file of imageFileList.value) {
-    try {
-      // 实际项目中应该调用上传 API
-      // const formData = new FormData();
-      // formData.append('file', file.raw);
-      // const response = await uploadAPI.uploadImage(formData);
-      // uploadedUrls.push(response.url);
-      
-      // 临时使用本地预览 URL
-      const localUrl = URL.createObjectURL(file.raw);
-      uploadedUrls.push(localUrl);
-    } catch (error) {
-      console.error('图片上传失败:', error);
-      ElMessage.error('图片上传失败');
-      return null;
+  try {
+    const loading = ElLoading.service({ text: '正在上传图片...' });
+    
+    for (const file of imageFileList.value) {
+      try {
+        // 确保 file 和 file.raw 存在
+        const fileToUpload = file.raw || file;
+        
+        if (!(fileToUpload instanceof File) && !(fileToUpload instanceof Blob)) {
+          console.warn('⚠️ 文件不是有效的 File/Blob 对象:', fileToUpload);
+          continue;
+        }
+        
+        const response = await uploadAPI.uploadImage(fileToUpload);
+        
+        if (response) {
+          // 处理不同的响应格式
+          let imageUrl = '';
+          if (typeof response === 'string') {
+            imageUrl = response;
+          } else if (response.data) {
+            imageUrl = response.data;
+          } else if (response.url) {
+            imageUrl = response.url;
+          }
+          
+          if (imageUrl) {
+            // 确保图片 URL 是完整的
+            let fullUrl = imageUrl;
+            if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+              const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
+              fullUrl = `http://localhost:8080${cleanPath}`;
+            }
+            uploadedUrls.push(fullUrl);
+          }
+        }
+      } catch (error) {
+        console.error('单张图片上传失败:', error);
+        // 继续上传其他图片
+      }
     }
+    
+    loading.close();
+  } catch (error) {
+    console.error('图片上传异常:', error);
+    ElMessage.error('图片上传失败');
+    return null;
   }
   
   return uploadedUrls;
@@ -272,7 +310,7 @@ const handleSubmit = async () => {
     }
     
     // 检查图片
-    if (imageFileList.value.length === 0) {
+    if (productForm.images.length === 0) {
       ElMessage.warning('请至少上传一张商品图片');
       return;
     }
@@ -296,6 +334,21 @@ const handleSubmit = async () => {
       };
       
       console.log('提交数据:', submitData); // 调试日志
+      console.log('图片 URLs:', imageUrls); // 调试图片数据
+      
+      // 验证 images 是否为有效数组
+      if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+        ElMessage.error('图片数据异常');
+        return;
+      }
+      
+      // 确保每个 URL 都是有效字符串
+      for (let i = 0; i < imageUrls.length; i++) {
+        if (typeof imageUrls[i] !== 'string' || !imageUrls[i].trim()) {
+          ElMessage.error(`第${i + 1}张图片的 URL 无效`);
+          return;
+        }
+      }
       
       // 调用发布 API
       const response = await productAPI.createProduct(submitData);

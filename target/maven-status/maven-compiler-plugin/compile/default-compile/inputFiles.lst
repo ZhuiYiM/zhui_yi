@@ -40,6 +40,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\Mes
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\UserPublicInfoDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\User.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\enums\VerificationStatus.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\ProductFavoriteMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\IdentityService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\UserMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\PrivacySettingMapper.java
@@ -62,6 +63,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\common\Api
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\CampusService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\TopicCreateDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\utils\IdCardValidator.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\ProductFavorite.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\UserVerification.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\AccountManagementController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\CategoryMapper.java

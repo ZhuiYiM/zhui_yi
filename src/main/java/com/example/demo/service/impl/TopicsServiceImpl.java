@@ -13,6 +13,7 @@ import com.example.demo.service.TopicsService;
 import com.example.demo.utils.JwtUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,7 +102,20 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             topic.setTitle(content.length() > 50 ? content.substring(0, 50) : content);
             
             topic.setContent(topicDTO.getContent());
-            topic.setImages(convertListToJson(topicDTO.getImages()));
+            
+            // 处理图片 URL
+            List<String> imageUrls = topicDTO.getImages();
+            System.out.println("📷 前端传来的图片 URLs: " + (imageUrls != null ? imageUrls.size() + "张" : "null"));
+            if (imageUrls != null && !imageUrls.isEmpty()) {
+                for (String url : imageUrls) {
+                    System.out.println("   - URL: " + url);
+                }
+            } else {
+                System.out.println("   ⚠️ 没有图片数据");
+            }
+            
+            topic.setImages(convertListToJson(imageUrls));
+            System.out.println("💾 保存到数据库的 images JSON: " + topic.getImages());
             topic.setTags(convertListToJson(topicDTO.getTags()));
                 
             // 设置自动识别的一级标签
@@ -650,8 +664,11 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             return new ArrayList<>();
         }
         try {
-            return objectMapper.readValue(json, List.class);
+            // 使用 TypeReference 确保返回 List<String>
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException e) {
+            System.err.println("❌ 解析 JSON 失败：" + json);
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }
@@ -689,7 +706,18 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         Map<String, Object> map = new HashMap<>();
         map.put("id", topic.getId());
         map.put("content", topic.getContent());
-        map.put("images", parseJsonToList(topic.getImages()));
+        
+        // 解析图片
+        List<String> images = parseJsonToList(topic.getImages());
+        System.out.println("🔍 从数据库读取话题 " + topic.getId() + " 的图片:");
+        System.out.println("   DB JSON: " + topic.getImages());
+        System.out.println("   Parsed List: " + (images != null ? images.size() + " 张" : "null"));
+        if (images != null && !images.isEmpty()) {
+            for (String url : images) {
+                System.out.println("     - " + url);
+            }
+        }
+        map.put("images", images);
         map.put("tags", parseJsonToList(topic.getTags()));
         
             // 添加分级标签 - 直接返回字符串数组，不使用 Map

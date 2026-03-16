@@ -18,22 +18,15 @@
 
         <!-- 图片上传 -->
         <div class="post-media">
-          <div class="image-preview">
-            <img
-              v-for="(image, index) in localImages"
-              :key="index"
-              :src="image"
-              alt="预览图片"
-              class="preview-image"
-            >
-            <button
-              v-if="localImages.length < 9 && !isShareMode"
-              @click="addImage"
-              class="add-image-btn"
-            >
-              +
-            </button>
-          </div>
+          <ImageUploader
+            v-model="localImages"
+            :multiple="true"
+            :limit="9"
+            hint="最多可上传 9 张图片"
+            :auto-upload="false"
+            :disabled="isShareMode"
+            @change="handleImageChange"
+          />
 
           <!-- 四级标签选择器 -->
           <TagSelector
@@ -69,10 +62,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ref, computed, watch, nextTick } from 'vue';
+import { ElMessage, ElLoading } from 'element-plus';
 import TagSelector from '../tag/TagSelector.vue';
+import ImageUploader from '@/components/common/ImageUploader.vue';
 import { topicAPI } from '@/api/topic';
+import { uploadAPI } from '@/api/upload';
 
 // Props
 const props = defineProps({
@@ -113,6 +108,7 @@ const emit = defineEmits(['update:visible', 'published', 'closed']);
 // 本地数据
 const localContent = ref('');
 const localImages = ref([]);
+const uploadedImageUrls = ref([]); // 存储已上传的 URL
 const selectedTags = ref({
   level1: null,
   level2: [],
@@ -144,32 +140,80 @@ const handleTagChange = (tagsData) => {
   canPublish.value = !!(tagsData.level1 && tagsData.level2?.length > 0);
 };
 
-// 添加图片
-const addImage = () => {
-  // TODO: 实现真实的图片上传逻辑
-  const mockImages = [
-    'https://placehold.co/200x200/FF6B6B/FFFFFF?text=图1',
-    'https://placehold.co/200x200/4ECDC4/FFFFFF?text=图2',
-    'https://placehold.co/200x200/FFE66D/333333?text=图3'
-  ];
-
-  if (localImages.value.length < 9) {
-    localImages.value.push(mockImages[localImages.value.length % 3]);
-    ElMessage.success('图片添加成功');
+// 处理图片变化（从 ImageUploader）
+const handleImageChange = (data) => {
+  console.log('🖼️ 图片变化:', data);
+  
+  if (data && typeof data === 'object' && data.files) {
+    // 保存文件对象用于后续上传
+    localImages.value = data.files;
+    // 不要保存 urls，因为我们还没上传，urls 是空的或者是 blob URL
+    uploadedImageUrls.value = [];
+    console.log('💾 保存文件对象:', localImages.value.length, '个，准备发布时上传');
+  } else if (Array.isArray(data)) {
+    // 如果只是 URLs 数组（可能是 blob URL）
+    uploadedImageUrls.value = [];
+    console.log('🔗 忽略 blob URLs，等待发布时上传');
   }
 };
 
+// 添加图片（已移除，使用 ImageUploader 组件）
+// const addImage = () => {
+//   // TODO: 实现真实的图片上传逻辑
+//   const mockImages = [
+//     'https://placehold.co/200x200/FF6B6B/FFFFFF?text=图 1',
+//     'https://placehold.co/200x200/4ECDC4/FFFFFF?text=图 2',
+//     'https://placehold.co/200x200/FFE66D/333333?text=图 3'
+//   ];
+//
+//   if (localImages.value.length < 9) {
+//     localImages.value.push(mockImages[localImages.value.length % 3]);
+//     ElMessage.success('图片添加成功');
+//   }
+// };
+
 // 关闭弹窗
 const handleClose = () => {
+  console.log('🚪 关闭弹窗');
+  
+  // 先重置表单（清理 blob URL）
+  resetForm();
+  
+  // 直接发送关闭事件，不使用 nextTick 避免循环
   emit('update:visible', false);
   emit('closed');
- resetForm();
 };
 
 // 重置表单
 const resetForm = () => {
+  console.log('🔄 重置表单');
+  
+  // 清理本地图片的 blob URL
+  if (localImages.value && Array.isArray(localImages.value)) {
+    localImages.value.forEach(file => {
+      if (file && file.url && typeof file.url === 'string' && file.url.startsWith('blob:')) {
+        try {
+          console.log('🔓 释放 blob URL:', file.url);
+          URL.revokeObjectURL(file.url);
+        } catch (e) {
+          console.warn('释放 blob URL 失败:', e);
+        }
+      }
+      // 同时检查 raw 属性
+      if (file && file.raw && file.raw.url && typeof file.raw.url === 'string' && file.raw.url.startsWith('blob:')) {
+        try {
+          console.log('🔓 释放 raw blob URL:', file.raw.url);
+          URL.revokeObjectURL(file.raw.url);
+        } catch (e) {
+          console.warn('释放 raw blob URL 失败:', e);
+        }
+      }
+    });
+  }
+  
   localContent.value = '';
   localImages.value = [];
+  uploadedImageUrls.value = [];
   selectedTags.value = {
     level1: null,
     level2: [],
@@ -197,13 +241,98 @@ const handlePublish = async () => {
   publishing.value = true;
   
   try {
+    // 上传图片
+    let imageUrls = [];
+    
+    console.log('🔍 检查图片数据...');
+    console.log('   uploadedImageUrls:', uploadedImageUrls.value);
+    console.log('   localImages:', localImages.value);
+    
+    // 使用已上传的 URL 或者上传本地文件
+    if (uploadedImageUrls.value && uploadedImageUrls.value.length > 0) {
+      // 已经有上传好的 URLs（自动上传模式）
+      console.log('✅ 使用已上传的图片 URLs:', uploadedImageUrls.value);
+      imageUrls = uploadedImageUrls.value;
+    } else if (localImages.value && localImages.value.length > 0) {
+      // 需要手动上传本地文件
+      console.log('📷 准备上传', localImages.value.length, '张图片');
+      const loading = ElLoading.service({ text: '正在上传图片...' });
+      
+      try {
+        for (const fileItem of localImages.value) {
+          try {
+            // 优先使用 raw 属性，如果没有则直接使用 fileItem
+            const file = fileItem.raw || fileItem;
+            
+            console.log('📝 检查文件对象:', file);
+            console.log('   fileItem:', fileItem);
+            console.log('   fileItem.raw:', fileItem.raw);
+            
+            // 确保是有效的 File 对象
+            if (!(file instanceof File) && !(file instanceof Blob)) {
+              console.warn('⚠️ 文件不是有效的 File/Blob 对象:', file);
+              console.warn('   file type:', typeof file);
+              console.warn('   file constructor:', file?.constructor?.name);
+              continue;
+            }
+            
+            console.log('📤 准备上传图片:', file.name, file.size, file.type);
+            
+            const response = await uploadAPI.uploadImage(file);
+            console.log('✅ 图片上传响应:', response);
+            
+            // 处理不同的响应格式
+            let imageUrl = '';
+            if (response && typeof response === 'string') {
+              // 直接返回字符串路径
+              imageUrl = response;
+            } else if (response && response.data) {
+              // 返回对象包含 data 字段
+              imageUrl = response.data;
+            } else if (response && response.url) {
+              // 返回对象包含 url 字段
+              imageUrl = response.url;
+            }
+            
+            if (imageUrl) {
+              // 确保图片 URL 是完整的
+              // 如果 imageUrl 已经是 http 或 https 开头，直接使用
+              // 否则需要拼接完整的 URL
+              let fullUrl = imageUrl;
+              if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                // 去除可能的前导斜杠
+                const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
+                fullUrl = `http://localhost:8080${cleanPath}`;
+              }
+              console.log('🖼️ 图片 URL:', fullUrl);
+              imageUrls.push(fullUrl);
+            } else {
+              console.error('❌ 图片上传失败：无法获取图片 URL', response);
+            }
+          } catch (uploadError) {
+            console.error('❌ 单张图片上传失败:', uploadError);
+            if (uploadError.response) {
+              console.error('响应状态:', uploadError.response.status);
+              console.error('响应数据:', uploadError.response.data);
+            }
+          }
+        }
+        
+        console.log('🎉 所有图片上传完成，URLs:', imageUrls);
+      } finally {
+        loading.close();
+      }
+    } else {
+      console.log('ℹ️ 没有图片');
+    }
+    
     // 获取选中的标签
     const selectedTagsData = tagSelectorRef.value?.getSelectedTags();
     
     // 构建请求数据
     const topicData = {
       content: localContent.value,
-      images: localImages.value,
+      images: imageUrls,  // 使用上传后的 URL
       level1TagCode: selectedTagsData.level1?.code || null,
       level2TagCodes: (selectedTagsData.level2 || []).map(t => t.code),
       level3TagCodes: (selectedTagsData.level3 || []).map(t => t.code),
@@ -337,41 +466,6 @@ const handlePublish = async () => {
 
 .post-media {
   margin-bottom: 20px;
-}
-
-.image-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.preview-image {
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 8px;
-}
-
-.add-image-btn {
-  width: 80px;
-  height: 80px;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  background: #f9f9f9;
-  cursor: pointer;
-  font-size: 2rem;
-  color: #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-}
-
-.add-image-btn:hover {
-  border-color: #4A90E2;
-  color: #4A90E2;
-  background: #f0f7ff;
 }
 
 /* 分享信息提示框 */

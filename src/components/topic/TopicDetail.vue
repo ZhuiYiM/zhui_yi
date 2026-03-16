@@ -77,6 +77,14 @@
       @repost="handleRepost"
       @copy="handleCopyLink"
     />
+    
+    <!-- 图片预览弹窗 -->
+    <div v-if="showImagePreview" class="modal-overlay" @click="closeImagePreview">
+      <div class="modal-content" @click.stop>
+        <button @click="closeImagePreview" class="close-btn">×</button>
+        <img :src="previewImageUrl" alt="预览图片" class="preview-large-image">
+      </div>
+    </div>
   </div>
 </template>
 
@@ -101,6 +109,8 @@ const authorPublicInfo = ref(null);
 const currentUser = ref(null);
 const isMobile = ref(window.innerWidth <= 768);
 const showShareModal = ref(false);
+const showImagePreview = ref(false);
+const previewImageUrl = ref('');
 
 // 计算属性 - 当前话题 URL
 const currentTopicUrl = computed(() => {
@@ -456,7 +466,14 @@ const replyComment = (comment) => {
 
 // 预览图片
 const previewImage = (imageUrl) => {
-  window.open(imageUrl, '_blank');
+  previewImageUrl.value = imageUrl;
+  showImagePreview.value = true;
+};
+
+// 关闭图片预览
+const closeImagePreview = () => {
+  showImagePreview.value = false;
+  previewImageUrl.value = '';
 };
 
 // 返回上一页
@@ -592,5 +609,57 @@ watch(
   .main-content {
     padding: 10px;
   }
+}
+
+/* 图片预览弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 40px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.close-btn:hover {
+  color: #409EFF;
+}
+
+.preview-large-image {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
 }
 </style>

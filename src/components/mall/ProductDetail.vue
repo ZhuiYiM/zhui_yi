@@ -32,29 +32,34 @@
             :current-index="currentImageIndex"
             :title="product.title"
             @update:index="currentImageIndex = $event"
+            @preview-image="previewImage"
           />
 
           <!-- 右侧：商品信息 -->
-          <ProductInfo :product="product" />
+          <div class="product-info-section">
+            <ProductInfo :product="product" />
+            
+            <!-- 卖家信息 -->
+            <div v-if="sellerInfo" class="seller-info-in-detail">
+              <SellerInfo 
+                :seller="sellerInfo"
+                @view-seller="navigateToUserProfile"
+                @contact="contactSeller"
+              />
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="product-actions-in-detail">
+              <ProductActions 
+                :product-status="product.status"
+                :is-favorite="isFavorite"
+                @buy="buyNow"
+                @favorite="toggleFavorite"
+                @share="shareProduct"
+              />
+            </div>
+          </div>
         </div>
-
-        <!-- 卖家信息 -->
-        <div v-if="sellerInfo" class="seller-info-wrapper">
-          <SellerInfo 
-            :seller="sellerInfo"
-            @view-seller="navigateToUserProfile"
-            @contact="contactSeller"
-          />
-        </div>
-
-        <!-- 操作按钮 -->
-        <ProductActions 
-          :product-status="product.status"
-          :is-favorite="isFavorite"
-          @buy="buyNow"
-          @favorite="toggleFavorite"
-          @share="shareProduct"
-        />
 
         <!-- 商家评价区域 -->
         <ReviewsSection 
@@ -83,6 +88,14 @@
         <button @click="goBack" class="primary-btn">返回</button>
       </div>
     </main>
+    
+    <!-- 图片预览弹窗 -->
+    <div v-if="showImagePreview" class="modal-overlay" @click="closeImagePreview">
+      <div class="modal-content" @click.stop>
+        <button @click="closeImagePreview" class="close-btn">×</button>
+        <img :src="previewImageUrl" alt="预览图片" class="preview-large-image">
+      </div>
+    </div>
   </div>
 </template>
 
@@ -112,6 +125,8 @@ const isFavorite = ref(false);
 const recommendedProducts = ref([]);
 const reviews = ref([]);
 const averageScore = ref(5.0);
+const showImagePreview = ref(false);
+const previewImageUrl = ref('');
 
 // 计算卖家信息
 const sellerInfo = computed(() => {
@@ -323,6 +338,18 @@ const viewImage = (imageUrl) => {
   console.log('查看图片:', imageUrl);
 };
 
+// 预览图片
+const previewImage = (imageUrl) => {
+  previewImageUrl.value = imageUrl;
+  showImagePreview.value = true;
+};
+
+// 关闭图片预览
+const closeImagePreview = () => {
+  showImagePreview.value = false;
+  previewImageUrl.value = '';
+};
+
 // 点赞评价
 const toggleReviewLike = (review) => {
   if (!currentUser.value) {
@@ -492,6 +519,25 @@ onUnmounted(() => {
   padding: 20px;
 }
 
+/* 商品信息区域 */
+.product-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 卖家信息在详情页中的样式 */
+.seller-info-in-detail {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* 操作按钮在详情页中的样式 */
+.product-actions-in-detail {
+  margin-top: 20px;
+}
+
 /* 卖家信息包装器 */
 .seller-info-wrapper {
   margin: 20px;
@@ -517,5 +563,57 @@ onUnmounted(() => {
   .recommended-section {
     margin: 15px;
   }
+}
+
+/* 图片预览弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
+}
+
+.modal-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 40px;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.close-btn:hover {
+  color: #4A90E2;
+}
+
+.preview-large-image {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
 }
 </style>

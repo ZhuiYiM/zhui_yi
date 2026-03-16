@@ -16,11 +16,13 @@ import com.example.demo.mapper.ProductFavoriteMapper;
 import com.example.demo.service.ProductService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import jakarta.servlet.http.HttpServletRequest;  // 添加这一行
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -65,9 +67,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         product.setPrice(productDTO.getPrice());
         product.setOriginalPrice(productDTO.getOriginalPrice());
         product.setCategoryId(productDTO.getCategoryId());
-        product.setImages(productDTO.getImages() != null ? productDTO.getImages().toString() : null);
+        product.setImages(productDTO.getImages());
+        product.setTradeMethods(productDTO.getTradeMethods());
         product.setContactInfo(productDTO.getContactInfo());
-        product.setTradeMethods(productDTO.getTradeMethods() != null ? productDTO.getTradeMethods().toString() : null);
         product.setLocation(productDTO.getLocation() != null ? productDTO.getLocation() : "校内");
         product.setStatus(1); // 上架状态
         product.setViewCount(0);
@@ -328,9 +330,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         product.setPrice(productDTO.getPrice());
         product.setOriginalPrice(productDTO.getOriginalPrice());
         product.setCategoryId(productDTO.getCategoryId());
-        product.setImages(productDTO.getImages() != null ? productDTO.getImages().toString() : null);
+        product.setImages(productDTO.getImages());
+        product.setTradeMethods(productDTO.getTradeMethods());
         product.setContactInfo(productDTO.getContactInfo());
-        product.setTradeMethods(productDTO.getTradeMethods() != null ? productDTO.getTradeMethods().toString() : null);
         product.setLocation(productDTO.getLocation());
         product.setUpdatedAt(LocalDateTime.now());
     

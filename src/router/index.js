@@ -16,6 +16,7 @@ import UserProfile from "../components/user/UserProfile.vue";
 const TopicDetail = () => import('../components/topic/TopicDetail.vue');
 const ProductDetail = () => import('../components/mall/ProductDetail.vue');
 const PublishProduct = () => import('../components/mall/PublishProduct.vue');
+const WatermarkTest = () => import('../components/common/WatermarkTest.vue');
 
 const routes = [
     {
@@ -100,6 +101,12 @@ const routes = [
         name: 'PublishProduct',
         component: PublishProduct,
         meta: { requiresAuth: true }   // 发布商品需要认证
+    },
+    {
+        path: '/watermark-test',
+        name: 'WatermarkTest',
+        component: WatermarkTest,
+        meta: { requiresAuth: true }   // 水印测试页面需要认证
     },
     {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由

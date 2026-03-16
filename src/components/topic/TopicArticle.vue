@@ -68,7 +68,7 @@
             :src="image"
             :alt="`图片${index + 1}`"
             class="content-image"
-            @click="$emit('preview-image', image)"
+            @click.stop="$emit('preview-image', image)"
         >
       </div>
 

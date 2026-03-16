@@ -16,13 +16,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-// 全局属性
-app.config.globalProperties.$message = ElMessage
-app.config.globalProperties.$loading = ElLoading
-
-// 添加到window对象以便在其他地方使用
-window.$message = ElMessage
-window.$loading = ElLoading
+// 全局属性 - 使用 provide 方式
+app.provide('$message', ElMessage)
+app.provide('$loading', ElLoading)
 
 app.use(pinia)
 app.use(ElementPlus)

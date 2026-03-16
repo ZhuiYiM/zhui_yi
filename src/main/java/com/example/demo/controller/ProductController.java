@@ -90,4 +90,18 @@ public class ProductController {
                                 HttpServletRequest request) {
         return productService.deleteProduct(id, request);
     }
+
+    // 收藏/取消收藏商品
+    @PostMapping("/{id}/favorite")
+    public Result toggleFavorite(@PathVariable Integer id,
+                                 HttpServletRequest request) {
+        return productService.toggleFavorite(id, request);
+    }
+
+    // 获取我的收藏
+    @GetMapping("/favorites")
+    public Result getMyFavorites(@RequestParam Map<String, Object> params,
+                                 HttpServletRequest request) {
+        return productService.getMyFavorites(request, params);
+    }
 }

@@ -34,5 +34,20 @@ export const productAPI = {
     // 删除商品
     deleteProduct(id) {
         return request.delete(`/products/${id}`);
+    },
+
+    // 收藏/取消收藏商品
+    toggleFavorite(id) {
+        return request.post(`/products/${id}/favorite`);
+    },
+
+    // 获取我的收藏
+    getMyFavorites(params = {}) {
+        return request.get('/products/favorites', { params });
+    },
+
+    // 获取商品分类
+    getCategories() {
+        return request.get('/products/categories');
     }
 };

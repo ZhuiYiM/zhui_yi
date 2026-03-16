@@ -84,7 +84,7 @@ const routes = [
         meta: { requiresAuth: false }  // 话题详情页游客也可访问
     },
     {
-        path: '/user/:userId',
+        path: '/user/profile/:userId',
         name: 'UserProfile',
         component: UserProfile,
         meta: { requiresAuth: false }  // 用户主页游客也可访问

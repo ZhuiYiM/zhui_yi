@@ -22,112 +22,57 @@
       <div v-else-if="product" class="product-detail">
         <!-- 返回按钮 -->
         <button @click="goBack" class="back-btn">
-          ← 返回交易中心
+          ← 返回
         </button>
 
         <div :class="['detail-content', { 'mobile-layout': isMobile }]">
           <!-- 左侧：商品图片 -->
-          <div class="product-gallery">
-            <div class="main-image">
-              <img 
-                :src="currentImage || (product.images && product.images[0]) || defaultImage" 
-                :alt="product.title"
-              >
-            </div>
-            
-            <!-- 缩略图列表 -->
-            <div v-if="product.images && product.images.length > 1" class="thumbnail-list">
-              <div
-                v-for="(image, index) in product.images"
-                :key="index"
-                :class="['thumbnail-item', { active: currentImageIndex === index }]"
-                @click="currentImageIndex = index"
-              >
-                <img :src="image" :alt="`缩略图${index + 1}`">
-              </div>
-            </div>
-          </div>
+          <ProductGallery 
+            :images="product.images" 
+            :current-index="currentImageIndex"
+            :title="product.title"
+            @update:index="currentImageIndex = $event"
+          />
 
           <!-- 右侧：商品信息 -->
-          <div class="product-info-section">
-            <h1 class="product-title">{{ product.title }}</h1>
-            
-            <div class="product-meta-top">
-              <span class="view-count">👁️ {{ product.viewCount || 0 }}次浏览</span>
-              <span class="like-count">👍 {{ product.likeCount || 0 }}人想要</span>
-              <span class="time">{{ formatTime(product.createdAt) }}</span>
-            </div>
-
-            <div class="price-section">
-              <span class="current-price">¥{{ product.price }}</span>
-              <span v-if="product.originalPrice" class="original-price">原价 ¥{{ product.originalPrice }}</span>
-            </div>
-
-            <div class="description-section">
-              <h3>商品描述</h3>
-              <p>{{ product.description }}</p>
-            </div>
-
-            <!-- 分类信息 -->
-            <div v-if="product.categoryName" class="category-info">
-              <span class="label">分类：</span>
-              <span class="value">{{ product.categoryName }}</span>
-            </div>
-
-            <!-- 卖家信息 -->
-            <div class="seller-section">
-              <h3>卖家信息</h3>
-              <div class="seller-info" @click="viewSeller">
-                <img 
-                  :src="sellerInfo.avatar || defaultAvatar" 
-                  :alt="sellerInfo.name"
-                  class="seller-avatar"
-                >
-                <div class="seller-details">
-                  <span class="seller-name">{{ sellerInfo.name }}</span>
-                  <span v-if="sellerInfo.identityTag" class="seller-tag" :class="sellerInfo.identityTag">
-                    {{ getIdentityTagName(sellerInfo.identityTag) }}
-                  </span>
-                </div>
-                <button class="contact-btn" @click.stop="contactSeller">联系卖家</button>
-              </div>
-            </div>
-
-            <!-- 操作按钮 -->
-            <div class="action-buttons">
-              <button 
-                class="btn btn-primary" 
-                @click="buyNow"
-                :disabled="product.status !== 1"
-              >
-                {{ product.status === 2 ? '已售出' : product.status === 0 ? '已下架' : '立即购买' }}
-              </button>
-              <button 
-                class="btn btn-secondary" 
-                @click="toggleFavorite"
-                :class="{ active: isFavorite }"
-              >
-                {{ isFavorite ? '⭐ 已收藏' : '☆ 收藏' }}
-              </button>
-              <button class="btn btn-share" @click="shareProduct">
-                🔗 分享
-              </button>
-            </div>
-          </div>
+          <ProductInfo :product="product" />
         </div>
 
-        <!-- 猜你喜欢 -->
-        <section class="recommended-section">
-          <h3>猜你喜欢</h3>
-          <ProductList 
-            :products="recommendedProducts" 
-            :is-mobile="isMobile"
-            :columns="4"
-            :mobile-columns="2"
-            :show-load-more="false"
-            @product-click="goToProduct"
+        <!-- 卖家信息 -->
+        <div v-if="sellerInfo" class="seller-info-wrapper">
+          <SellerInfo 
+            :seller="sellerInfo"
+            @view-seller="navigateToUserProfile"
+            @contact="contactSeller"
           />
-        </section>
+        </div>
+
+        <!-- 操作按钮 -->
+        <ProductActions 
+          :product-status="product.status"
+          :is-favorite="isFavorite"
+          @buy="buyNow"
+          @favorite="toggleFavorite"
+          @share="shareProduct"
+        />
+
+        <!-- 商家评价区域 -->
+        <ReviewsSection 
+          :reviews="reviews"
+          :average-score="averageScore"
+          @write-review="writeReview"
+          @view-product="viewProduct"
+          @view-image="viewImage"
+          @like="toggleReviewLike"
+          @reply="replyReview"
+        />
+
+        <!-- 猜你喜欢 -->
+        <RecommendedProducts 
+          :products="recommendedProducts"
+          :is-mobile="isMobile"
+          @product-click="goToProduct"
+        />
       </div>
 
       <!-- 空状态 -->
@@ -135,18 +80,23 @@
         <div class="empty-icon">📦</div>
         <h3>商品不存在</h3>
         <p>该商品可能已被删除或不存在</p>
-        <button @click="goBack" class="primary-btn">返回交易中心</button>
+        <button @click="goBack" class="primary-btn">返回</button>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
-import ProductList from './ProductList.vue';
+import ProductGallery from './ProductGallery.vue';
+import ProductInfo from './ProductInfo.vue';
+import SellerInfo from './SellerInfo.vue';
+import ProductActions from './ProductActions.vue';
+import ReviewsSection from './ReviewsSection.vue';
+import RecommendedProducts from './RecommendedProducts.vue';
 import { productAPI } from '@/api/product';
 
 const route = useRoute();
@@ -160,28 +110,29 @@ const isMobile = ref(window.innerWidth <= 768);
 const currentImageIndex = ref(0);
 const isFavorite = ref(false);
 const recommendedProducts = ref([]);
+const reviews = ref([]);
+const averageScore = ref(5.0);
 
-// 默认图片和头像
-const defaultImage = 'https://placehold.co/500x500/4A90E2/FFFFFF?text=商品图片';
-const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U';
-
-// 计算属性
-const currentImage = computed(() => {
-  if (product.value?.images && product.value.images.length > 0) {
-    return product.value.images[currentImageIndex.value];
-  }
-  return null;
-});
-
+// 计算卖家信息
 const sellerInfo = computed(() => {
   if (product.value?.seller) {
     return {
-      name: product.value.seller.username || product.value.seller.name || '未知卖家',
+      id: product.value.seller.id,
+      name: product.value.seller.username || product.value.seller.realName || '未知卖家',
       avatar: product.value.seller.avatarUrl || product.value.seller.avatar,
-      identityTag: product.value.seller.level1Tag || product.value.seller.identityTag
+      identityTag: product.value.seller.level1Tag,
+      college: product.value.seller.college,
+      bio: product.value.seller.bio,
+      productCount: product.value.seller.productCount
     };
   }
-  return { name: '未知卖家', avatar: defaultAvatar, identityTag: null };
+  if (product.value?.sellerId) {
+    return { 
+      id: product.value.sellerId,
+      name: '未知卖家'
+    };
+  }
+  return null;
 });
 
 // 获取用户信息
@@ -199,73 +150,118 @@ const getUserInfo = () => {
   }
 };
 
-// 格式化时间
-const formatTime = (timeStr) => {
-  if (!timeStr) return '';
-  
-  const now = new Date();
-  const time = new Date(timeStr);
-  const diff = now - time;
-  
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  
-  if (diff < minute) return '刚刚';
-  if (diff < hour) return `${Math.floor(diff / minute)}分钟前`;
-  if (diff < day) return `${Math.floor(diff / hour)}小时前`;
-  if (diff < 7 * day) return `${Math.floor(diff / day)}天前`;
-  return time.toLocaleDateString('zh-CN');
-};
-
-// 身份标签名称映射
-const getIdentityTagName = (tag) => {
-  const tagMap = {
-    'student': '学生',
-    'merchant': '商家',
-    'admin': '管理员',
-    'organization': '团体',
-    'society': '社会'
-  };
-  return tagMap[tag] || tag;
-};
-
 // 获取商品详情
 const fetchProductDetail = async () => {
   try {
     loading.value = true;
-    const response = await productAPI.getProductDetail(route.params.id);
+    const productId = route.params.id;
     
-    console.log('🔍 商品详情响应:', response); // 调试日志
+    if (!productId) {
+      throw new Error('商品 ID 参数缺失');
+    }
     
-    if (response) {
-      product.value = response;
-      
-      // 模拟推荐商品（实际项目中应该调用 API）
-      recommendedProducts.value = [
-        {
-          id: 999,
-          title: '相关商品推荐 1',
-          price: 50,
-          images: ['https://placehold.co/300x200/FF6B6B/FFFFFF?text=推荐 1'],
-          viewCount: 100,
-          likeCount: 20
-        },
-        {
-          id: 998,
-          title: '相关商品推荐 2',
-          price: 80,
-          images: ['https://placehold.co/300x200/50C878/FFFFFF?text=推荐 2'],
-          viewCount: 150,
-          likeCount: 30
-        }
-      ];
+    const response = await productAPI.getProductDetail(productId);
+    
+    if (!response) {
+      throw new Error('响应数据为空');
+    }
+    
+    let data;
+    if (response.code === 200 && response.data) {
+      data = response.data;
+    } else if (response.data) {
+      data = response.data;
+    } else {
+      data = response;
+    }
+    
+    product.value = data.product || data;
+    isFavorite.value = data.isFavorite ?? false;
+    
+    // 处理 images 字段
+    if (product.value && typeof product.value.images === 'string') {
+      try {
+        product.value.images = JSON.parse(product.value.images);
+      } catch (e) {
+        product.value.images = [];
+      }
+    }
+    
+    // 加载卖家商品和评价
+    if (product.value.sellerId) {
+      loadSellerProducts(product.value.sellerId);
+      loadSellerReviews(product.value.sellerId);
     }
   } catch (error) {
     console.error('获取商品详情失败:', error);
-    ElMessage.error('获取商品详情失败');
+    ElMessage.error(error.response?.data?.message || error.message || '获取商品详情失败');
+    product.value = null;
   } finally {
     loading.value = false;
+  }
+};
+
+// 加载卖家的其他商品
+const loadSellerProducts = async (sellerId) => {
+  try {
+    const params = { sellerId, status: 1, size: 4 };
+    const response = await productAPI.getProducts(params);
+    
+    if (response && response.records) {
+      recommendedProducts.value = response.records
+        .filter(p => p.id !== product.value.id)
+        .slice(0, 4);
+      
+      // 处理 images 字段
+      recommendedProducts.value.forEach(p => {
+        if (typeof p.images === 'string') {
+          try {
+            p.images = JSON.parse(p.images);
+          } catch (e) {
+            p.images = [];
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('加载卖家商品失败:', error);
+    recommendedProducts.value = [];
+  }
+};
+
+// 加载卖家评价
+const loadSellerReviews = async (sellerId) => {
+  try {
+    // 模拟数据 - 实际应调用 API
+    reviews.value = [
+      {
+        id: 1,
+        userId: 2,
+        userName: '张三',
+        userAvatar: 'https://placehold.co/50x50/4A90E2/FFFFFF?text=Z',
+        content: '商品质量很好，卖家服务态度也很棒！',
+        rating: 5,
+        createdAt: new Date().toISOString(),
+        likeCount: 3,
+        isLiked: false,
+        images: [],
+        product: {
+          id: 259,
+          title: '电脑清灰换硅脂',
+          price: 30,
+          image: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=服务'
+        }
+      }
+    ];
+    
+    if (reviews.value.length > 0) {
+      const total = reviews.value.reduce((sum, r) => sum + r.rating, 0);
+      averageScore.value = total / reviews.value.length;
+    }
+  } catch (error) {
+    console.error('加载评价失败:', error);
+    reviews.value = [];
+    averageScore.value = 5.0;
   }
 };
 
@@ -274,17 +270,10 @@ const goBack = () => {
   router.back();
 };
 
-// 跳转到商品
-const goToProduct = (productItem) => {
-  if (productItem.id) {
-    router.push(`/product/${productItem.id}`);
-  }
-};
-
-// 查看卖家
-const viewSeller = () => {
-  if (product.value?.sellerId) {
-    router.push(`/user/${product.value.sellerId}`);
+// 跳转到用户主页
+const navigateToUserProfile = (sellerId) => {
+  if (sellerId) {
+    router.push(`/user/profile/${sellerId}`);
   }
 };
 
@@ -313,6 +302,53 @@ const shareProduct = () => {
   ElMessage.info('分享功能开发中');
 };
 
+// 写评价
+const writeReview = () => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录后再评价');
+    return;
+  }
+  ElMessage.info('写评价功能开发中');
+};
+
+// 查看商品
+const viewProduct = (productId) => {
+  if (productId) {
+    router.push(`/product/${productId}`);
+  }
+};
+
+// 查看图片
+const viewImage = (imageUrl) => {
+  console.log('查看图片:', imageUrl);
+};
+
+// 点赞评价
+const toggleReviewLike = (review) => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录');
+    return;
+  }
+  review.isLiked = !review.isLiked;
+  review.likeCount = (review.likeCount || 0) + (review.isLiked ? 1 : -1);
+};
+
+// 回复评价
+const replyReview = (review) => {
+  if (!currentUser.value) {
+    ElMessage.warning('请先登录');
+    return;
+  }
+  ElMessage.info('回复评价功能开发中');
+};
+
+// 跳转到商品
+const goToProduct = (productItem) => {
+  if (productItem && productItem.id) {
+    router.push(`/product/${productItem.id}`);
+  }
+};
+
 // 设备检测
 const updateDeviceDetection = () => {
   isMobile.value = window.innerWidth <= 768;
@@ -322,6 +358,27 @@ onMounted(() => {
   getUserInfo();
   fetchProductDetail();
   window.addEventListener('resize', updateDeviceDetection);
+});
+
+// 监听路由参数变化
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      product.value = null;
+      isFavorite.value = false;
+      recommendedProducts.value = [];
+      currentImageIndex.value = 0;
+      loading.value = true;
+      reviews.value = [];
+      averageScore.value = 5.0;
+      fetchProductDetail();
+    }
+  }
+);
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDeviceDetection);
 });
 </script>
 
@@ -427,6 +484,7 @@ onMounted(() => {
   border-radius: 12px;
   padding: 30px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  min-height: 400px;
 }
 
 .detail-content.mobile-layout {
@@ -434,298 +492,30 @@ onMounted(() => {
   padding: 20px;
 }
 
-/* 商品图片画廊 */
-.product-gallery {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.main-image {
-  width: 100%;
-  height: 400px;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #f0f2f5;
-}
-
-.main-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumbnail-list {
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-}
-
-.thumbnail-item {
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: pointer;
-  flex-shrink: 0;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
-}
-
-.thumbnail-item.active {
-  border-color: #4A90E2;
-}
-
-.thumbnail-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 商品信息区域 */
-.product-info-section {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.product-title {
-  margin: 0;
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #333;
-}
-
-.product-meta-top {
-  display: flex;
-  gap: 20px;
-  font-size: 0.9rem;
-  color: #777;
-}
-
-.price-section {
-  display: flex;
-  align-items: baseline;
-  gap: 15px;
-  padding: 20px 0;
-  border-bottom: 2px solid #f0f2f5;
-}
-
-.current-price {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #e74c3c;
-}
-
-.original-price {
-  font-size: 1rem;
-  color: #999;
-  text-decoration: line-through;
-}
-
-.description-section h3 {
-  margin: 0 0 10px;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.description-section p {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #666;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.category-info {
-  display: flex;
-  gap: 10px;
-  font-size: 0.9rem;
-}
-
-.category-info .label {
-  color: #777;
-}
-
-.category-info .value {
-  color: #333;
-  font-weight: 600;
-}
-
-/* 卖家信息 */
-.seller-section h3 {
-  margin: 0 0 15px;
-  font-size: 1.1rem;
-  color: #333;
-}
-
-.seller-info {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.seller-info:hover {
-  background-color: #e9f7fe;
-}
-
-.seller-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.seller-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.seller-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-}
-
-.seller-tag {
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  color: white;
-  align-self: flex-start;
-}
-
-.seller-tag.student {
-  background-color: #4A90E2;
-}
-
-.seller-tag.merchant {
-  background-color: #50C878;
-}
-
-.contact-btn {
-  padding: 8px 20px;
-  background-color: #4A90E2;
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.contact-btn:hover {
-  background-color: #5a9fd6;
-}
-
-/* 操作按钮 */
-.action-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px solid #f0f2f5;
-}
-
-.btn {
-  flex: 1;
-  padding: 15px;
-  border: none;
-  border-radius: 25px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-primary {
-  background-color: #e74c3c;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #c0392b;
-}
-
-.btn-primary:disabled {
-  background-color: #ccc;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background-color: white;
-  color: #f39c12;
-  border: 2px solid #f39c12;
-}
-
-.btn-secondary.active {
-  background-color: #f39c12;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #f39c12;
-  color: white;
-}
-
-.btn-share {
-  background-color: white;
-  color: #4A90E2;
-  border: 2px solid #4A90E2;
-}
-
-.btn-share:hover {
-  background-color: #4A90E2;
-  color: white;
-}
-
-/* 推荐商品 */
-.recommended-section {
+/* 卖家信息包装器 */
+.seller-info-wrapper {
   margin: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.recommended-section h3 {
-  margin: 0 0 20px;
-  font-size: 1.2rem;
-  color: #333;
 }
 
 /* 移动端适配 */
-.product-detail-container.mobile .detail-content {
-  margin: 15px;
-  padding: 20px;
-}
-
-.product-detail-container.mobile .main-image {
-  height: 300px;
-}
-
-.product-detail-container.mobile .product-title {
-  font-size: 1.4rem;
-}
-
-.product-detail-container.mobile .current-price {
-  font-size: 1.6rem;
-}
-
-.product-detail-container.mobile .action-buttons {
-  flex-direction: column;
-}
-
-.product-detail-container.mobile .thumbnail-item {
-  width: 60px;
-  height: 60px;
+@media (max-width: 768px) {
+  .main-content {
+    padding: 0;
+  }
+  
+  .detail-content {
+    margin: 15px;
+    padding: 20px;
+  }
+  
+  .back-btn {
+    margin: 15px;
+  }
+  
+  .seller-info-wrapper,
+  .reviews-section,
+  .recommended-section {
+    margin: 15px;
+  }
 }
 </style>

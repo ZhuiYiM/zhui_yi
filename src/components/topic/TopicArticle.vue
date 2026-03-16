@@ -7,6 +7,7 @@
             :src="author.avatarUrl || defaultAvatar"
             :alt="author.username"
             class="author-avatar"
+            @click="$emit('view-user', author.id)"
             @mouseenter="showAuthorTooltip = true"
             @mouseleave="showAuthorTooltip = false"
         >
@@ -195,7 +196,7 @@ const props = defineProps({
   currentUserId: { type: [Number, String], default: null }
 });
 
-const emit = defineEmits(['like', 'collect', 'share', 'edit', 'delete', 'report', 'preview-image', 'view-forwarded']);
+const emit = defineEmits(['like', 'collect', 'share', 'edit', 'delete', 'report', 'preview-image', 'view-forwarded', 'view-user']);
 
 const showAuthorTooltip = ref(false);
 const defaultAvatar = 'https://placehold.co/100x100/CCCCCC/FFFFFF?text=默认头像';

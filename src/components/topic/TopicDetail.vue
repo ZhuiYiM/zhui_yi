@@ -47,6 +47,7 @@
             @report="reportTopic"
             @preview-image="previewImage"
             @view-forwarded="viewForwardedTopic"
+            @view-user="viewUserProfile"
         />
 
         <!-- 评论区组件 -->
@@ -371,6 +372,18 @@ const viewForwardedTopic = async (forwardedFromTopicId) => {
     }
   } else {
     ElMessage.warning('无法获取原话题信息');
+  }
+};
+
+// 查看用户主页
+const viewUserProfile = (userId) => {
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = userData.id;
+  
+  if (userId === currentUserId) {
+    router.push('/personalcenter');
+  } else {
+    router.push(`/user/profile/${userId}`);
   }
 };
 

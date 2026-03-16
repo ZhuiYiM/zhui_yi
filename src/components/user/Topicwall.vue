@@ -529,7 +529,7 @@ const viewUserProfile = (userId) => {
   if (userId === currentUserId) {
     router.push('/personalcenter');
   } else {
-    router.push(`/user/${userId}`);
+    router.push(`/user/profile/${userId}`);
   }
 };
 

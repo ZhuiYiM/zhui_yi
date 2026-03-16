@@ -110,6 +110,69 @@
         </div>
       </section>
 
+      <!-- 我的商品区域 -->
+      <section class="products-section">
+        <div class="section-header">
+          <h2>我的商品</h2>
+          <button v-if="!isMobile" class="view-more-btn" @click="viewAllProducts">查看全部</button>
+          <span v-else class="view-more" @click="viewAllProducts">查看更多 ></span>
+        </div>
+
+        <!-- 商品标签页 -->
+        <div class="product-tabs">
+          <button 
+            @click="currentProductTab = 'published'"
+            class="tab-btn"
+            :class="{ active: currentProductTab === 'published' }"
+          >
+            🛒 我发布的
+          </button>
+          <button 
+            @click="currentProductTab = 'favorites'"
+            class="tab-btn"
+            :class="{ active: currentProductTab === 'favorites' }"
+          >
+            ⭐ 我收藏的
+          </button>
+        </div>
+
+        <!-- 加载状态 -->
+        <div v-if="productsLoading" class="loading-state">
+          <div class="spinner-small"></div>
+          <span>加载中...</span>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="getCurrentProductList().length === 0" class="empty-products">
+          <div class="empty-icon">📦</div>
+          <p>{{ 
+            currentProductTab === 'published' ? '暂无发布的商品' : '暂无收藏的商品'
+          }}</p>
+        </div>
+
+        <!-- 商品列表 -->
+        <div v-else class="products-grid">
+          <div
+              v-for="(product, index) in getCurrentProductList()"
+              :key="'product-' + product.id + '-' + index"
+              class="product-item"
+              @click="viewProductDetail(product.id)"
+          >
+            <img :src="product.images && product.images.length > 0 ? product.images[0] : 'https://placehold.co/100x100/4A90E2/FFFFFF?text=商品'" :alt="product.title" class="product-image">
+            <div class="product-info">
+              <h3>{{ product.title }}</h3>
+              <p class="product-price">¥{{ product.price }}</p>
+              <div class="product-meta">
+                <span class="product-status" :class="product.status === 1 ? 'onsale' : 'sold'">
+                  {{ product.status === 1 ? '在售' : product.status === 2 ? '已售出' : '已下架' }}
+                </span>
+                <span class="product-stats">👁️ {{ product.viewCount || 0 }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 我的话题区域 -->
       <section class="topics-section">
         <div class="section-header">
@@ -198,6 +261,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router'; // 添加路由导入
 import { userAPI } from '@/api/user';
 import { topicAPI } from '@/api/topic';
+import { productAPI } from '@/api/product'; // 添加商品 API
 import { useAuthStore } from '@/stores/auth';
 import { ElMessage, ElMessageBox } from 'element-plus'; // 添加 Element Plus 组件导入
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
@@ -336,6 +400,22 @@ const collectedTopics = ref([]); // 我收藏的话题
 const currentTopicTab = ref('published'); // 'published'、'participated'、'liked' 或 'collected'
 const topicsLoading = ref(false);
 
+// 用户商品数据
+const userProducts = ref([]);
+const publishedProducts = ref([]); // 我发布的商品
+const favoriteProducts = ref([]); // 我收藏的商品
+const currentProductTab = ref('published'); // 'published' 或 'favorites'
+const productsLoading = ref(false);
+
+// 获取当前标签页的商品列表
+const getCurrentProductList = () => {
+  if (currentProductTab.value === 'published') {
+    return publishedProducts.value;
+  } else {
+    return favoriteProducts.value;
+  }
+};
+
 // 获取当前标签页的话题列表
 const getCurrentTopicList = () => {
   if (currentTopicTab.value === 'published') {
@@ -451,6 +531,88 @@ const viewTopicDetail = (topicId) => {
   console.log(`查看话题详情：${topicId}`);
   // 跳转到话题详情页面
   router.push(`/topic/${topicId}`);
+};
+
+// 商品功能
+const viewAllProducts = () => {
+  console.log('查看全部商品');
+  // 跳转到交易中心
+  router.push('/mall');
+};
+
+const viewProductDetail = (productId) => {
+  console.log(`查看商品详情：${productId}`);
+  // 跳转到商品详情页面
+  router.push(`/product/${productId}`);
+};
+
+// 加载用户商品
+const loadUserProducts = async () => {
+  try {
+    productsLoading.value = true;
+    
+    // 获取当前用户 ID
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = userData.id;
+    
+    if (!userId) {
+      ElMessage.warning('请先登录');
+      return;
+    }
+    
+    console.log('📡 正在加载用户商品，userId:', userId);
+    
+    // 加载用户发布的商品
+    const publishedRes = await productAPI.getProducts({ 
+      sellerId: userId, 
+      status: null, // 获取所有状态的商品
+      size: 10 
+    });
+    
+    console.log('✅ 发布的商品响应:', publishedRes);
+    const publishedData = publishedRes.data || publishedRes;
+    publishedProducts.value = publishedData.records || publishedData.data?.records || [];
+    
+    // 处理 images 字段
+    publishedProducts.value.forEach(p => {
+      if (typeof p.images === 'string') {
+        try {
+          p.images = JSON.parse(p.images);
+        } catch (e) {
+          console.error('商品 images 解析失败:', e);
+          p.images = [];
+        }
+      }
+    });
+    
+    // 加载用户收藏的商品
+    const favoritesRes = await productAPI.getMyFavorites({ size: 10 });
+    console.log('✅ 收藏的商品响应:', favoritesRes);
+    const favoritesData = favoritesRes.data || favoritesRes;
+    favoriteProducts.value = favoritesData || favoritesData.data || [];
+    
+    // 处理 images 字段
+    favoriteProducts.value.forEach(p => {
+      if (typeof p.images === 'string') {
+        try {
+          p.images = JSON.parse(p.images);
+        } catch (e) {
+          console.error('商品 images 解析失败:', e);
+          p.images = [];
+        }
+      }
+    });
+    
+    console.log('📋 发布的商品数量:', publishedProducts.value.length);
+    console.log('📋 收藏的商品数量:', favoriteProducts.value.length);
+  } catch (error) {
+    console.error('❌ 加载用户商品失败:', error);
+    ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
+    publishedProducts.value = [];
+    favoriteProducts.value = [];
+  } finally {
+    productsLoading.value = false;
+  }
 };
 
 // 加载用户话题
@@ -570,6 +732,9 @@ onMounted(async () => {
   
   // 加载用户的话题
   await loadUserTopics();
+  
+  // 加载用户的商品
+  await loadUserProducts();
 });
 </script>
 
@@ -1292,6 +1457,161 @@ onMounted(async () => {
   justify-content: space-between;
   font-size: 0.8rem;
   color: #777;
+}
+
+/* 商品区域样式 */
+.products-section {
+  background: white;
+  margin: 15px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.products-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.products-section h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #333;
+}
+
+/* 商品标签页样式 */
+.product-tabs {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 10px;
+}
+
+/* 商品列表样式 */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.product-item {
+  background: white;
+  border: 1px solid #e1e5f2;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.product-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.product-image {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  background-color: #f0f2f5;
+}
+
+.product-info {
+  padding: 12px;
+}
+
+.product-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.95rem;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.product-price {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #777;
+}
+
+.product-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.product-status.onsale {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.product-status.sold {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.product-stats {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 空状态样式 */
+.empty-products {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.empty-products .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.empty-products p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* 响应式设计 - 移动端商品样式 */
+@media (max-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .product-image {
+    height: 120px;
+  }
+  
+  .product-info h3 {
+    font-size: 0.85rem;
+  }
+  
+  .product-price {
+    font-size: 1rem;
+  }
 }
 
 /* 响应式设计 - 移动端样式 */

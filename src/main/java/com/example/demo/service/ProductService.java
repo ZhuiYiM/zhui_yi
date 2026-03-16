@@ -18,4 +18,8 @@ public interface ProductService extends IService<Product> {
     Result deleteProduct(Integer productId, HttpServletRequest request);
     Result searchProducts(String keyword, Integer page, Integer size);
     Result getCategories();
+    
+    // 收藏相关功能
+    Result toggleFavorite(Integer productId, HttpServletRequest request);
+    Result getMyFavorites(HttpServletRequest request, Map<String, Object> params);
 }

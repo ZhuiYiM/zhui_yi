@@ -126,16 +126,12 @@ const formatTime = (timeStr) => {
 
 // 处理点击
 const handleClick = () => {
-  console.log('👆 点击了商品卡片');
   emit('click', props.product);
   
   // 默认跳转到商品详情页
   if (props.product.id) {
     const targetPath = `/product/${props.product.id}`;
-    console.log('🚀 商品卡片跳转:', targetPath);
     router.push(targetPath);
-  } else {
-    console.error('❌ 商品 ID 不存在:', props.product);
   }
 };
 

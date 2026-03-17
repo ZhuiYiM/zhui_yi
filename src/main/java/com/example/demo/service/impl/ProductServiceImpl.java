@@ -9,11 +9,13 @@ import com.example.demo.entity.User;
 import com.example.demo.entity.Category;
 import com.example.demo.entity.ProductFavorite;
 import com.example.demo.entity.dto.ProductDTO;
+import com.example.demo.entity.ProductSpecification;
 import com.example.demo.mapper.ProductMapper;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.mapper.CategoryMapper;
 import com.example.demo.mapper.ProductFavoriteMapper;
 import com.example.demo.service.ProductService;
+import com.example.demo.service.ProductSpecificationService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,6 +43,9 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
     private ProductFavoriteMapper productFavoriteMapper;
 
     @Autowired
+    private ProductSpecificationService productSpecificationService;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     @Override
@@ -50,12 +55,18 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             token = token.substring(7); // 去掉 "Bearer " 前缀
         }
     
-        String username = jwtUtil.getUsernameFromToken(token);
-        if (username == null || !jwtUtil.validateToken(token, username)) {
+        // 使用更宽松的验证方式，只要 Token 有效即可
+        if (!jwtUtil.validateTokenWithIdOrUsername(token)) {
             return Result.error("Token 无效");
         }
+        
+        // 从 Token 中获取用户 ID
+        Integer userId = jwtUtil.getUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
     
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", username));
+        User user = userMapper.selectById(userId);
         if (user == null) {
             return Result.error("用户不存在");
         }
@@ -77,12 +88,34 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         product.setFavoriteCount(0);
         product.setIsHot(0);
         product.setIsRecommend(0);
+        // 判断是否有规格
+        if (productDTO.getSpecifications() != null && !productDTO.getSpecifications().isEmpty()) {
+            product.setHasSpecifications(1);
+        } else {
+            product.setHasSpecifications(0);
+        }
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
         product.setDeletedAt(null);
     
         boolean result = this.save(product);
         if (result) {
+            // 保存规格信息
+            if (productDTO.getSpecifications() != null && !productDTO.getSpecifications().isEmpty()) {
+                List<ProductSpecification> specifications = new java.util.ArrayList<>();
+                for (ProductDTO.SpecificationDTO specDTO : productDTO.getSpecifications()) {
+                    ProductSpecification spec = new ProductSpecification();
+                    spec.setSpecName(specDTO.getSpecName());
+                    spec.setSpecValue(specDTO.getSpecValue());
+                    spec.setSpecIcon(specDTO.getSpecIcon());
+                    spec.setStockQuantity(specDTO.getStockQuantity());
+                    spec.setPriceAdjustment(specDTO.getPriceAdjustment());
+                    spec.setIsDefault(specDTO.getIsDefault());
+                    spec.setSortOrder(specDTO.getSortOrder());
+                    specifications.add(spec);
+                }
+                productSpecificationService.batchSaveForProduct(product.getId(), specifications);
+            }
             return Result.success("商品发布成功");
         } else {
             return Result.error("商品发布失败");
@@ -207,6 +240,25 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             data.put("isFavorite", favorite != null);
         } else {
             data.put("isFavorite", false);
+        }
+        
+        // 添加规格信息
+        try {
+            List<ProductSpecification> specifications = productSpecificationService.getByProductId(productId);
+            if (specifications != null && !specifications.isEmpty()) {
+                // 按规格名称分组
+                java.util.Map<String, java.util.List<ProductSpecification>> groupedSpecs = new java.util.HashMap<>();
+                for (ProductSpecification spec : specifications) {
+                    String specName = spec.getSpecName();
+                    if (!groupedSpecs.containsKey(specName)) {
+                        groupedSpecs.put(specName, new java.util.ArrayList<>());
+                    }
+                    groupedSpecs.get(specName).add(spec);
+                }
+                data.put("specifications", groupedSpecs);
+            }
+        } catch (Exception e) {
+            System.err.println("获取规格信息失败：" + e.getMessage());
         }
 
         return Result.success(data);

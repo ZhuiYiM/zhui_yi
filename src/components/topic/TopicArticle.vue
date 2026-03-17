@@ -4,8 +4,8 @@
     <header class="article-header">
       <div class="author-info">
         <img
-            :src="author.avatarUrl || defaultAvatar"
-            :alt="author.username"
+            :src="getAvatarUrl(author)"
+            :alt="author.username" 
             class="author-avatar"
             @click="$emit('view-user', author.id)"
             @mouseenter="showAuthorTooltip = true"
@@ -24,7 +24,7 @@
       <!-- 作者信息悬停提示 -->
       <div v-if="showAuthorTooltip && authorPublicInfo" class="author-tooltip">
         <div class="tooltip-content">
-          <img :src="authorPublicInfo.basicInfo.avatarUrl || defaultAvatar" class="tooltip-avatar">
+          <img :src="getAvatarUrl(authorPublicInfo.basicInfo)" class="tooltip-avatar">
           <div class="tooltip-info">
             <h4>{{ authorPublicInfo.basicInfo.username || '匿名用户' }}</h4>
             <p v-if="authorPublicInfo.basicInfo.college">{{ authorPublicInfo.basicInfo.college }}</p>
@@ -199,7 +199,15 @@ const props = defineProps({
 const emit = defineEmits(['like', 'collect', 'share', 'edit', 'delete', 'report', 'preview-image', 'view-forwarded', 'view-user']);
 
 const showAuthorTooltip = ref(false);
-const defaultAvatar = 'https://placehold.co/100x100/CCCCCC/FFFFFF?text=默认头像';
+const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=User';
+
+// 获取头像 URL（优先使用 avatarUrl，兼容 avatar 字段）
+const getAvatarUrl = (author) => {
+  if (!author) return defaultAvatar;
+  const url = author.avatarUrl || author.avatar;
+  if (!url || url.trim() === '') return defaultAvatar;
+  return url;
+};
 
 // 是否为作者
 const isAuthor = computed(() => {

@@ -49,5 +49,12 @@ export const productAPI = {
     // 获取商品分类
     getCategories() {
         return request.get('/products/categories');
+    },
+
+    // 下架/上架商品
+    updateProductStatus(id, status) {
+        return request.put(`/products/${id}/status`, null, {
+            params: { status }
+        });
     }
 };

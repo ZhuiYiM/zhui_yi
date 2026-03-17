@@ -12,7 +12,6 @@ import { onMounted } from 'vue'
 
 // 应用初始化时加载用户信息
 onMounted(async () => {
-  console.log('🚀 应用启动，初始化用户信息');
   // await authStore.initUserInfo();
 })
 </script>

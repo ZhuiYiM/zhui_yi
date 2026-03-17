@@ -3,9 +3,9 @@
     <button 
       class="btn btn-primary" 
       @click="$emit('buy')"
-      :disabled="productStatus !== 1"
+      :disabled="productStatus !== 1 && !isOwner"
     >
-      {{ productStatus === 2 ? '已售出' : productStatus === 0 ? '已下架' : '立即购买' }}
+      {{ buttonText }}
     </button>
     <button 
       class="btn btn-secondary" 
@@ -21,7 +21,9 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+
+const props = defineProps({
   productStatus: {
     type: Number,
     default: 1
@@ -29,7 +31,19 @@ defineProps({
   isFavorite: {
     type: Boolean,
     default: false
+  },
+  isOwner: {
+    type: Boolean,
+    default: false
   }
+});
+
+// 根据商品状态和是否物主显示不同的按钮文字
+const buttonText = computed(() => {
+  if (props.isOwner) {
+    return props.productStatus === 1 ? '下架' : '重新上架';
+  }
+  return props.productStatus === 2 ? '已售出' : props.productStatus === 0 ? '已下架' : '立即购买';
 });
 
 defineEmits(['buy', 'favorite', 'share']);

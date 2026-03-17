@@ -106,6 +106,71 @@
             </el-checkbox-group>
           </el-form-item>
 
+          <!-- 商品规格 -->
+          <el-form-item label="商品规格">
+            <div class="specifications-container">
+              <el-switch
+                v-model="hasSpecifications"
+                active-text="启用规格"
+                inactive-text="不启用"
+              />
+              
+              <div v-if="hasSpecifications" class="specifications-editor">
+                <div class="spec-group" v-for="(group, groupIndex) in specifications" :key="groupIndex">
+                  <div class="spec-group-header">
+                    <el-input
+                      v-model="group.name"
+                      placeholder="规格名称（如：颜色、尺寸）"
+                      style="width: 200px; margin-right: 10px;"
+                    />
+                    <el-button @click="addSpecificationValue(groupIndex)" type="primary" size="small">
+                      <el-icon><Plus /></el-icon> 添加选项
+                    </el-button>
+                    <el-button @click="removeSpecificationGroup(groupIndex)" type="danger" size="small" v-if="specifications.length > 1">
+                      删除该规格
+                    </el-button>
+                  </div>
+                  
+                  <div class="spec-values">
+                    <div class="spec-value-item" v-for="(value, valueIndex) in group.values" :key="valueIndex">
+                      <el-input
+                        v-model="value.value"
+                        placeholder="规格值（如：红色、XL）"
+                        style="width: 150px; margin-right: 10px;"
+                      />
+                      <el-input
+                        v-model="value.icon"
+                        placeholder="颜色代码或图标（可选）"
+                        style="width: 150px; margin-right: 10px;"
+                      />
+                      <el-input-number
+                        v-model="value.stock"
+                        :min="0"
+                        placeholder="库存"
+                        style="width: 100px; margin-right: 10px;"
+                      />
+                      <el-input-number
+                        v-model="value.priceAdjustment"
+                        :precision="2"
+                        :min="-9999"
+                        placeholder="价格调整"
+                        style="width: 100px; margin-right: 10px;"
+                      />
+                      <el-radio v-model="value.isDefault" :label="1">默认</el-radio>
+                      <el-button @click="removeSpecificationValue(groupIndex, valueIndex)" type="danger" size="small" circle>
+                        <el-icon><Delete /></el-icon>
+                      </el-button>
+                    </div>
+                  </div>
+                </div>
+                
+                <el-button @click="addSpecificationGroup" type="success" style="margin-top: 10px;">
+                  <el-icon><Plus /></el-icon> 添加新规格
+                </el-button>
+              </div>
+            </div>
+          </el-form-item>
+
           <!-- 提交按钮 -->
           <el-form-item>
             <el-button
@@ -128,7 +193,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElLoading } from 'element-plus';
-import { Plus } from '@element-plus/icons-vue';
+import { Plus, Delete } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import ImageUploader from '@/components/common/ImageUploader.vue';
 import { productAPI } from '@/api/product';
@@ -141,6 +206,16 @@ const isMobile = ref(window.innerWidth <= 768);
 const currentUser = ref(null);
 const categories = ref([]);
 const imageFileList = ref([]); // 存储文件对象列表
+const hasSpecifications = ref(false); // 是否启用规格
+const specifications = ref([ // 规格数据
+  {
+    name: '颜色',
+    values: [
+      { value: '红色', icon: '#FF0000', stock: 10, priceAdjustment: 0, isDefault: 1 },
+      { value: '蓝色', icon: '#0000FF', stock: 10, priceAdjustment: 0, isDefault: 0 }
+    ]
+  }
+]);
 
 // 商品表单数据
 const productForm = reactive({
@@ -191,7 +266,6 @@ const getUserInfo = () => {
 const fetchCategories = async () => {
   try {
     const response = await productAPI.getCategories();
-    console.log('分类列表:', response); // 调试日志
     
     if (response && Array.isArray(response)) {
       categories.value = response.map(cat => ({
@@ -226,17 +300,84 @@ const fetchCategories = async () => {
 
 // 处理图片变化
 const handleImageChange = (data) => {
-  console.log('🖼️ 商品图片变化:', data);
   if (data && data.files) {
     // 存储文件对象用于后续上传
     imageFileList.value = data.files;
-    console.log('💾 保存文件对象:', imageFileList.value.length, '个');
   }
 };
 
 // 处理图片移除
 const handleImageRemove = () => {
   // 无需特殊处理
+};
+
+// 添加规格组
+const addSpecificationGroup = () => {
+  specifications.value.push({
+    name: '',
+    values: [
+      { value: '', icon: '', stock: 0, priceAdjustment: 0, isDefault: 0 }
+    ]
+  });
+};
+
+// 删除规格组
+const removeSpecificationGroup = (index) => {
+  specifications.value.splice(index, 1);
+};
+
+// 添加规格值
+const addSpecificationValue = (groupIndex) => {
+  specifications.value[groupIndex].values.push({
+    value: '',
+    icon: '',
+    stock: 0,
+    priceAdjustment: 0,
+    isDefault: 0
+  });
+};
+
+// 删除规格值
+const removeSpecificationValue = (groupIndex, valueIndex) => {
+  if (specifications.value[groupIndex].values.length > 1) {
+    specifications.value[groupIndex].values.splice(valueIndex, 1);
+  } else {
+    ElMessage.warning('至少保留一个选项');
+  }
+};
+
+// 将规格数据转换为提交格式
+const convertSpecificationsToDTO = () => {
+  if (!hasSpecifications.value) {
+    return [];
+  }
+  
+  const result = [];
+  let sortOrder = 0;
+  
+  for (const group of specifications.value) {
+    if (!group.name || !group.values || group.values.length === 0) {
+      continue;
+    }
+    
+    for (const value of group.values) {
+      if (!value.value) {
+        continue;
+      }
+      
+      result.push({
+        specName: group.name,
+        specValue: value.value,
+        specIcon: value.icon,
+        stockQuantity: value.stock || 0,
+        priceAdjustment: value.priceAdjustment || 0,
+        isDefault: value.isDefault || 0,
+        sortOrder: sortOrder++
+      });
+    }
+  }
+  
+  return result;
 };
 
 // 上传图片到服务器
@@ -330,7 +471,8 @@ const handleSubmit = async () => {
         categoryId: productForm.categoryId,
         images: imageUrls,
         contactInfo: productForm.contactInfo,
-        tradeMethods: productForm.tradeMethods
+        tradeMethods: productForm.tradeMethods,
+        specifications: convertSpecificationsToDTO()
       };
       
       console.log('提交数据:', submitData); // 调试日志
@@ -445,6 +587,48 @@ onMounted(() => {
   margin-top: 8px;
   font-size: 0.85rem;
   color: #999;
+}
+
+/* 规格编辑器样式 */
+.specifications-container {
+  width: 100%;
+}
+
+.specifications-editor {
+  margin-top: 15px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.spec-group {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.spec-group-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.spec-values {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spec-value-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 6px;
 }
 
 /* 移动端适配 */

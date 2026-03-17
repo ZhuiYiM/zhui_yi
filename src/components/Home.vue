@@ -170,8 +170,6 @@ const checkLoginStatus = () => {
       studentId: user.studentId || user.student_id || user.schoolId || '未设置',
       avatar: user.avatar || user.profilePicture || ''
     };
-    
-    console.log('🏠 当前用户信息:', currentUser.value);
   } else {
     // 未登录时设置为 null
     currentUser.value = null;
@@ -301,15 +299,14 @@ const advertisements = ref([
 
 // 页面跳转函数
 const goToActivity = (id) => {
-  console.log(`跳转到活动详情页，ID: ${id}`);
+  // 跳转到活动详情页
 };
 
 const goToAd = (id) => {
-  console.log(`跳转到广告详情页，ID: ${id}`);
+  // 跳转到广告详情页
 };
 
 const goToPage = (page) => {
-  console.log(`跳转到${page}页面`);
   switch(page) {
     case 'map':
       router.push('/map');
@@ -334,8 +331,6 @@ const goToPage = (page) => {
       // 跳转到商城页面
       router.push('/mall');
       break;
-    default:
-      console.log(`未知页面: ${page}`);
   }
 };
 // 生命周期钩子

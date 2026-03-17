@@ -40,20 +40,12 @@ apiClient.interceptors.request.use(
         
         const requiresAuth = !isNoAuthEndpoint && !explicitNoAuth;
         const token = localStorage.getItem('token');
-        
-        console.log('🔍 请求URL:', config.url);
-        console.log('📋 是否需要认证:', requiresAuth);
-        console.log('🔑 是否有Token:', !!token);
-        console.log('🏷️ 明确免认证:', explicitNoAuth);
-        
-        // 只对需要认证的接口添加token
+                
+        // 只对需要认证的接口添加 token
         if (token && requiresAuth) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('✅ 已添加Authorization头');
-        } else {
-            console.log('🚫 跳过Authorization头');
         }
-        
+                
         // 添加时间戳防止缓存
         if (config.method === 'get') {
             config.params = {
@@ -61,8 +53,7 @@ apiClient.interceptors.request.use(
                 _t: Date.now()
             };
         }
-        
-        console.log('🚀 发送请求:', config.method.toUpperCase(), config.url);
+                
         return config;
     },
     error => {
@@ -74,8 +65,6 @@ apiClient.interceptors.request.use(
 // 响应拦截器
 apiClient.interceptors.response.use(
     response => {
-        console.log('✅ 响应成功:', response.config.url, response.status);
-        
         // 统一处理成功响应
         const responseData = response.data;
         

@@ -12,17 +12,15 @@ export const userAPI = {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'Authorization': 'Bearer temp_token_for_bypass' // 临时绕过token检查
+                'Authorization': 'Bearer temp_token_for_bypass'
             },
             body: JSON.stringify(data)
         }).then(response => {
-            console.log('📊 登录响应状态:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
         }).then(result => {
-            console.log('📥 登录响应数据:', result);
             // 处理统一响应格式
             if (result.code === 200) {
                 return result.data;

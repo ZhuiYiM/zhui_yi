@@ -14,45 +14,38 @@ export const useAuthStore = defineStore('auth', () => {
     // Actions
     const login = async (loginData) => {
         try {
-            console.log('🔐 开始登录请求:', loginData.username);
-            console.log('📝 登录数据:', loginData);
-            
-            // 清理可能存在的旧Token，避免干扰登录请求
+            // 清理可能存在的旧 Token，避免干扰登录请求
             const existingToken = localStorage.getItem('token');
             if (existingToken) {
-                console.log('🧹 清理旧Token:', existingToken.substring(0, 20) + '...');
                 localStorage.removeItem('token');
             }
-            
+                
             const response = await userAPI.login(loginData);
-            console.log('✅ 登录响应:', response);
-            
+                
             // 检查响应数据结构
             if (!response) {
                 throw new Error('服务器无响应数据');
             }
-            
+                
             const { token: userToken, user } = response;
-            
+                
             // 验证必要字段
             if (!userToken) {
-                throw new Error('服务器响应缺少token');
+                throw new Error('服务器响应缺少 token');
             }
-            
-            // 保存token
+                
+            // 保存 token
             token.value = userToken;
             localStorage.setItem('token', userToken);
-            
-            console.log('💾 Token已保存:', userToken);
-            
+                
             // 自动获取完整的用户信息
             await fetchCompleteUserInfo();
-            
+                
             ElMessage.success('登录成功');
             return response;
         } catch (error) {
             console.error('❌ 登录失败:', error);
-            
+                
             // 详细错误处理
             if (error.response) {
                 const { status, data } = error.response;
@@ -118,7 +111,6 @@ export const useAuthStore = defineStore('auth', () => {
     // 获取完整的用户信息（包括头像、学号等）
     const fetchCompleteUserInfo = async () => {
         try {
-            console.log('🔄 开始获取完整用户信息');
             const user = await userAPI.getCurrentUser();
             
             // 处理用户信息，确保字段兼容性
@@ -136,7 +128,6 @@ export const useAuthStore = defineStore('auth', () => {
             userInfo.value = processedUserInfo;
             localStorage.setItem('user', JSON.stringify(processedUserInfo));
             
-            console.log('✅ 完整用户信息已获取:', processedUserInfo);
             return processedUserInfo;
         } catch (error) {
             console.error('❌ 获取完整用户信息失败:', error);

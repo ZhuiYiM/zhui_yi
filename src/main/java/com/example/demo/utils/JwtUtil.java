@@ -113,12 +113,13 @@ public class JwtUtil {
     }
 
     /**
-     * 从Token中获取Claims
+     * 从 Token 中获取 Claims
      */
     // 替换旧的解析器创建方式
     private Claims getClaimsFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
+                .setAllowedClockSkewSeconds(clockSkew) // 设置时钟偏差容忍度
                 .build()
                 .parseClaimsJws(token)
                 .getBody();

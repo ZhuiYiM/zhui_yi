@@ -208,11 +208,6 @@ const uploadFile = async (file) => {
 
 // 删除图片
 const handleRemove = async (file, uploadFileList) => {
-  console.log('🗑️ handleRemove - file:', file);
-  console.log('🗑️ file.name:', file.name);
-  console.log('🗑️ file.url:', typeof file.url === 'string' ? file.url : 'not a string');
-  console.log('🗑️ uploadFileList:', uploadFileList);
-  
   // 安全获取 url 字符串
   let urlStr = '';
   if (file.url) {
@@ -221,7 +216,6 @@ const handleRemove = async (file, uploadFileList) => {
   
   // 如果是本地预览 URL，需要释放
   if (urlStr && urlStr.startsWith('blob:')) {
-    console.log('🔓 释放 blob URL:', urlStr);
     try {
       URL.revokeObjectURL(urlStr);
     } catch (e) {
@@ -231,7 +225,6 @@ const handleRemove = async (file, uploadFileList) => {
   
   // 确保 uploadFileList 有效
   if (!uploadFileList || !Array.isArray(uploadFileList)) {
-    console.warn('⚠️ uploadFileList 无效，使用当前 fileList');
     uploadFileList = fileList.value;
   }
   
@@ -244,8 +237,6 @@ const handleRemove = async (file, uploadFileList) => {
         return fUrl || f.response?.data;
       })
       .map(f => f.response?.data || (typeof f.url === 'string' ? f.url : ''));
-    
-    console.log('📤 emit modelValue after remove:', urls);
     
     // 使用 nextTick 确保 DOM 更新后再发送事件
     await nextTick();

@@ -472,9 +472,7 @@ export default {
       }
       
       try {
-        console.log('📤 正在发送验证码到:', this.formData.email);
         const response = await userAPI.sendEmailVerification(this.formData.email);
-        console.log('📥 验证码发送响应:', response);
         ElMessage.success('验证码已发送，请查收邮箱');
         this.startCountdown();
       } catch (error) {
@@ -496,9 +494,7 @@ export default {
       }
       
       try {
-        console.log('📤 正在发送短信验证码到:', this.formData.phone);
         const response = await userAPI.sendPhoneVerificationCode(this.formData.phone);
-        console.log('📥 短信验证码发送响应:', response);
         ElMessage.success('短信验证码已发送');
         this.startCountdown();
       } catch (error) {
@@ -565,7 +561,6 @@ export default {
         if (loadingInstance) {
           loadingInstance.close();
         }
-        console.error('手机号登录失败:', error);
         ElMessage.error(error.message || '登录失败');
       }
     },

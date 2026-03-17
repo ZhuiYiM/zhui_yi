@@ -15,102 +15,35 @@
       <!-- 头部 -->
       <header class="header">
         <h1 v-if="isMobile">个人中心</h1>
-        <!-- 搜索栏已移除 -->
       </header>
 
-      <!-- 用户信息区域 -->
-      <section class="user-info-section">
-        <div class="user-header">
-          <img :src="userInfo.avatar" alt="用户头像" class="user-avatar">
-          <div class="user-details">
-            <h2>{{ userInfo.name }}</h2>
-            <p>学号: {{ userInfo.studentId }}</p>
-            <p>部门: {{ userInfo.college }}</p>
-          </div>
-        </div>
+      <!-- 用户信息区域 - 使用独立组件 -->
+      <UserInfoSection 
+        :name="userInfo.name"
+        :student-id="userInfo.studentId"
+        :college="userInfo.college"
+        :avatar="userInfo.avatar"
+        @edit-profile="editProfile"
+        @account-management="accountManagement"
+      />
 
-        <div class="user-actions">
-          <button @click="editProfile">编辑资料</button>
-          <button @click="openSettings">⚙️ 设置</button>
-          <button @click="accountManagement">账号管理</button>
-        </div>
-      </section>
+      <!-- 认证中心区域 - 使用独立组件 -->
+      <AuthCenter 
+        :is-verified="userInfo.isVerified"
+        :is-real-name-verified="userInfo.isRealNameVerified"
+        @verification-click="handleVerificationUpdate"
+      />
 
-      <!-- 认证功能区域 -->
-      <section class="auth-section">
-        <div class="section-header">
-          <h2>认证中心</h2>
-        </div>
+      <!-- 我的订单区域 - 使用独立组件 -->
+      <OrderSection 
+        :orders="recentOrders"
+        :loading="ordersLoading"
+        :is-mobile="isMobile"
+        @view-all="viewAllOrders"
+        @view-detail="viewOrderDetail"
+      />
 
-        <div class="auth-status">
-          <div class="status-item-container">
-            <div class="status-item" :class="{ 'verified': userInfo.isVerified }">
-              <div class="status-icon">
-                <span v-if="userInfo.isVerified">✅</span>
-                <span v-else>❌</span>
-              </div>
-              <div class="status-info">
-                <h3>身份认证</h3>
-                <p v-if="userInfo.isVerified">已通过</p>
-                <p v-else>未通过</p>
-                <p class="status-detail" v-if="!userInfo.isVerified">(学号未设置)</p>
-              </div>
-              <button @click="goToVerification('identity')" class="auth-btn">
-                {{ userInfo.isVerified ? '重新认证' : '立即认证' }}
-              </button>
-            </div>
-            
-            <div class="status-item" :class="{ 'verified': userInfo.isRealNameVerified }">
-              <div class="status-icon">
-                <span v-if="userInfo.isRealNameVerified">✅</span>
-                <span v-else>❌</span>
-              </div>
-              <div class="status-info">
-                <h3>实名认证</h3>
-                <p v-if="userInfo.isRealNameVerified">已通过</p>
-                <p v-else>未通过</p>
-                <p class="status-detail" v-if="!userInfo.isRealNameVerified">(真实姓名未设置)</p>
-              </div>
-              <button @click="goToVerification('realname')" class="auth-btn">
-                {{ userInfo.isRealNameVerified ? '重新认证' : '立即认证' }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 我的订单区域 -->
-      <section class="orders-section">
-        <div class="section-header">
-          <h2>我的订单</h2>
-          <button v-if="!isMobile" class="view-more-btn" @click="viewAllOrders">查看全部</button>
-          <span v-else class="view-more" @click="viewAllOrders">查看更多 ></span>
-        </div>
-
-        <div class="orders-grid">
-          <div
-              v-for="(order, index) in recentOrders"
-              :key="'order-' + index"
-              class="order-item"
-              @click="viewOrderDetail(order.id)"
-          >
-            <div class="order-header">
-              <span class="order-id">#{{ order.id }}</span>
-              <span class="order-status" :class="order.status">{{ order.statusText }}</span>
-            </div>
-            <div class="order-content">
-              <img :src="order.image" :alt="order.title" class="order-image">
-              <div class="order-info">
-                <h3>{{ order.title }}</h3>
-                <p class="order-price">¥{{ order.price }}</p>
-                <p class="order-date">{{ order.date }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 我的商品区域 -->
+      <!-- 我的商品区域 - 保持原有组件化 -->
       <section class="products-section">
         <div class="section-header">
           <h2>我的商品</h2>
@@ -258,138 +191,36 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router'; // 添加路由导入
-import { userAPI } from '@/api/user';
-import { topicAPI } from '@/api/topic';
-import { productAPI } from '@/api/product'; // 添加商品 API
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { ElMessage, ElMessageBox } from 'element-plus'; // 添加 Element Plus 组件导入
+import { ElMessage, ElMessageBox } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import UserInfoSection from '@/components/user/UserInfoSection.vue';
+import AuthCenter from '@/components/user/AuthCenter.vue';
+import OrderSection from '@/components/user/OrderSection.vue';
+import { useUserInfo } from '@/composables/useUserInfo';
+import { useUserOrders } from '@/composables/useUserOrders';
+import { topicAPI } from '@/api/topic';
+import { productAPI } from '@/api/product';
 
 const router = useRouter(); // 创建路由实例
 const authStore = useAuthStore();
 
+// 使用 composables 管理用户信息和订单
+const { userInfo, fetchUserInfo, updateVerificationStatus } = useUserInfo();
+const { recentOrders, ordersLoading, loadRecentOrders } = useUserOrders();
+
 // 设备检测相关
 const isMobile = ref(false);
-
-// 加载状态
-const isLoading = ref(false);
 
 // 更新设备检测状态
 const updateDeviceDetection = () => {
   isMobile.value = window.innerWidth < 768;
 };
 
-onMounted(() => {
-  updateDeviceDetection();
-  window.addEventListener('resize', updateDeviceDetection);
-});
+// 用户信息已移至 composable 管理
 
-onUnmounted(() => {
-  window.removeEventListener('resize', updateDeviceDetection);
-});
-
-// 用户信息
-const userInfo = ref({
-  name: '',
-  studentId: '',
-  college: '',
-  avatar: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
-  isVerified: false,
-  isRealNameVerified: false,
-  realName: ''
-});
-
-// 获取用户信息
-const fetchUserInfo = () => {
-  try {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('从localStorage获取的用户数据:', userData);
-    
-    // 更新用户信息
-    userInfo.value = {
-      name: userData.nickname || userData.username || userData.name || '未知用户',
-      studentId: userData.studentId || userData.student_id || '未设置',
-      college: userData.college || userData.department || '未设置',
-      avatar: userData.avatar || userData.avatarUrl || 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
-      isVerified: !!userData.studentId, // 通过学号是否存在判断身份认证
-      isRealNameVerified: !!(userData.realName || userData.name), // 通过真实姓名是否存在判断实名认证
-      realName: userData.realName || userData.name || ''
-    };
-    
-    console.log('更新后的用户信息:', userInfo.value);
-  } catch (error) {
-    console.error('获取用户信息失败:', error);
-    // 使用默认值
-    userInfo.value = {
-      name: '未知用户',
-      studentId: '未设置',
-      college: '未设置',
-      avatar: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
-      isVerified: false,
-      isRealNameVerified: false,
-      realName: ''
-    };
-  }
-};
-
-// 最近订单数据
-const recentOrders = ref([
-  {
-    id: '2023001',
-    title: '高数教材',
-    price: 45,
-    date: '2023-05-20',
-    status: 'pending',
-    statusText: '待处理',
-    image: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=教材'
-  },
-  {
-    id: '2023002',
-    title: '无线鼠标',
-    price: 89,
-    date: '2023-05-18',
-    status: 'shipping',
-    statusText: '配送中',
-    image: 'https://placehold.co/100x100/667eea/FFFFFF?text=鼠标'
-  },
-  {
-    id: '2023003',
-    title: '代取快递',
-    price: 5,
-    date: '2023-05-15',
-    status: 'completed',
-    statusText: '已完成',
-    image: 'https://placehold.co/100x100/FF6B6B/FFFFFF?text=快递'
-  },
-  {
-    id: '2023004',
-    title: '拼车去火车站',
-    price: 30,
-    date: '2023-05-05',
-    status: 'completed',
-    statusText: '已完成',
-    image: 'https://placehold.co/100x100/9B59B6/FFFFFF?text=拼车'
-  },
-  {
-    id: '2023005',
-    title: '运动鞋',
-    price: 299,
-    date: '2023-05-03',
-    status: 'completed',
-    statusText: '已完成',
-    image: 'https://placehold.co/100x100/E67E22/FFFFFF?text=运动鞋'
-  },
-  {
-    id: '2023006',
-    title: '笔记本电脑包',
-    price: 89,
-    date: '2023-05-01',
-    status: 'processing',
-    statusText: '处理中',
-    image: 'https://placehold.co/100x100/34495E/FFFFFF?text=电脑包'
-  }
-]);
+// 订单数据已移至 composable 管理
 
 // 用户话题数据
 const userTopics = ref([]);
@@ -432,7 +263,6 @@ const getCurrentTopicList = () => {
 // 编辑个人资料
 const editProfile = () => {
   console.log('编辑个人资料');
-  // 跳转到个人信息编辑页面
   router.push('/personalinformation');
 };
 
@@ -442,13 +272,9 @@ const accountManagement = () => {
   router.push('/account/settings');
 };
 
-// 跳转到认证页面
-const goToVerification = (type) => {
-  console.log(`跳转到${type}认证页面`);
-  router.push({
-    path: '/account/verification',
-    query: { type: type }
-  });
+// 处理认证状态更新（来自 AuthCenter 组件）
+const handleVerificationUpdate = (type, status) => {
+  updateVerificationStatus(type, status);
 };
 
 
@@ -462,11 +288,8 @@ const logout = async () => {
       type: 'warning'
     });
 
-    // 执行退出登录
     await authStore.logout();
     ElMessage.success('已退出登录');
-    
-    // 跳转到首页
     router.push('/');
   } catch (error) {
     if (error !== 'cancel') {
@@ -475,50 +298,16 @@ const logout = async () => {
   }
 };
 
-// 身份认证
-const toggleVerification = async () => {
-  try {
-    if (userInfo.value.isVerified) {
-      // 取消认证
-      await userAPI.applyIdentityVerification({ action: 'cancel' });
-      userInfo.value.isVerified = false;
-      ElMessage.success('已取消身份认证');
-    } else {
-      // 申请认证
-      // 这里应该打开认证申请表单
-      ElMessage.info('身份认证申请功能开发中');
-    }
-  } catch (error) {
-    ElMessage.error(error.message || '操作失败');
-  }
-};
-
-// 实名认证
-const toggleRealNameVerification = async () => {
-  try {
-    if (userInfo.value.isRealNameVerified) {
-      // 取消认证
-      await userAPI.applyRealNameVerification({ action: 'cancel' });
-      userInfo.value.isRealNameVerified = false;
-      ElMessage.success('已取消实名认证');
-    } else {
-      // 申请认证
-      ElMessage.info('实名认证申请功能开发中');
-    }
-  } catch (error) {
-    ElMessage.error(error.message || '操作失败');
-  }
-};
-
-// 订单功能
+// 身份认证和实名认证逻辑已移至 AuthCenter 组件
+// 订单功能方法已移至 OrderSection 组件作为事件发射
 const viewAllOrders = () => {
   console.log('查看全部订单');
-  // 实际项目中可以跳转到订单页面
+  router.push('/personal/orders');
 };
 
 const viewOrderDetail = (orderId) => {
-  console.log(`查看订单详情: ${orderId}`);
-  // 实际项目中可以跳转到订单详情页面
+  console.log(`查看订单详情：${orderId}`);
+  router.push(`/order/confirmation/${orderId}`);
 };
 
 // 话题功能
@@ -556,7 +345,7 @@ const loadUserProducts = async () => {
     const userId = userData.id;
     
     if (!userId) {
-      ElMessage.warning('请先登录');
+      console.log('ℹ️ 用户未登录，跳过商品加载');
       return;
     }
     
@@ -607,9 +396,16 @@ const loadUserProducts = async () => {
     console.log('📋 收藏的商品数量:', favoriteProducts.value.length);
   } catch (error) {
     console.error('❌ 加载用户商品失败:', error);
-    ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
-    publishedProducts.value = [];
-    favoriteProducts.value = [];
+    // 如果是 Token 无效，不显示错误提示，直接清空数据
+    if (error.message && error.message.includes('Token')) {
+      console.warn('⚠️ Token 无效，跳过商品数据加载');
+      publishedProducts.value = [];
+      favoriteProducts.value = [];
+    } else {
+      ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
+      publishedProducts.value = [];
+      favoriteProducts.value = [];
+    }
   } finally {
     productsLoading.value = false;
   }
@@ -625,7 +421,7 @@ const loadUserTopics = async () => {
    const userId = userData.id;
     
    if (!userId) {
-     ElMessage.warning('请先登录');
+     console.log('ℹ️ 用户未登录，跳过话题加载');
      return;
     }
     
@@ -661,11 +457,20 @@ const loadUserTopics = async () => {
   console.log('📋 收藏的话题数量:', collectedTopics.value.length);
   } catch (error) {
   console.error('❌ 加载话题失败:', error);
-  ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
-   publishedTopics.value = [];
+  // 如果是 Token 无效，不显示错误提示，直接清空数据
+  if (error.message && error.message.includes('Token')) {
+    console.warn('⚠️ Token 无效，跳过话题数据加载');
+    publishedTopics.value = [];
     participatedTopics.value = [];
     likedTopics.value = [];
-  collectedTopics.value = [];
+    collectedTopics.value = [];
+  } else {
+    ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
+    publishedTopics.value = [];
+    participatedTopics.value = [];
+    likedTopics.value = [];
+    collectedTopics.value = [];
+  }
   } finally {
   topicsLoading.value = false;
   }
@@ -727,14 +532,24 @@ const goToPage = (page) => {
 // 页面初始化
 onMounted(async () => {
   console.log('个人中心页面已挂载');
+  updateDeviceDetection();
+  window.addEventListener('resize', updateDeviceDetection);
+  
   fetchUserInfo();
   console.log('用户信息初始化完成');
+  
+  loadRecentOrders();
+  console.log('订单数据初始化完成');
   
   // 加载用户的话题
   await loadUserTopics();
   
   // 加载用户的商品
   await loadUserProducts();
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateDeviceDetection);
 });
 </script>
 
@@ -792,46 +607,7 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* 用户信息区域样式 */
-.user-info {
-  padding: 20px;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  background-color: #f8f9fa;
-}
-
-.user-avatar img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #4A90E2;
-}
-
-.user-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.username {
-  font-weight: 600;
-  color: #333;
-  font-size: 1.1rem;
-  margin-bottom: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.student-id {
-  color: #666;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* 用户信息区域样式已移至 AuthCenter 组件 */
 
 /* 侧边栏样式优化 */
 .sidebar {
@@ -1154,222 +930,8 @@ onMounted(async () => {
   transform: scale(0.95);
 }
 
-.auth-status {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.status-item-container {
-  display: flex;
-  gap: 15px;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  padding: 12px; /* 减小内边距 */
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-  flex: 1; /* 使两个认证项平分空间 */
-  min-width: 0; /* 防止flex项目溢出 */
-}
-
-.status-item.verified {
-  border-color: #50C878;
-  background-color: #f0fff4;
-}
-
-.status-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.status-icon {
-  font-size: 1.5rem; /* 减小图标大小 */
-  margin-right: 10px; /* 减小右边距 */
-  flex-shrink: 0; /* 防止图标被压缩 */
-}
-
-.status-info {
-  flex: 1; /* 占据剩余空间 */
-  min-width: 0; /* 允许内容换行 */
-}
-
-.status-info h3 {
-  margin: 0 0 3px 0; /* 减小间距 */
-  font-size: 0.9rem; /* 减小字体 */
-  color: #333;
-  white-space: nowrap; /* 防止标题换行 */
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-info p {
-  margin: 0;
-  font-size: 0.8rem; /* 减小字体 */
-  color: #666;
-}
-
-.status-detail {
-  font-size: 0.7rem;
-  color: #999;
-  margin-top: 2px;
-}
-
-.auth-btn {
-  padding: 6px 10px; /* 减小按钮内边距 */
-  border: 2px solid #e1e5f2;
-  border-radius: 6px; /* 减小圆角 */
-  background-color: white;
-  color: #667eea;
-  font-size: 0.8rem; /* 减小字体 */
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0; /* 防止按钮被压缩 */
-}
-
-.auth-btn:hover {
-  background-color: #667eea;
-  color: white;
-}
-
-/* 订单区域样式 */
-.orders-section {
-  background: white;
-  margin: 15px;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  flex-shrink: 0;
-}
-
-.orders-section .section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.orders-section h2 {
-  margin: 0 0 15px 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.view-more {
-  color: #4A90E2;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.view-more-btn {
-  background-color: #4A90E2;
-  color: white;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.orders-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); /* 调整最小宽度适应移动端 */
-  gap: 15px;
-}
-
-.order-item {
-  border: 1px solid #e1e5f2;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.3s;
-  height: fit-content; /* 使订单项高度自适应内容 */
-}
-
-.order-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px; /* 减小内边距 */
-  background-color: #f8f9fa;
-}
-
-.order-id {
-  font-weight: bold;
-  color: #333;
-  font-size: 0.9rem; /* 减小字体 */
-}
-
-.order-status {
-  padding: 3px 6px; /* 减小内边距 */
-  border-radius: 12px;
-  font-size: 0.7rem; /* 减小字体 */
-}
-
-.order-status.completed {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.order-status.pending {
-  background-color: #fff3cd;
-  color: #856404;
-}
-
-.order-status.canceled {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.order-content {
-  display: flex;
-  padding: 12px; /* 减小内边距 */
-  gap: 10px; /* 减小间距 */
-}
-
-.order-image {
-  width: 60px; /* 减小图片宽度 */
-  height: 60px; /* 减小图片高度 */
-  object-fit: cover;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-.order-info {
-  flex: 1;
-}
-
-.order-info h3 {
-  margin: 0 0 5px 0; /* 减小间距 */
-  font-size: 0.9rem; /* 减小字体 */
-  color: #333;
-}
-
-.order-price {
-  margin: 0 0 3px 0; /* 减小间距 */
-  font-size: 1rem; /* 减小字体 */
-  font-weight: bold;
-  color: #e74c3c;
-}
-
-.order-date {
-  margin: 0;
-  font-size: 0.7rem; /* 减小字体 */
-  color: #777;
-}
+/* 认证中心区域样式已移至 AuthCenter 组件 */
+/* 订单区域样式已移至 OrderSection 组件 */
 
 /* 话题区域样式 */
 .topics-section {

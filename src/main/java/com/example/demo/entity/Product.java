@@ -37,6 +37,7 @@ public class Product {
     private Integer favoriteCount; // 收藏人数
     private Integer isHot; // 是否热门：0-否，1-是
     private Integer isRecommend; // 是否推荐：0-否，1-是
+    private Integer hasSpecifications; // 是否有规格：0-无，1-有
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt; // 软删除时间

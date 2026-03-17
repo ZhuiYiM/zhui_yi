@@ -53,13 +53,31 @@
               <ProductActions 
                 :product-status="product.status"
                 :is-favorite="isFavorite"
-                @buy="buyNow"
+                :is-owner="isCurrentProductOwner"
+                @buy="handleProductAction"
                 @favorite="toggleFavorite"
                 @share="shareProduct"
               />
             </div>
           </div>
         </div>
+
+        <!-- 购买确认弹窗 -->
+        <BuyConfirmModal
+          v-model:visible="showBuyModal"
+          :loading="buyingLoading"
+          :product-image="product.images && product.images.length > 0 ? product.images[0] : ''"
+          :product-title="product.title"
+          :product-price="product.price"
+          :seller-name="sellerInfo?.name || '未知卖家'"
+          :contact-info="product.contact_info"
+          :trade-methods="product.trade_methods || []"
+          :trade-location="product.location"
+          :max-quantity="5"
+          :specifications="productSpecifications"
+          @close="closeBuyModal"
+          @confirm="confirmBuy"
+        />
 
         <!-- 商家评价区域 -->
         <ReviewsSection 
@@ -110,7 +128,9 @@ import SellerInfo from './SellerInfo.vue';
 import ProductActions from './ProductActions.vue';
 import ReviewsSection from './ReviewsSection.vue';
 import RecommendedProducts from './RecommendedProducts.vue';
+import BuyConfirmModal from './BuyConfirmModal.vue';
 import { productAPI } from '@/api/product';
+import { orderAPI } from '@/api/order';
 
 const route = useRoute();
 const router = useRouter();
@@ -127,6 +147,16 @@ const reviews = ref([]);
 const averageScore = ref(5.0);
 const showImagePreview = ref(false);
 const previewImageUrl = ref('');
+const showBuyModal = ref(false);
+const buyingLoading = ref(false);
+const productSpecifications = ref({}); // 商品规格数据
+
+// 判断是否是当前用户发布的商品
+const isCurrentProductOwner = computed(() => {
+  if (!currentUser.value || !product.value) return false;
+  const userId = JSON.parse(localStorage.getItem('user') || '{}').id;
+  return product.value.sellerId === userId;
+});
 
 // 计算卖家信息
 const sellerInfo = computed(() => {
@@ -144,7 +174,8 @@ const sellerInfo = computed(() => {
   if (product.value?.sellerId) {
     return { 
       id: product.value.sellerId,
-      name: '未知卖家'
+      name: product.value.sellerName || '未知卖家',
+      avatar: product.value.sellerAvatar || 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U'
     };
   }
   return null;
@@ -191,6 +222,12 @@ const fetchProductDetail = async () => {
     }
     
     product.value = data.product || data;
+    
+    // 将 seller 对象附加到 product 上
+    if (data.seller && !product.value.seller) {
+      product.value.seller = data.seller;
+    }
+    
     isFavorite.value = data.isFavorite ?? false;
     
     // 处理 images 字段
@@ -200,6 +237,11 @@ const fetchProductDetail = async () => {
       } catch (e) {
         product.value.images = [];
       }
+    }
+    
+    // 处理规格数据
+    if (data.specifications) {
+      productSpecifications.value = data.specifications;
     }
     
     // 加载卖家商品和评价
@@ -297,13 +339,90 @@ const contactSeller = () => {
   ElMessage.info('联系卖家功能开发中');
 };
 
+// 处理商品操作按钮点击（购买/下架）
+const handleProductAction = () => {
+  if (isCurrentProductOwner.value) {
+    // 商家点击自己的商品 - 下架/上架操作
+    toggleProductStatus();
+  } else {
+    // 买家点击 - 购买操作
+    buyNow();
+  }
+};
+
+// 切换商品状态（上架/下架）
+const toggleProductStatus = async () => {
+  try {
+    const newStatus = product.value.status === 1 ? 3 : 1; // 1=在售，3=下架
+    await productAPI.updateProductStatus(product.value.id, newStatus);
+    product.value.status = newStatus;
+    ElMessage.success(newStatus === 1 ? '商品已上架' : '商品已下架');
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '操作失败');
+  }
+};
+
 // 立即购买
 const buyNow = () => {
   if (product.value?.status !== 1) {
     ElMessage.warning('该商品无法购买');
     return;
   }
-  ElMessage.info('购买功能开发中');
+  showBuyModal.value = true;
+};
+
+// 关闭购买弹窗
+const closeBuyModal = () => {
+  showBuyModal.value = false;
+};
+
+// 确认购买
+const confirmBuy = async (orderInfo) => {
+  try {
+    buyingLoading.value = true;
+    
+    // 获取商品图片
+    const productImage = product.value.images && product.value.images.length > 0 
+      ? product.value.images[0] 
+      : 'https://placehold.co/300x300/e0e0e0/999999?text=商品图片';
+    
+    // 创建订单数据
+    const orderData = {
+      productId: product.value.id,
+      sellerId: product.value.sellerId,
+      totalAmount: parseFloat(orderInfo.totalAmount),
+      orderStatus: 0, // 待付款
+      buyerContact: orderInfo.buyerContact,
+      message: orderInfo.message,
+      quantity: orderInfo.quantity,
+      selectedSpecifications: orderInfo.selectedSpecifications || []
+    };
+    
+    // 调用创建订单 API
+    const response = await orderAPI.createOrder(orderData);
+        
+    // 获取订单 ID(从响应中)
+    const orderId = response.id || response.data?.id;
+    
+    if (!orderId) {
+      console.error('无法获取订单 ID, 响应结构:', JSON.stringify(response, null, 2));
+      ElMessage.error('订单创建失败：无法获取订单 ID');
+      return;
+    }
+    
+    ElMessage.success('订单创建成功！即将跳转到支付页面');
+    closeBuyModal();
+    
+    // 跳转到订单确认页面
+    setTimeout(() => {
+      router.push(`/order/confirmation/${orderId}?productTitle=${encodeURIComponent(product.value.title)}&quantity=${orderInfo.quantity}&image=${encodeURIComponent(productImage)}`);
+    }, 1000);
+  } catch (error) {
+    console.error('购买失败:', error);
+    ElMessage.error(error.response?.data?.message || '购买失败，请稍后重试');
+  } finally {
+    buyingLoading.value = false;
+  }
 };
 
 // 切换收藏
@@ -335,7 +454,7 @@ const viewProduct = (productId) => {
 
 // 查看图片
 const viewImage = (imageUrl) => {
-  console.log('查看图片:', imageUrl);
+  // 查看图片逻辑
 };
 
 // 预览图片

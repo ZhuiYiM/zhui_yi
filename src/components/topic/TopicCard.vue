@@ -3,8 +3,8 @@
     <div class="post-header">
       <div class="author-info">
         <img 
-          :src="post.author.avatar || defaultAvatar" 
-          :alt="post.author.name" 
+          :src="getAvatarUrl(post.author)" 
+          :alt="post.author.name || post.author.username" 
           class="author-avatar"
           @click.stop="$emit('view-user', post.author.id)"
           @mouseenter="handleAvatarHover($event, post.author.id)"
@@ -157,6 +157,14 @@ const emit = defineEmits([
 
 // 默认头像
 const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U';
+
+// 获取头像 URL（优先使用 avatarUrl，兼容 avatar 字段）
+const getAvatarUrl = (author) => {
+  if (!author) return defaultAvatar;
+  const url = author.avatarUrl || author.avatar;
+  if (!url || url.trim() === '') return defaultAvatar;
+  return url;
+};
 
 // 本地点赞状态
 const isLocalLiked = ref(props.post.isLiked || false);

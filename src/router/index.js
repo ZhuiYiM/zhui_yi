@@ -17,6 +17,9 @@ const TopicDetail = () => import('../components/topic/TopicDetail.vue');
 const ProductDetail = () => import('../components/mall/ProductDetail.vue');
 const PublishProduct = () => import('../components/mall/PublishProduct.vue');
 const WatermarkTest = () => import('../components/common/WatermarkTest.vue');
+const OrderConfirmation = () => import('../components/user/OrderConfirmation.vue');
+const OrderPayment = () => import('../components/user/OrderPayment.vue');
+const MyOrders = () => import('../components/user/MyOrders.vue');
 
 const routes = [
     {
@@ -101,6 +104,24 @@ const routes = [
         name: 'PublishProduct',
         component: PublishProduct,
         meta: { requiresAuth: true }   // 发布商品需要认证
+    },
+    {
+        path: '/order/confirmation/:id',
+        name: 'OrderConfirmation',
+        component: OrderConfirmation,
+        meta: { requiresAuth: true }   // 订单确认页需要认证
+    },
+    {
+        path: '/order/payment/:id',
+        name: 'OrderPayment',
+        component: OrderPayment,
+        meta: { requiresAuth: true }   // 支付页面需要认证
+    },
+    {
+        path: '/personal/orders',
+        name: 'MyOrders',
+        component: MyOrders,
+        meta: { requiresAuth: true }   // 订单列表需要认证
     },
     {
         path: '/watermark-test',

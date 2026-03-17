@@ -9,19 +9,13 @@
       >
       <div class="seller-details">
         <span class="seller-name">{{ seller.name }}</span>
-        <div class="seller-tags">
-          <span v-if="seller.identityTag" class="seller-tag" :class="seller.identityTag">
-            {{ getIdentityTagName(seller.identityTag) }}
-          </span>
-          <span v-if="seller.productCount !== undefined" class="product-count-tag">
-            TA 有 {{ seller.productCount }} 件商品
-          </span>
-        </div>
-        <p v-if="seller.college" class="seller-college">📍 {{ seller.college }}</p>
+        <span v-if="seller.identityTag" class="seller-tag" :class="seller.identityTag">
+          {{ getIdentityTagName(seller.identityTag) }}
+        </span>
       </div>
       <div class="seller-actions">
-        <button class="contact-btn" @click.stop="handleContact">联系卖家</button>
-        <button class="view-shop-btn" @click.stop="handleViewSeller">逛 TA 的小店</button>
+        <button class="contact-btn" @click.stop="handleContact">联系</button>
+        <button class="view-shop-btn" @click.stop="handleViewSeller">TA 的小店</button>
       </div>
     </div>
   </div>
@@ -92,29 +86,23 @@ const handleContact = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .seller-name {
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #333;
 }
 
-.seller-tags {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .seller-tag {
-  padding: 2px 10px;
+  padding: 2px 8px;
   border-radius: 10px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: bold;
   color: white;
   align-self: flex-start;
+  display: inline-block;
 }
 
 .seller-tag.student {
@@ -133,34 +121,20 @@ const handleContact = () => {
   background-color: #9B59B6;
 }
 
-.product-count-tag {
-  padding: 2px 10px;
-  border-radius: 10px;
-  font-size: 0.75rem;
-  background-color: #f0f2f5;
-  color: #666;
-}
-
-.seller-college {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #777;
-}
-
 .seller-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .contact-btn {
-  padding: 8px 20px;
+  padding: 6px 16px;
   background-color: #4A90E2;
   color: white;
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: all 0.3s ease;
   white-space: nowrap;
 }
@@ -170,13 +144,13 @@ const handleContact = () => {
 }
 
 .view-shop-btn {
-  padding: 8px 20px;
+  padding: 6px 16px;
   background-color: white;
   color: #4A90E2;
   border: 2px solid #4A90E2;
   border-radius: 20px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   transition: all 0.3s ease;
   white-space: nowrap;
 }

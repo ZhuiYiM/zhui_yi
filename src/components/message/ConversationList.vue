@@ -13,7 +13,18 @@
       <div class="conversation-content">
         <div class="conversation-header">
           <span class="sender-name">{{ conversation.senderName }}</span>
-          <span class="message-time">{{ formatTime(conversation.lastMessageTime) }}</span>
+          <div class="header-actions">
+            <span class="message-time">{{ formatTime(conversation.lastMessageTime) }}</span>
+            <el-button
+              type="danger"
+              size="small"
+              text
+              icon="Delete"
+              class="delete-btn"
+              @click.stop="handleDelete(conversation)"
+            >
+            </el-button>
+          </div>
         </div>
         <div class="conversation-preview">
           <span class="message-text">{{ conversation.lastMessage }}</span>
@@ -33,6 +44,8 @@
 </template>
 
 <script setup>
+import { Delete } from '@element-plus/icons-vue';
+
 const props = defineProps({
   conversations: {
     type: Array,
@@ -44,11 +57,16 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['conversation-click']);
+const emit = defineEmits(['conversation-click', 'conversation-delete']);
 
 // 处理点击事件
 const handleClick = (conversation) => {
   emit('conversation-click', conversation);
+};
+
+// 处理删除事件
+const handleDelete = (conversation) => {
+  emit('conversation-delete', conversation);
 };
 
 // 格式化时间
@@ -89,11 +107,12 @@ const formatTime = (date) => {
   transition: all 0.3s;
   border-left: 3px solid transparent;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  pointer-events: auto; /* 确保可以点击 */
+  pointer-events: auto;
 }
 
-.conversation-item * {
-  pointer-events: none; /* 防止子元素阻止事件冒泡 */
+/* 允许删除按钮响应鼠标事件 */
+.conversation-item .delete-btn {
+  pointer-events: auto;
 }
 
 .conversation-item:hover {
@@ -141,6 +160,48 @@ const formatTime = (date) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.message-time {
+  color: #999;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.delete-btn {
+  opacity: 0 !important;
+  transition: opacity 0.3s;
+  padding: 4px 8px !important;
+  margin-left: 8px;
+  min-width: auto !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.conversation-item:hover .delete-btn {
+  opacity: 1 !important;
+}
+
+.delete-btn:hover {
+  background: #ffe6e6 !important;
+  color: #f56c6c !important;
+}
+
+/* 移动端始终显示删除按钮 */
+@media (max-width: 768px) {
+  .delete-btn {
+    opacity: 1 !important;
+  }
 }
 
 .conversation-preview {

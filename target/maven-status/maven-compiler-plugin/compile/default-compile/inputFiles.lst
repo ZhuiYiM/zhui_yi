@@ -1,3 +1,4 @@
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\admin\AdminOperationLogMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Like.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TopicMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\UserServiceimpl.java
@@ -43,6 +44,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TopicCollectionMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\UserFollows.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\TopicService.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\admin\AdminRole.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\PrivacySettingsVO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\PrivacySetting.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\MessageMapper.java
@@ -57,6 +59,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\im
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\TagDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\SmsService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TagLevel3.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\admin\AdminUser.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\OrderDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TagLevel1Mapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Category.java
@@ -67,12 +70,14 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\config\Red
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\CommentsMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\OrderSpecificationService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\utils\ImageWatermarkUtil.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\admin\AdminOperationLog.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\BlockCreateDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\ProductSpecificationServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\ReportMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\OrderReview.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\ReportController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TopicCollection.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\admin\AdminUserService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\BlockController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TopicComments.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\OrderSpecification.java
@@ -92,10 +97,13 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TagLevel1.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Location.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\ProductSpecificationMapper.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\admin\AdminUserController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\RegisterDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\FileUploadServiceImpl.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\admin\impl\AdminUserServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\ReportCreateDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TagLevel2Mapper.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\admin\AdminLoginDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\SearchServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Comments.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\OrderReviewMapper.java
@@ -119,6 +127,8 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Top
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\exception\GlobalExceptionHandler.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\ShareResponseDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\TopicDTO.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\admin\AdminUserMapper.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\admin\AdminRoleMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\OrderReviewService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\Report.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\SmsServiceImpl.java

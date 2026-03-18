@@ -43,4 +43,18 @@ public class CampusController {
                                    @RequestParam(required = false) Integer campusId) {
         return campusService.searchLocations(keyword, campusId);
     }
+
+    // 获取热门地点
+    @GetMapping("/popular-locations")
+    public Result getPopularLocations(@RequestParam Integer campusId) {
+        return campusService.getPopularLocationsByCampusId(campusId);
+    }
+
+    // 获取地图配置
+    @GetMapping("/map-config")
+    public Result getMapConfig(
+            @RequestParam Integer campusId,
+            @RequestParam(required = false) String mapType) {
+        return campusService.getMapConfig(campusId, mapType);
+    }
 }

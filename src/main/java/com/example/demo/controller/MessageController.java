@@ -98,4 +98,22 @@ public class MessageController {
         
         return messageService.deleteMessage(id, userId);
     }
+
+    // 批量删除消息
+    @DeleteMapping("/batch")
+    public Result deleteMessagesBatch(@RequestBody Map<String, Object> requestBody,
+                                       @RequestHeader("Authorization") String token) {
+        Integer userId = extractUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+        
+        @SuppressWarnings("unchecked")
+        java.util.List<Integer> ids = (java.util.List<Integer>) requestBody.get("ids");
+        if (ids == null || ids.isEmpty()) {
+            return Result.error(400, "消息 ID 列表不能为空");
+        }
+        
+        return messageService.deleteMessagesBatch(ids, userId);
+    }
 }

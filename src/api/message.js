@@ -39,5 +39,16 @@ export const messageAPI = {
     // 删除消息
     deleteMessage(messageId) {
         return request.delete(`/messages/${messageId}`);
+    },
+
+    // 批量删除消息
+    deleteMessagesBatch(ids) {
+        return request.delete('/messages/batch', {
+            data: { ids },
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
     }
 };

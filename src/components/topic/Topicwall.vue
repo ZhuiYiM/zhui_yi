@@ -25,6 +25,8 @@
             :show-quick-filters="true"
             :show-clear-button="true"
             :has-active-filters="hasActiveFilters"
+            :enable-result-page="true"
+            :default-search-type="'topic'"
             @search="handleSearch"
             @apply-tags="applySearchTags"
             @clear-tags="clearSearchTags"

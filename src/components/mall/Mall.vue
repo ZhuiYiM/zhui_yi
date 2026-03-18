@@ -16,26 +16,18 @@
       <header class="header">
         <h1 v-if="isMobile">交易中心</h1>
         <div class="search-bar">
-          <div v-if="isMobile" class="mobile-search-header">
-            <div class="user-avatar-mini">
-              <img :src="currentUser.avatar || defaultAvatar" :alt="currentUser.name">
-            </div>
-            <input
-                type="text"
-                v-model="searchQuery"
-                placeholder="搜索商品、服务..."
-                @keyup.enter="performSearch"
-            >
-          </div>
-          <div v-else class="desktop-search">
-            <input
-                type="text"
-                v-model="searchQuery"
-                placeholder="搜索商品、服务..."
-                @keyup.enter="performSearch"
-            >
-            <button @click="performSearch">搜索</button>
-          </div>
+          <!-- 使用统一搜索组件 -->
+          <UnifiedSearch
+            v-model="searchQuery"
+            :available-tags="productTags"
+            :enable-result-page="true"
+            :default-search-type="'product'"
+            placeholder="搜索商品、服务..."
+            tag-selector-title="选择商品类型"
+            :show-quick-filters="false"
+            :show-clear-button="false"
+            @search="handleSearch"
+          />
         </div>
       </header>
 
@@ -168,6 +160,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 import AdBanner from '../mall/AdBanner.vue';
 import ProductList from '../mall/ProductList.vue';
 import { productAPI } from '@/api/product';
@@ -201,10 +194,26 @@ const getUserInfo = () => {
 
 // 搜索相关
 const searchQuery = ref('');
-const performSearch = () => {
-  console.log('搜索:', searchQuery.value);
-  filters.keyword = searchQuery.value;
-  fetchProducts();
+
+// 商品标签（用于搜索筛选）
+const productTags = computed(() => {
+  return [
+    { code: 'secondhand', name: '二手物品', color: '#4A90E2' },
+    { code: 'service', name: '服务需求', color: '#7B68EE' },
+    { code: 'parttime', name: '兼职信息', color: '#FFA500' },
+    { code: 'food', name: '美食外卖', color: '#FF6347' },
+    { code: 'digital', name: '数码配件', color: '#32CD32' },
+    { code: 'books', name: '教材出售', color: '#9370DB' },
+    { code: 'daily', name: '生活用品', color: '#FF69B4' },
+    { code: 'electronics', name: '电子产品', color: '#20B2AA' },
+    { code: 'sports', name: '体育用品', color: '#FFD700' }
+  ];
+});
+
+// 处理搜索
+const handleSearch = (searchData) => {
+  console.log('执行搜索:', searchData);
+  // 统一搜索组件会自动跳转到搜索结果页
 };
 
 // 分类数据

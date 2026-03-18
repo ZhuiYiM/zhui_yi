@@ -16,22 +16,18 @@
       <header class="header">
         <h1 v-if="isMobile">消息中心</h1>
         <div class="search-bar">
-          <MessageSearch 
-            v-if="!isMobile"
+          <!-- 使用统一搜索组件 -->
+          <UnifiedSearch
             v-model="searchQuery"
-            @search="performSearch"
+            :available-tags="messageTags"
+            :enable-result-page="true"
+            :default-search-type="'user'"
+            placeholder="搜索联系人、群聊、消息..."
+            tag-selector-title="选择消息类型"
+            :show-quick-filters="false"
+            :show-clear-button="false"
+            @search="handleSearch"
           />
-          <div v-else class="mobile-search-header">
-            <div class="user-avatar-mini">
-              <img :src="currentUser.avatar || 'https://placehold.co/24x24/4A90E2/FFFFFF?text=' + (currentUser.name?.charAt(0) || 'U')" :alt="currentUser.name">
-            </div>
-            <input
-              type="text"
-              v-model="searchQuery"
-              placeholder="搜索联系人、群聊、消息..."
-              @keyup.enter="performSearch"
-            >
-          </div>
         </div>
       </header>
 
@@ -61,6 +57,7 @@
           <PrivateMessageList
             :conversations="displayedConversations"
             @conversation-click="openPrivateChat"
+            @conversation-delete="confirmDeleteConversation"
           />
         </template>
         <template v-else>
@@ -91,12 +88,12 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { messageAPI } from '@/api/message';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 import MessageTabs from './MessageTabs.vue';
 import MessageList from './MessageList.vue';
 import PrivateMessageList from './PrivateMessageList.vue';
-import MessageSearch from './MessageSearch.vue';
 import PrivateChatDialog from './PrivateChatDialog.vue';
 
 const router = useRouter(); // 创建路由实例
@@ -153,6 +150,17 @@ const activeTab = ref('all');
 const currentPage = ref(1);
 const pageSize = ref(20);
 const searchQuery = ref(''); // 搜索关键词
+
+// 消息标签（用于搜索筛选）
+const messageTags = computed(() => {
+  return [
+    { code: 'personal', name: '私信', color: '#4A90E2' },
+    { code: 'system', name: '系统通知', color: '#7B68EE' },
+    { code: 'group', name: '群聊', color: '#FFA500' },
+    { code: 'order', name: '订单通知', color: '#FF6347' },
+    { code: 'topic', name: '话题互动', color: '#32CD32' }
+  ];
+});
 
 // 私信相关数据
 const privateMessages = ref([]);
@@ -389,11 +397,6 @@ const displayedConversations = computed(() => {
     .sort((a, b) => b.lastMessageTime - a.lastMessageTime);
 });
 
-// 执行搜索
-const performSearch = () => {
-  // 实际项目中可以调用搜索 API
-};
-
 // 打开消息详情
 const openMessage = (message) => {
   // 标记为已读
@@ -455,6 +458,70 @@ const handleChatClose = () => {
   showChatDialog.value = false;
   // 刷新消息列表
   fetchMessages(1);
+};
+
+// 确认删除对话
+const confirmDeleteConversation = async (conversation) => {
+  // 使用 Element Plus 的确认对话框
+  ElMessageBox.confirm(
+    `确定要删除与 ${conversation.senderName} 的对话吗？删除后无法恢复。`,
+    '删除对话',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    await deleteConversation(conversation);
+  }).catch(() => {
+    // 用户取消删除
+    ElMessage.info('已取消删除');
+  });
+};
+
+// 删除对话
+const deleteConversation = async (conversation) => {
+  try {
+    const otherUserId = conversation.senderId;
+    
+    // 调用后端 API 删除对话
+    // 注意：这里假设有批量删除消息的 API，如果没有需要实现
+    const messagesToDelete = privateMessages.value
+      .filter(msg => {
+        const msgOtherUserId = msg.senderId === currentUser.value.id ? msg.receiverId : msg.senderId;
+        return msgOtherUserId === otherUserId;
+      })
+      .map(msg => msg.id);
+    
+    if (messagesToDelete.length > 0) {
+      // 批量删除消息
+      await messageAPI.deleteMessagesBatch(messagesToDelete);
+      
+      // 从本地数据中移除
+      privateMessages.value = privateMessages.value.filter(
+        msg => {
+          const msgOtherUserId = msg.senderId === currentUser.value.id ? msg.receiverId : msg.senderId;
+          return msgOtherUserId !== otherUserId;
+        }
+      );
+      
+      // 重新聚合对话
+      await aggregateConversations();
+      
+      // 刷新消息列表
+      await fetchMessages(currentPage.value);
+      
+      // 更新未读数
+      await fetchUnreadCount();
+      
+      ElMessage.success('对话已删除');
+    } else {
+      ElMessage.warning('没有找到要删除的消息');
+    }
+  } catch (error) {
+    console.error('删除对话失败:', error);
+    ElMessage.error('删除对话失败，请稍后重试');
+  }
 };
 
 // 查看全部消息

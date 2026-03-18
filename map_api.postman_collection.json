@@ -1,0 +1,203 @@
+{
+  "info": {
+    "name": "校园地图导引功能 API 测试",
+    "description": "测试地图导引功能的后端 API 接口",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "校区管理",
+      "item": [
+        {
+          "name": "获取所有校区列表",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses"]
+            }
+          }
+        },
+        {
+          "name": "获取单个校区详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "地点管理",
+      "item": [
+        {
+          "name": "获取校区所有地点",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/1/locations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "1", "locations"]
+            }
+          }
+        },
+        {
+          "name": "获取热门地点",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/popular-locations?campusId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "popular-locations"],
+              "query": [
+                {
+                  "key": "campusId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "搜索地点",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/locations/search?keyword=图书馆&campusId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "locations", "search"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "图书馆"
+                },
+                {
+                  "key": "campusId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取地点详情",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/locations/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "locations", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "地图配置",
+      "item": [
+        {
+          "name": "获取地图配置 - 百度",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/map-config?campusId=1&mapType=baidu",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "map-config"],
+              "query": [
+                {
+                  "key": "campusId",
+                  "value": "1"
+                },
+                {
+                  "key": "mapType",
+                  "value": "baidu"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取地图配置 - 高德",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/map-config?campusId=1&mapType=gaode",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "map-config"],
+              "query": [
+                {
+                  "key": "campusId",
+                  "value": "1"
+                },
+                {
+                  "key": "mapType",
+                  "value": "gaode"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取地图配置 - 腾讯",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/map-config?campusId=1&mapType=tencent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "map-config"],
+              "query": [
+                {
+                  "key": "campusId",
+                  "value": "1"
+                },
+                {
+                  "key": "mapType",
+                  "value": "tencent"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "获取所有地图配置",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/campuses/map-config?campusId=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "campuses", "map-config"],
+              "query": [
+                {
+                  "key": "campusId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,8 +16,17 @@ public class Location {
     private Integer campusId;
     private String name;
     private String description;
-    private String coordinates; // JSON格式存储经纬度
+    private String category; // 地点分类
+    private BigDecimal latitude; // 纬度
+    private BigDecimal longitude; // 经度
     private String icon;
-    private String locationType; // 教学楼、食堂、宿舍等
+    private String imageUrl; // 地点图片 URL
+    private String openingHours; // 开放时间
+    private String contactInfo; // 联系方式
+    private String facilities; // JSON 格式存储设施标签
+    private Boolean isPopular; // 是否热门
+    private Integer viewCount; // 浏览次数
+    private Integer sortOrder; // 排序顺序
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

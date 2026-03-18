@@ -11,4 +11,5 @@ public interface MessageService extends IService<Message> {
     Result sendMessage(Integer fromUserId, Integer toUserId, String content, String type);
     Result markAsReadBatch(java.util.List<Integer> messageIds, Integer userId);
     Result deleteMessage(Integer messageId, Integer userId);
+    Result deleteMessagesBatch(java.util.List<Integer> messageIds, Integer userId);
 }

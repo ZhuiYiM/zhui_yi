@@ -10,8 +10,12 @@ import com.example.demo.service.CampusService;
 import com.example.demo.common.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class CampusServiceImpl extends ServiceImpl<CampusMapper, Campus> implements CampusService {
@@ -21,6 +25,8 @@ public class CampusServiceImpl extends ServiceImpl<CampusMapper, Campus> impleme
 
     @Autowired
     private LocationMapper locationMapper;
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public Result getCampuses() {
@@ -67,7 +73,70 @@ public class CampusServiceImpl extends ServiceImpl<CampusMapper, Campus> impleme
             wrapper.eq("campus_id", campusId);
         }
 
-        java.util.List<Location> locations = locationMapper.selectList(wrapper);
+        List<Location> locations = locationMapper.selectList(wrapper);
         return Result.success(locations);
+    }
+
+    @Override
+    public Result getPopularLocationsByCampusId(Integer campusId) {
+        QueryWrapper<Location> wrapper = new QueryWrapper<>();
+        wrapper.eq("campus_id", campusId)
+               .eq("is_popular", true)
+               .orderByDesc("sort_order")
+               .orderByDesc("view_count");
+        
+        List<Location> locations = locationMapper.selectList(wrapper);
+        return Result.success(locations);
+    }
+
+    @Override
+    public Result getMapConfig(Integer campusId, String mapType) {
+        try {
+            Campus campus = this.getById(campusId);
+            if (campus == null) {
+                return Result.error("校区不存在");
+            }
+
+            Map<String, Object> config = new HashMap<>();
+            
+            // 获取校区的地图配置 JSON
+            if (campus.getMapConfig() != null && !campus.getMapConfig().isEmpty()) {
+                JsonNode mapConfigJson = objectMapper.readTree(campus.getMapConfig());
+                
+                // 根据地图类型返回对应配置
+                if (mapType != null && !mapType.isEmpty()) {
+                    JsonNode typeConfig = mapConfigJson.get(mapType.toLowerCase());
+                    if (typeConfig != null) {
+                        config.put("latitude", typeConfig.get("lat").asDouble());
+                        config.put("longitude", typeConfig.get("lng").asDouble());
+                        config.put("zoom", typeConfig.get("zoom").asInt());
+                    } else {
+                        // 如果指定类型不存在，返回默认配置
+                        config.put("latitude", campus.getCenterLatitude() != null ? campus.getCenterLatitude().doubleValue() : 35.307736);
+                        config.put("longitude", campus.getCenterLongitude() != null ? campus.getCenterLongitude().doubleValue() : 113.926765);
+                        config.put("zoom", campus.getZoomLevel() != null ? campus.getZoomLevel() : 15);
+                    }
+                } else {
+                    // 返回所有地图类型的配置
+                    config.put("baidu", mapConfigJson.get("baidu"));
+                    config.put("gaode", mapConfigJson.get("gaode"));
+                    config.put("tencent", mapConfigJson.get("tencent"));
+                }
+            } else {
+                // 如果没有配置，使用默认值
+                config.put("latitude", campus.getCenterLatitude() != null ? campus.getCenterLatitude().doubleValue() : 35.307736);
+                config.put("longitude", campus.getCenterLongitude() != null ? campus.getCenterLongitude().doubleValue() : 113.926765);
+                config.put("zoom", campus.getZoomLevel() != null ? campus.getZoomLevel() : 15);
+            }
+
+            config.put("campusName", campus.getName());
+            config.put("campusCode", campus.getCode());
+            config.put("address", campus.getAddress());
+
+            return Result.success(config);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取地图配置失败：" + e.getMessage());
+        }
     }
 }

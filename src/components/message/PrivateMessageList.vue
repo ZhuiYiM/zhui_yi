@@ -23,7 +23,18 @@
         <div class="conversation-content">
           <div class="conversation-header">
             <span class="conversation-sender">{{ conversation.senderName }}</span>
-            <span class="conversation-time">{{ formatTime(conversation.lastMessageTime) }}</span>
+            <div class="header-actions">
+              <span class="conversation-time">{{ formatTime(conversation.lastMessageTime) }}</span>
+              <el-button
+                type="danger"
+                size="small"
+                text
+                icon="Delete"
+                class="delete-btn"
+                @click.stop="handleDelete(conversation)"
+              >
+              </el-button>
+            </div>
           </div>
           
           <div class="conversation-preview">
@@ -51,7 +62,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['conversation-click']);
+const emit = defineEmits(['conversation-click', 'conversation-delete']);
 
 // 跳转到用户对外展示页面
 const goToUserProfile = (conversation) => {
@@ -79,6 +90,10 @@ const formatTime = (date) => {
 
 const handleClick = (conversation) => {
   emit('conversation-click', conversation);
+};
+
+const handleDelete = (conversation) => {
+  emit('conversation-delete', conversation);
 };
 </script>
 
@@ -137,6 +152,12 @@ const handleClick = (conversation) => {
   margin-bottom: 8px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .conversation-sender {
   font-size: 15px;
   font-weight: 600;
@@ -146,6 +167,37 @@ const handleClick = (conversation) => {
 .conversation-time {
   font-size: 12px;
   color: #999;
+}
+
+.delete-btn {
+  opacity: 0;
+  transition: opacity 0.3s;
+  padding: 12px 16px !important;
+  margin-left: 4px;
+  min-width: auto !important;
+  width: auto !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
+}
+
+.conversation-item:hover .delete-btn {
+  opacity: 1;
+}
+
+.delete-btn:hover {
+  background: #ffe6e6 !important;
+  color: #f56c6c !important;
+  transform: scale(1.2);
+}
+
+/* 移动端始终显示删除按钮 */
+@media (max-width: 768px) {
+  .delete-btn {
+    opacity: 1 !important;
+  }
 }
 
 .conversation-preview {

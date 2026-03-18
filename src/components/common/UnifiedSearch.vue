@@ -5,6 +5,38 @@
       <div class="search-row">
         <div class="search-box-wrapper">
           <div class="search-box">
+            <!-- 搜索类型选择器（移到搜索框内部左侧） -->
+            <el-popover
+              placement="bottom-start"
+              :width="300"
+              trigger="click"
+              popper-class="search-type-popover"
+            >
+              <template #reference>
+                <div class="type-selector-btn">
+                  <span class="type-icon">📋</span>
+                  <span class="type-text">{{ selectedSearchType.name }}</span>
+                  <span class="type-arrow">▼</span>
+                </div>
+              </template>
+              
+              <template #default>
+                <div class="search-type-options">
+                  <div
+                    v-for="type in searchTypeOptions"
+                    :key="type.code"
+                    @click="selectSearchType(type)"
+                    :class="['type-option', { active: selectedSearchType.code === type.code }]"
+                  >
+                    <span class="option-icon">{{ type.icon }}</span>
+                    <span class="option-name">{{ type.name }}</span>
+                    <span v-if="selectedSearchType.code === type.code" class="option-check">✓</span>
+                  </div>
+                </div>
+              </template>
+            </el-popover>
+
+            <!-- 搜索输入框 -->
             <input
              v-model="localSearchQuery"
               @keyup.enter="handleSearch"
@@ -14,11 +46,18 @@
              class="search-input"
              ref="searchInputRef"
             >
+            
+            <!-- 搜索按钮 -->
             <button @click="handleSearch" class="search-btn">🔍</button>
           </div>
 
           <!-- 搜索标签选择器（点击搜索框时显示） -->
-          <div v-if="showSearchTagSelector" class="search-tag-selector">
+          <div 
+            v-if="showSearchTagSelector" 
+            class="search-tag-selector"
+            @mouseenter="cancelHideSearchTagSelector"
+            @mouseleave="hideSearchTagSelector"
+          >
             <div class="tag-selector-header">
               <span>{{ tagSelectorTitle }}</span>
             </div>
@@ -27,7 +66,7 @@
               <div
                v-for="tag in availableTags"
                 :key="tag.code || tag.id"
-                @click="toggleTagSelection(tag)"
+                @mousedown.prevent="toggleTagSelection(tag)"
                class="search-tag-item"
                 :class="{ active: selectedTags.includes(tag.code || tag.id) }"
                 :style="selectedTags.includes(tag.code || tag.id) ? { 
@@ -75,6 +114,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
 // Props
 const props = defineProps({
@@ -127,6 +167,16 @@ const props = defineProps({
   hasActiveFilters: {
     type: Boolean,
     default: false
+  },
+  // 是否跳转到结果页
+  enableResultPage: {
+    type: Boolean,
+    default: true
+  },
+  // 默认搜索类型
+  defaultSearchType: {
+    type: String,
+    default: 'all'
   }
 });
 
@@ -140,6 +190,27 @@ const emit = defineEmits([
   'clearTags',
   'clearFilters'
 ]);
+
+const router = useRouter();
+
+// 搜索类型选项
+const searchTypeOptions = [
+  { code: 'all', name: '全部', icon: '🔍' },
+  { code: 'location', name: '地点', icon: '📍' },
+  { code: 'product', name: '商品', icon: '🛒' },
+  { code: 'topic', name: '话题', icon: '💬' },
+  { code: 'user', name: '用户', icon: '👤' }
+];
+
+const selectedSearchType = ref(searchTypeOptions.find(opt => opt.code === props.defaultSearchType) || searchTypeOptions[0]);
+
+// 监听默认类型变化
+watch(() => props.defaultSearchType, (newType) => {
+  const foundType = searchTypeOptions.find(opt => opt.code === newType);
+  if (foundType) {
+    selectedSearchType.value = foundType;
+  }
+}, { immediate: true });
 
 // 本地状态
 const localSearchQuery = ref(props.modelValue);
@@ -164,15 +235,50 @@ watch(() => props.activeQuickFilters, (newVal) => {
 // 搜索处理
 const handleSearch = () => {
   emit('update:modelValue', localSearchQuery.value);
-  emit('search', localSearchQuery.value);
+  
+  // 如果需要跳转到结果页
+  if (props.enableResultPage) {
+    router.push({
+      path: '/search/results',
+      query: {
+        q: localSearchQuery.value,
+        type: selectedSearchType.value.code,
+        tags: selectedTags.value.join(','),
+        quickFilters: activeQuickFiltersLocal.value.join(',')
+      }
+    });
+  } else {
+    emit('search', {
+      query: localSearchQuery.value,
+      type: selectedSearchType.value.code,
+      tags: [...selectedTags.value],
+      quickFilters: [...activeQuickFiltersLocal.value]
+    });
+  }
+  
   showSearchTagSelector.value = false;
 };
 
+// 选择搜索类型
+const selectSearchType = (type) => {
+  selectedSearchType.value = type;
+};
+
 // 标签选择器相关
+let hideTimeout = null;
+
 const hideSearchTagSelector = () => {
-  setTimeout(() => {
+  // 延迟隐藏，给用户操作时间
+  hideTimeout = setTimeout(() => {
     showSearchTagSelector.value = false;
   }, 200);
+};
+
+const cancelHideSearchTagSelector = () => {
+  // 取消隐藏
+  if (hideTimeout) {
+    clearTimeout(hideTimeout);
+  }
 };
 
 const toggleTagSelection = (tag) => {
@@ -184,6 +290,11 @@ const toggleTagSelection = (tag) => {
     selectedTags.value.push(code);
   }
   emit('update:selectedTagsModel', selectedTags.value);
+  
+  // 点击标签后重新聚焦输入框
+  if (searchInputRef.value) {
+    searchInputRef.value.focus();
+  }
 };
 
 const clearSelectedTags = () => {
@@ -227,15 +338,119 @@ const clearAllFilters = () => {
   width: 100%;
 }
 
-/* 搜索区域 */
-.search-section {
-  margin-bottom: 20px;
-}
-
 .search-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 15px;
+  flex-wrap: wrap;
+}
+
+/* 搜索框容器 */
+.search-box-wrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 12px;
+  padding: 8px 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+  border: 2px solid transparent;
+  gap: 10px;
+
+  &:focus-within {
+    box-shadow: 0 4px 15px rgba(76, 110, 245, 0.15);
+    border-color: #4c6ef5;
+  }
+}
+
+/* 搜索类型选择器（在搜索框内部） */
+.type-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f0f2f5;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #e4e7ed;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.type-icon {
+  font-size: 18px;
+}
+
+.type-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+}
+
+.type-arrow {
+  font-size: 10px;
+  color: #999;
+  transition: transform 0.3s;
+}
+
+/* 搜索类型弹窗 */
+.search-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.type-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f8f9fa;
+
+  &:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+  }
+
+  &.active {
+    background: linear-gradient(135deg, #4c6ef5 0%, #3b5bdb 100%);
+    color: white;
+    box-shadow: 0 4px 10px rgba(76, 110, 245, 0.3);
+  }
+}
+
+.option-icon {
+  font-size: 20px;
+}
+
+.option-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.option-check {
+  font-size: 18px;
+  font-weight: bold;
 }
 
 /* 搜索框容器 */
@@ -268,6 +483,7 @@ const clearAllFilters = () => {
   font-size: 15px;
   background: transparent;
   color: #333;
+  min-width: 200px;
 
   &::placeholder {
    color: #999;
@@ -347,6 +563,8 @@ const clearAllFilters = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #333;  /* 标签文字设为黑色 */
+  font-weight: 500;
 
   &:hover {
     background: #e9ecef;
@@ -459,6 +677,15 @@ const clearAllFilters = () => {
 @media (max-width: 768px) {
   .search-row {
     gap: 10px;
+  }
+
+  .search-type-selector {
+    width: 100%;
+  }
+
+  .type-selector-btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .search-tags-grid {

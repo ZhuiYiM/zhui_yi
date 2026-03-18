@@ -60,42 +60,67 @@
       
       <!-- 话题和商品模块 -->
       <div v-else class="content-sections">
-        <!-- 主标签切换：话题 vs 商品 -->
+        <!-- 主标签切换：发布、参与、点赞、商品、商户评价 -->
         <div class="main-tabs">
           <button 
-            @click="showProducts = false"
+            @click="currentTab = 'published'"
             class="main-tab-btn"
-            :class="{ active: !showProducts }"
+            :class="{ active: currentTab === 'published' }"
           >
-            💬 话题
+            📝 发布的话题
           </button>
           <button 
-            @click="showProducts = true"
+            @click="currentTab = 'participated'"
             class="main-tab-btn"
-            :class="{ active: showProducts }"
+            :class="{ active: currentTab === 'participated' }"
           >
-            🛒 商品
+            💬 参与的话题
+          </button>
+          <button 
+            @click="currentTab = 'liked'"
+            class="main-tab-btn"
+            :class="{ active: currentTab === 'liked' }"
+          >
+            ❤️ 点赞的话题
+          </button>
+          <button 
+            @click="currentTab = 'products'"
+            class="main-tab-btn"
+            :class="{ active: currentTab === 'products' }"
+          >
+            🛒 TA 的商品
+          </button>
+          <button 
+            @click="currentTab = 'reviews'"
+            class="main-tab-btn"
+            :class="{ active: currentTab === 'reviews' }"
+          >
+            ⭐ 商户评价
           </button>
         </div>
         
-        <!-- 商品模块 -->
+        <!-- 商品内容 -->
         <ProductSection 
-          v-if="showProducts"
+          v-if="currentTab === 'products'"
           :products="productsList"
-          :current-tab="productTab"
-          :is-current-user="isCurrentUser"
+          :current-tab="'published'"
+          :is-current-user="false"
           :loading="productsLoading"
           @tab-change="productTab = $event"
           @view-product="viewProduct"
         />
         
-        <!-- 话题模块 -->
+        <!-- 商户评价内容 -->
+        <div v-else-if="currentTab === 'reviews'" class="reviews-placeholder">
+          <div class="empty-icon">⭐</div>
+          <p>商户评价功能开发中...</p>
+        </div>
+        
+        <!-- 话题内容 -->
         <TopicSection 
           v-else
           :topics="getTopicsList"
-          :current-tab="currentTab"
           :loading="topicsLoading"
-          @tab-change="currentTab = $event"
           @view-topic="viewTopicDetail"
         />
       </div>
@@ -207,11 +232,8 @@ const sending = ref(false); // 发送消息中
 const blocking = ref(false); // 拉黑操作中
 
 // 商品相关
-const showProducts = ref(false);
-const productTab = ref('published');
 const productsLoading = ref(false);
 const userPublishedProducts = ref([]);
-const userFavoriteProducts = ref([]);
 
 // 计算属性
 const currentUserId = computed(() => {
@@ -230,14 +252,13 @@ const canViewContent = computed(() => {
 
 const getTopicsList = computed(() => {
   if (currentTab.value === 'published') return publishedTopics.value;
+  if (currentTab.value === 'participated') return participatedTopics.value;
   if (currentTab.value === 'liked') return likedTopics.value;
-  return participatedTopics.value;
+  return []; // 商品标签时返回空数组
 });
 
 const productsList = computed(() => {
-  if (productTab.value === 'published') return userPublishedProducts.value;
-  if (productTab.value === 'favorites') return userFavoriteProducts.value;
-  return [];
+  return userPublishedProducts.value;
 });
 
 // 加载用户信息
@@ -631,6 +652,22 @@ watch(
   margin: 0;
   color: #999;
   font-size: 14px;
+}
+
+.reviews-placeholder {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.reviews-placeholder .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.reviews-placeholder p {
+  margin: 0;
+  color: #999;
+  font-size: 16px;
 }
 
 .message-dialog-content {

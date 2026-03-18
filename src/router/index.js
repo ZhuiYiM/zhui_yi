@@ -2,13 +2,13 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import Login from "../components/Login.vue";
 import Home from "../components/Home.vue";
-import Topicwall from "../components/user/Topicwall.vue";
-import Mall from "../components/user/Mall.vue";
+import Topicwall from "../components/topic/Topicwall.vue";
+import Mall from "../components/mall/Mall.vue";
 import Personalcenter from "../components/user/Personalcenter.vue";
 import Personalinformation from "../components/user/detail/Personalinformation.vue";
 import AccountManagement from "../components/user/AccountManagement.vue";
 import AccountVerification from "../components/user/AccountVerification.vue";
-import Map from "../components/user/Map.vue";
+import Map from "../components/map/Map.vue";
 import Message from "../components/message/Message.vue"; // 消息中心组件
 import UserProfile from "../components/user/UserProfile.vue";
 
@@ -21,6 +21,12 @@ const OrderConfirmation = () => import('../components/user/OrderConfirmation.vue
 const OrderPayment = () => import('../components/user/OrderPayment.vue');
 const MyOrders = () => import('../components/user/MyOrders.vue');
 const MyProducts = () => import('../components/user/MyProducts.vue');
+const LocationDetail = () => import('../components/map/LocationDetail.vue');
+const SearchResults = () => import('../components/search/SearchResults.vue');
+
+// 管理员页面组件
+const AdminLogin = () => import('../views/admin/AdminLogin.vue');
+const AdminDashboard = () => import('../views/admin/AdminDashboard.vue');
 
 const routes = [
     {
@@ -135,6 +141,38 @@ const routes = [
         name: 'WatermarkTest',
         component: WatermarkTest,
         meta: { requiresAuth: true }   // 水印测试页面需要认证
+    },
+    {
+        path: '/location/:id',
+        name: 'LocationDetail',
+        component: LocationDetail,
+        meta: { requiresAuth: false }  // 地点详情页游客也可访问
+    },
+    {
+        path: '/search/results',
+        name: 'SearchResults',
+        component: SearchResults,
+        meta: { requiresAuth: false }  // 搜索结果页游客也可访问
+    },
+    {
+        path: '/admin/login',
+        name: 'AdminLogin',
+        component: AdminLogin,
+        meta: { requiresAuth: false }  // 管理员登录页无需认证
+    },
+    {
+        path: '/admin/dashboard',
+        name: 'AdminDashboard',
+        component: AdminDashboard,
+        meta: { requiresAuth: true, role: 'admin' },  // 需要管理员权限
+        redirect: '/admin/dashboard/home',
+        children: [
+            {
+                path: 'home',
+                name: 'DashboardHome',
+                component: () => import('../views/admin/DashboardHome.vue')
+            }
+        ]
     },
     {
         path: '/:pathMatch(.*)*',  // 捕获所有未匹配的路由

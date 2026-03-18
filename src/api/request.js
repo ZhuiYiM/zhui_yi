@@ -71,7 +71,9 @@ apiClient.interceptors.response.use(
         // 如果后端返回标准 Result 结构
         if (responseData && responseData.code !== undefined) {
             if (responseData.code === 200) {
-                return responseData.data; // 返回实际数据
+                // 对于上传接口，直接返回 fileUrl 字符串
+                // 对于其他接口，返回 data 对象
+                return responseData.data;
             } else {
                 // 业务错误 - 检查是否需要全局显示
                 const errorMsg = responseData.message || '请求失败';

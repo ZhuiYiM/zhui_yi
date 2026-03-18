@@ -178,4 +178,24 @@ public class MessageServiceImpl extends ServiceImpl<MessageMapper, Message> impl
             return Result.error("消息删除失败");
         }
     }
+
+    @Override
+    public Result deleteMessagesBatch(java.util.List<Integer> messageIds, Integer userId) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return Result.error("消息 ID 列表不能为空");
+        }
+
+        int deletedCount = 0;
+        for (Integer messageId : messageIds) {
+            Message message = this.getById(messageId);
+            if (message != null && (message.getReceiverId().equals(userId) || message.getSenderId().equals(userId))) {
+                boolean result = this.removeById(messageId);
+                if (result) {
+                    deletedCount++;
+                }
+            }
+        }
+
+        return Result.success("批量删除成功", java.util.Map.of("deletedCount", deletedCount));
+    }
 }

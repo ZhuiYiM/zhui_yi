@@ -1,30 +1,5 @@
 <template>
   <div class="topics-section">
-    <!-- 话题标签 -->
-    <div class="topic-tabs">
-      <button 
-        @click="$emit('tab-change', 'published')"
-        class="tab-btn"
-        :class="{ active: currentTab === 'published' }"
-      >
-        发布的话题
-      </button>
-      <button 
-        @click="$emit('tab-change', 'participated')"
-        class="tab-btn"
-        :class="{ active: currentTab === 'participated' }"
-      >
-        参与的话题
-      </button>
-      <button 
-        @click="$emit('tab-change', 'liked')"
-        class="tab-btn"
-        :class="{ active: currentTab === 'liked' }"
-      >
-        点赞的话题
-      </button>
-    </div>
-    
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-state">
       <div class="spinner-small"></div>
@@ -34,11 +9,7 @@
     <!-- 空状态 -->
     <div v-else-if="topics.length === 0" class="empty-topics">
       <div class="empty-icon">💭</div>
-      <p>{{ 
-        currentTab === 'published' ? '暂无发布的话题' : 
-        currentTab === 'liked' ? '暂无点赞的话题' : 
-        '暂无参与的话题' 
-      }}</p>
+      <p>暂无内容</p>
     </div>
     
     <!-- 话题列表 -->
@@ -70,17 +41,13 @@ defineProps({
     type: Array,
     default: () => []
   },
-  currentTab: {
-    type: String,
-    default: 'published'
-  },
   loading: {
     type: Boolean,
     default: false
   }
 });
 
-defineEmits(['tab-change', 'view-topic']);
+defineEmits(['view-topic']);
 
 // 格式化时间
 const formatTime = (date) => {
@@ -101,35 +68,6 @@ const formatTime = (date) => {
 <style scoped>
 .topics-section {
   padding: 30px 40px;
-}
-
-.topic-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 0;
-}
-
-.tab-btn {
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
-  font-size: 15px;
-  color: #666;
-  transition: all 0.3s;
-}
-
-.tab-btn:hover {
-  color: #409eff;
-}
-
-.tab-btn.active {
-  color: #409eff;
-  border-bottom-color: #409eff;
-  font-weight: 600;
 }
 
 .user-topics-list {

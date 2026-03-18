@@ -544,4 +544,45 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
 
         return Result.success(products);
     }
+
+    @Override
+    public Result getMyPublishedProducts(HttpServletRequest request, Map<String, Object> params) {
+        String token = request.getHeader("Authorization");
+        if (token != null && token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        // 从 Token 中获取用户 ID
+        Integer userId = jwtUtil.getUserIdFromToken(token);
+        if (userId == null) {
+            return Result.error("用户未登录");
+        }
+
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        int page = params.get("page") != null ? Integer.parseInt(params.get("page").toString()) : 1;
+        int size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
+        Integer status = params.get("status") != null ? Integer.parseInt(params.get("status").toString()) : null;
+
+        // 查询当前用户发布的商品
+        QueryWrapper<Product> wrapper = new QueryWrapper<>();
+        wrapper.eq("seller_id", userId);
+        wrapper.isNull("deleted_at"); // 只查询未删除的
+        
+        // 状态筛选（可选）
+        if (status != null) {
+            wrapper.eq("status", status);
+        }
+        
+        // 排序：按创建时间倒序
+        wrapper.orderByDesc("created_at");
+
+        Page<Product> productPage = new Page<>(page, size);
+        Page<Product> result = this.page(productPage, wrapper);
+        
+        return Result.success(result);
+    }
 }

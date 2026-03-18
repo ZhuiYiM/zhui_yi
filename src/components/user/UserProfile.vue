@@ -43,9 +43,11 @@
       <UserActions 
         v-if="!isCurrentUser"
         :is-following="isFollowing"
+        :is-blocked="isBlocked"
         :can-message="userInfo.canMessage"
         @follow="handleFollow"
         @message="handleMessage"
+        @block="showBlockModal = true"
         @report="showReportModal = true"
       />
       
@@ -105,15 +107,71 @@
       @close="showReportModal = false"
       @submit="submitReport"
     />
+
+    <!-- 发送消息弹窗 -->
+    <el-dialog
+      v-model="showMessageModal"
+      title="发送私信"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <div class="message-dialog-content">
+        <div class="recipient-info" v-if="userInfo">
+          <img :src="userInfo.basicInfo.avatarUrl" alt="头像" class="recipient-avatar">
+          <div class="recipient-name">{{ userInfo.basicInfo.username }}</div>
+        </div>
+        <el-input
+          v-model="messageContent"
+          type="textarea"
+          :rows="6"
+          placeholder="请输入消息内容..."
+          maxlength="500"
+          show-word-limit
+        />
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showMessageModal = false">取消</el-button>
+          <el-button type="primary" @click="sendMessage" :loading="sending">发送</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 拉黑选项菜单 -->
+    <el-dialog
+      v-model="showBlockModal"
+      :title="isBlocked ? '取消拉黑' : '拉黑用户'"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <div class="block-dialog-content">
+        <p v-if="isBlocked">
+          确定要取消拉黑该用户吗？取消后可以继续接收来自该用户的消息。
+        </p>
+        <p v-else>
+          确定要拉黑该用户吗？拉黑后将不会收到来自该用户的消息，但对方仍可以查看您的公开信息。
+        </p>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showBlockModal = false">取消</el-button>
+          <el-button :type="isBlocked ? 'success' : 'danger'" @click="handleBlock" :loading="blocking">
+            {{ isBlocked ? '取消拉黑' : '确认拉黑' }}
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { topicAPI } from '@/api/topic';
 import { productAPI } from '@/api/product';
+import { messageAPI } from '@/api/message';
+import { blockAPI } from '@/api/block';
 import axios from 'axios';
 
 // 导入子组件
@@ -141,6 +199,12 @@ const participatedTopics = ref([]);
 const likedTopics = ref([]);
 const privacySettings = ref({ publicVisible: true });
 const showReportModal = ref(false);
+const showMessageModal = ref(false);
+const showBlockModal = ref(false);
+const isBlocked = ref(false); // 当前用户是否被拉黑
+const messageContent = ref(''); // 发送的消息内容
+const sending = ref(false); // 发送消息中
+const blocking = ref(false); // 拉黑操作中
 
 // 商品相关
 const showProducts = ref(false);
@@ -213,6 +277,9 @@ const loadUserInfo = async () => {
       
       privacySettings.value = userInfo.value.privacySettings;
       
+      // 检查拉黑状态
+      checkBlockStatus();
+      
       // 加载话题和商品
       loadUserTopics();
       loadUserProducts();
@@ -283,6 +350,20 @@ const loadUserProducts = async () => {
   }
 };
 
+// 检查拉黑状态
+const checkBlockStatus = async () => {
+  const userId = route.params.userId;
+  if (!userId || isCurrentUser.value) return;
+  
+  try {
+    const response = await blockAPI.isBlocked(parseInt(userId));
+    isBlocked.value = response.data?.blocked || false;
+  } catch (error) {
+    console.error('检查拉黑状态失败:', error);
+    isBlocked.value = false;
+  }
+};
+
 // 操作处理
 const viewProduct = (product) => {
   router.push(`/product/${product.id}`);
@@ -294,7 +375,90 @@ const handleFollow = () => {
 };
 
 const handleMessage = () => {
-  ElMessage.info('消息功能开发中...');
+  showMessageModal.value = true;
+};
+
+const handleBlock = async () => {
+  const userId = route.params.userId;
+  if (!userId) return;
+  
+  try {
+    if (isBlocked.value) {
+      // 取消拉黑
+      await ElMessageBox.confirm('确定要取消拉黑该用户吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      });
+      
+      blocking.value = true;
+      await blockAPI.unblockUser(parseInt(userId));
+      isBlocked.value = false;
+      ElMessage.success('已取消拉黑');
+      showBlockModal.value = false;
+    } else {
+      // 拉黑用户
+      await ElMessageBox.confirm('确定要拉黑该用户吗？拉黑后将不会收到来自该用户的消息。', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      });
+      
+      blocking.value = true;
+      await blockAPI.blockUser(parseInt(userId));
+      isBlocked.value = true;
+      ElMessage.success('已成功拉黑该用户');
+      showBlockModal.value = false;
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('操作失败:', error);
+      ElMessage.error(error.response?.data?.message || '操作失败，请稍后重试');
+    }
+  } finally {
+    blocking.value = false;
+  }
+};
+
+const sendMessage = async () => {
+  if (!messageContent.value.trim()) {
+    ElMessage.warning('请输入消息内容');
+    return;
+  }
+  
+  const userId = route.params.userId;
+  if (!userId) return;
+  
+  try {
+    sending.value = true;
+    await messageAPI.sendMessage({
+      toUserId: parseInt(userId),
+      content: messageContent.value,
+      type: 'private_message'
+    });
+    
+    ElMessage.success('消息发送成功');
+    messageContent.value = '';
+    showMessageModal.value = false;
+    
+    // 通知消息中心刷新（使用自定义事件或 localStorage）
+    localStorage.setItem('refreshMessages', Date.now().toString());
+    window.dispatchEvent(new Event('refreshMessages'));
+    
+    // 询问是否跳转到消息中心
+    ElMessageBox.confirm('消息已发送，是否前往消息中心查看？', '提示', {
+      confirmButtonText: '前往查看',
+      cancelButtonText: '稍后再说',
+      type: 'success'
+    }).then(() => {
+      router.push('/message');
+    }).catch(() => {});
+  } catch (error) {
+    console.error('发送消息失败:', error);
+    ElMessage.error(error.response?.data?.message || '发送失败，请稍后重试');
+  } finally {
+    sending.value = false;
+  }
 };
 
 const submitReport = async ({ type, reason }) => {
@@ -467,6 +631,49 @@ watch(
   margin: 0;
   color: #999;
   font-size: 14px;
+}
+
+.message-dialog-content {
+  padding: 10px 0;
+}
+
+.recipient-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 8px;
+}
+
+.recipient-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.recipient-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.block-dialog-content {
+  padding: 10px 0;
+}
+
+.block-dialog-content p {
+  margin: 0;
+  line-height: 1.6;
+  color: #666;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 @media (max-width: 768px) {

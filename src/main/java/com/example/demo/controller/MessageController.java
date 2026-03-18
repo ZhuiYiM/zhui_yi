@@ -21,7 +21,7 @@ public class MessageController {
 
     // 获取消息列表
     @GetMapping
-    public Result getMessages(@RequestParam String type,
+    public Result getMessages(@RequestParam(required = false, defaultValue = "") String type,
                               @RequestParam(defaultValue = "1") Integer page,
                               @RequestParam(defaultValue = "10") Integer size,
                               @RequestHeader("Authorization") String token) {

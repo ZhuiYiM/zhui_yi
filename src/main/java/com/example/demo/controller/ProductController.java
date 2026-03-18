@@ -104,4 +104,11 @@ public class ProductController {
                                  HttpServletRequest request) {
         return productService.getMyFavorites(request, params);
     }
+
+    // 获取我发布的商品
+    @GetMapping("/my")
+    public Result getMyPublishedProducts(@RequestParam Map<String, Object> params,
+                                         HttpServletRequest request) {
+        return productService.getMyPublishedProducts(request, params);
+    }
 }

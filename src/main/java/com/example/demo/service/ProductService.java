@@ -22,4 +22,7 @@ public interface ProductService extends IService<Product> {
     // 收藏相关功能
     Result toggleFavorite(Integer productId, HttpServletRequest request);
     Result getMyFavorites(HttpServletRequest request, Map<String, Object> params);
+    
+    // 获取我发布的商品
+    Result getMyPublishedProducts(HttpServletRequest request, Map<String, Object> params);
 }

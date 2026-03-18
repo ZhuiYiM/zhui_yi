@@ -1,0 +1,440 @@
+{
+  "info": {
+    "name": "消息中心功能测试",
+    "description": "消息中心完整功能测试集合，包括私信、系统消息、订单通知等",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. 发送私信",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"toUserId\": 1002,\n  \"content\": \"你好，这是一条测试私信\",\n  \"type\": \"private_message\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/messages",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回成功消息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include(\"发送成功\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 获取私信列表",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user2_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/messages?type=private_message&page=1&size=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"],
+          "query": [
+            {
+              "key": "type",
+              "value": "private_message"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回消息列表\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data).to.exist;",
+              "    pm.expect(jsonData.data.records).to.be.an(\"array\");",
+              "});",
+              "",
+              "pm.test(\"消息包含发送者信息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    if (jsonData.data.records.length > 0) {",
+              "        var message = jsonData.data.records[0];",
+              "        pm.expect(message.senderName).to.exist;",
+              "        pm.expect(message.senderAvatar).to.exist;",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 获取系统消息",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/messages?type=system&page=1&size=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"],
+          "query": [
+            {
+              "key": "type",
+              "value": "system"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. 获取未读消息数",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/messages/unread-count",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages", "unread-count"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回未读数量\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data).to.exist;",
+              "    pm.expect(jsonData.data).to.be.a(\"number\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. 标记消息为已读",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/messages/1/read",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages", "1", "read"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回成功消息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include(\"已读成功\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. 批量标记已读",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ids\": [1, 2, 3]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/messages/read-batch",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages", "read-batch"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回成功消息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include(\"批量标记成功\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. 删除消息",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/messages/1",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages", "1"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回成功消息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include(\"删除成功\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. 获取全部消息",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api-messages?type=&page=1&size=20",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"],
+          "query": [
+            {
+              "key": "type",
+              "value": ""
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "size",
+              "value": "20"
+            }
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 200\", function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"验证分页数据\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.records).to.be.an(\"array\");",
+              "    pm.expect(jsonData.data.total).to.exist;",
+              "    pm.expect(jsonData.data.current).to.equal(1);",
+              "    pm.expect(jsonData.data.size).to.equal(20);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. 发送私信 - 内容为空（失败场景）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{user1_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"toUserId\": 1002,\n  \"content\": \"\",\n  \"type\": \"private_message\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/messages",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码不为 200\", function() {",
+              "    pm.response.to.not.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"返回错误消息\", function() {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.message).to.include(\"不能为空\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. 未授权访问（失败场景）",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"toUserId\": 1002,\n  \"content\": \"测试消息\",\n  \"type\": \"private_message\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/messages",
+          "host": ["{{base_url}}"],
+          "path": ["api", "messages"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为 401\", function() {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "user1_token",
+      "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0X3VzZXIxIiwidXNlcklkIjoxMDAxLCJpYXQiOjE3NzM3NDkxOTIsImV4cCI6MTc3MzgzNTU5Mn0.test_token",
+      "type": "string"
+    },
+    {
+      "key": "user2_token",
+      "value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0X3VzZXIyIiwidXNlcklkIjoxMDAyLCJpYXQiOjE3NzM3NDkxOTIsImV4cCI6MTc3MzgzNTU5Mn0.test_token",
+      "type": "string"
+    }
+  ]
+}

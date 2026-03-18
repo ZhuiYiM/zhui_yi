@@ -29,5 +29,15 @@ export const messageAPI = {
     // 获取未读消息数
     getUnreadCount() {
         return request.get('/messages/unread-count');
+    },
+
+    // 标记消息为已读
+    markAsRead(messageId) {
+        return request.put(`/messages/${messageId}/read`);
+    },
+
+    // 删除消息
+    deleteMessage(messageId) {
+        return request.delete(`/messages/${messageId}`);
     }
 };

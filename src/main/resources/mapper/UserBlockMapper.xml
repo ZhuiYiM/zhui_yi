@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.UserBlockMapper">
+
+    <resultMap id="BaseResultMap" type="com.example.demo.entity.UserBlock">
+        <id column="id" property="id"/>
+        <result column="blocker_id" property="blockerId"/>
+        <result column="blocked_id" property="blockedId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <!-- 检查是否存在拉黑关系 -->
+    <select id="existsBlock" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM user_blocks
+        WHERE blocker_id = #{blockerId}
+        AND blocked_id = #{blockedId}
+    </select>
+
+    <!-- 统计拉黑用户数量 -->
+    <select id="countBlockedUsers" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM user_blocks
+        WHERE blocker_id = #{blockerId}
+    </select>
+
+</mapper>

@@ -11,13 +11,13 @@ export function useUserOrders() {
   const ordersLoading = ref(false);
 
   /**
-   * 加载最近订单（从 API 获取）
+   * 加载最近订单（从 API 获取）- 仅包含买家订单
    */
   const loadRecentOrders = async () => {
     try {
       ordersLoading.value = true;
       
-      // 从 API 获取订单列表
+      // 从 API 获取订单列表（买家视角）
       const response = await orderAPI.getMyOrders({ page: 1, size: 6 });
       
       if (response && response.records && response.records.length > 0) {

@@ -9,7 +9,7 @@ import Personalinformation from "../components/user/detail/Personalinformation.v
 import AccountManagement from "../components/user/AccountManagement.vue";
 import AccountVerification from "../components/user/AccountVerification.vue";
 import Map from "../components/user/Map.vue";
-import Message from "../components/user/Message.vue"; // 添加 Map 组件的导入
+import Message from "../components/message/Message.vue"; // 消息中心组件
 import UserProfile from "../components/user/UserProfile.vue";
 
 // 懒加载组件
@@ -20,6 +20,7 @@ const WatermarkTest = () => import('../components/common/WatermarkTest.vue');
 const OrderConfirmation = () => import('../components/user/OrderConfirmation.vue');
 const OrderPayment = () => import('../components/user/OrderPayment.vue');
 const MyOrders = () => import('../components/user/MyOrders.vue');
+const MyProducts = () => import('../components/user/MyProducts.vue');
 
 const routes = [
     {
@@ -122,6 +123,12 @@ const routes = [
         name: 'MyOrders',
         component: MyOrders,
         meta: { requiresAuth: true }   // 订单列表需要认证
+    },
+    {
+        path: '/personal/products',
+        name: 'MyProducts',
+        component: MyProducts,
+        meta: { requiresAuth: true }   // 我的商品页面需要认证
     },
     {
         path: '/watermark-test',

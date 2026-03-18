@@ -56,5 +56,10 @@ export const productAPI = {
         return request.put(`/products/${id}/status`, null, {
             params: { status }
         });
+    },
+
+    // 获取我发布的商品
+    getMyPublishedProducts(params = {}) {
+        return request.get('/products/my', { params });
     }
 };

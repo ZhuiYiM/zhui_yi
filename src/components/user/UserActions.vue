@@ -15,6 +15,13 @@
       发消息
     </button>
     <button 
+      @click="$emit('block')"
+      class="block-btn"
+      :class="{ 'blocked': isBlocked }"
+    >
+      {{ isBlocked ? '已拉黑' : '拉黑' }}
+    </button>
+    <button 
       @click="$emit('report')"
       class="report-btn"
     >
@@ -32,10 +39,14 @@ defineProps({
   canMessage: {
     type: Boolean,
     default: true
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false
   }
 });
 
-defineEmits(['follow', 'message', 'report']);
+defineEmits(['follow', 'message', 'block', 'report']);
 </script>
 
 <style scoped>
@@ -81,6 +92,24 @@ defineEmits(['follow', 'message', 'report']);
 
 .message-btn:hover {
   background: #85ce61;
+}
+
+.block-btn {
+  background: #909399;
+  color: white;
+}
+
+.block-btn:hover {
+  background: #a6a9ad;
+}
+
+.block-btn.blocked {
+  background: #f56c6c;
+  color: white;
+}
+
+.block-btn.blocked:hover {
+  background: #f78989;
 }
 
 .report-btn {

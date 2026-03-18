@@ -47,7 +47,7 @@
       <section class="products-section">
         <div class="section-header">
           <h2>我的商品</h2>
-          <button v-if="!isMobile" class="view-more-btn" @click="viewAllProducts">查看全部</button>
+          <button v-if="!isMobile" class="view-more-btn primary" @click="viewAllProducts">查看全部</button>
           <span v-else class="view-more" @click="viewAllProducts">查看更多 ></span>
         </div>
 
@@ -325,8 +325,8 @@ const viewTopicDetail = (topicId) => {
 // 商品功能
 const viewAllProducts = () => {
   console.log('查看全部商品');
-  // 跳转到交易中心
-  router.push('/mall');
+  // 跳转到我的商品页面
+  router.push('/personal/products');
 };
 
 const viewProductDetail = (productId) => {
@@ -351,16 +351,22 @@ const loadUserProducts = async () => {
     
     console.log('📡 正在加载用户商品，userId:', userId);
     
-    // 加载用户发布的商品
+    // 加载用户发布的商品（只显示 4 个）
     const publishedRes = await productAPI.getProducts({ 
       sellerId: userId, 
       status: null, // 获取所有状态的商品
-      size: 10 
+      page: 1, // 明确指定第一页
+      size: 4 // 限制显示数量
     });
     
     console.log('✅ 发布的商品响应:', publishedRes);
     const publishedData = publishedRes.data || publishedRes;
     publishedProducts.value = publishedData.records || publishedData.data?.records || [];
+    
+    // 如果超过 4 个，截取前 4 个
+    if (publishedProducts.value.length > 4) {
+      publishedProducts.value = publishedProducts.value.slice(0, 4);
+    }
     
     // 处理 images 字段
     publishedProducts.value.forEach(p => {
@@ -374,11 +380,19 @@ const loadUserProducts = async () => {
       }
     });
     
-    // 加载用户收藏的商品
-    const favoritesRes = await productAPI.getMyFavorites({ size: 10 });
+    // 加载用户收藏的商品（只显示 4 个）
+    const favoritesRes = await productAPI.getMyFavorites({ 
+      page: 1, // 明确指定第一页
+      size: 4 // 限制显示数量
+    });
     console.log('✅ 收藏的商品响应:', favoritesRes);
     const favoritesData = favoritesRes.data || favoritesRes;
     favoriteProducts.value = favoritesData || favoritesData.data || [];
+    
+    // 如果超过 4 个，截取前 4 个
+    if (favoriteProducts.value.length > 4) {
+      favoriteProducts.value = favoriteProducts.value.slice(0, 4);
+    }
     
     // 处理 images 字段
     favoriteProducts.value.forEach(p => {
@@ -1283,5 +1297,32 @@ onUnmounted(() => {
     overflow-y: auto;
     margin-left: 210px; /* 与侧边栏宽度一致 */
   }
+}
+
+/* 查看全部按钮样式 */
+.view-more-btn {
+  background-color: #f5f7fa;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.view-more-btn:hover {
+  opacity: 0.8;
+}
+
+/* 蓝色主题按钮 */
+.view-more-btn.primary {
+  background-color: #4A90E2;
+  color: white;
+  border: 1px solid #4A90E2;
+}
+
+.view-more-btn.primary:hover {
+  background-color: #4578d9;
 }
 </style>

@@ -12,10 +12,11 @@
         :class="{ 'is-unread': conversation.unreadCount > 0 }"
         @click="handleClick(conversation)"
       >
-        <div class="conversation-avatar">
+        <div class="conversation-avatar" @click.stop="goToUserProfile(conversation)">
           <el-avatar 
             :src="conversation.senderAvatar" 
             :size="50"
+            style="cursor: pointer;"
           />
         </div>
         
@@ -39,6 +40,10 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
 const props = defineProps({
   conversations: {
     type: Array,
@@ -47,6 +52,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['conversation-click']);
+
+// 跳转到用户对外展示页面
+const goToUserProfile = (conversation) => {
+  const userId = conversation.senderId;
+  router.push(`/user/profile/${userId}`);
+};
 
 const formatTime = (date) => {
   if (!date) return '';

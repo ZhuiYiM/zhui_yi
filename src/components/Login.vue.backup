@@ -9,7 +9,7 @@
       
       <!-- 管理员登录入口 -->
       <div v-if="isLogin && !showRecovery && !showWechatQR" class="admin-login-link">
-        <router-link to="/admin/login">管理员登录 →</router-link>
+        <a href="/admin/login" target="_blank">管理员登录 →</a>
       </div>
       
       <form @submit.prevent="handleSubmit" class="login-form">

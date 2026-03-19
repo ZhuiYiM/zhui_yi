@@ -1,9 +1,25 @@
 <template>
   <div class="dashboard-home">
-    <h2>数据统计</h2>
+    <div class="page-header">
+      <h2 class="page-title">
+        <el-icon><DataAnalysis /></el-icon>
+        数据统计
+      </h2>
+      <div class="header-actions">
+        <div class="breadcrumb-nav">
+          <el-button text type="primary" @click="$router.push('/admin/dashboard/home')" class="back-home-btn">
+            <el-icon><HomeFilled /></el-icon>
+            首页
+          </el-button>
+          <span class="separator">/</span>
+          <span class="current-page">数据统计</span>
+        </div>
+      </div>
+    </div>
     
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <el-col :span="6">
+    <!-- 统计卡片 -->
+    <el-row :gutter="20" class="stats-row">
+      <el-col :xs="24" :sm="12" :lg="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-item">
             <div class="stat-icon user-icon">
@@ -17,7 +33,7 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="24" :sm="12" :lg="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-item">
             <div class="stat-icon topic-icon">
@@ -31,7 +47,7 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="24" :sm="12" :lg="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-item">
             <div class="stat-icon product-icon">
@@ -45,7 +61,7 @@
         </el-card>
       </el-col>
       
-      <el-col :span="6">
+      <el-col :xs="24" :sm="12" :lg="6">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-item">
             <div class="stat-icon report-icon">
@@ -60,30 +76,40 @@
       </el-col>
     </el-row>
 
-    <el-card style="margin-top: 20px;">
+    <!-- 快捷入口 -->
+    <el-card class="quick-access-card">
       <template #header>
         <div class="card-header">
-          <span>快捷入口</span>
+          <span class="card-title">
+            <el-icon><Grid /></el-icon>
+            快捷入口
+          </span>
         </div>
       </template>
       <el-row :gutter="20">
-        <el-col :span="8">
-          <el-button type="primary" @click="$router.push('/admin/users')">
-            <el-icon><User /></el-icon>
-            用户管理
-          </el-button>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="primary" @click="$router.push('/admin/dashboard/users')" class="quick-btn">
+              <el-icon><User /></el-icon>
+              <span>用户管理</span>
+            </el-button>
+          </div>
         </el-col>
-        <el-col :span="8">
-          <el-button type="success" @click="$router.push('/admin/topics')">
-            <el-icon><Document /></el-icon>
-            话题审核
-          </el-button>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="success" @click="$router.push('/admin/dashboard/verifications')" class="quick-btn">
+              <el-icon><DocumentChecked /></el-icon>
+              <span>认证审核</span>
+            </el-button>
+          </div>
         </el-col>
-        <el-col :span="8">
-          <el-button type="warning" @click="$router.push('/admin/reports')">
-            <el-icon><Warning /></el-icon>
-            举报处理
-          </el-button>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="warning" @click="$router.push('/admin/dashboard/reports')" class="quick-btn">
+              <el-icon><Warning /></el-icon>
+              <span>举报处理</span>
+            </el-button>
+          </div>
         </el-col>
       </el-row>
     </el-card>
@@ -92,7 +118,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { User, ChatDotRound, Shop, Warning, Document } from '@element-plus/icons-vue';
+import { User, ChatDotRound, Shop, Warning, Document, DataAnalysis, Grid, DocumentChecked } from '@element-plus/icons-vue';
 
 const stats = reactive({
   userCount: 0,
@@ -113,35 +139,105 @@ onMounted(() => {
 
 <style scoped>
 .dashboard-home {
-  padding: 20px;
+  padding: 24px;
+  background-color: #f5f7fa;
+  min-height: calc(100vh - 84px);
 }
 
-.dashboard-home h2 {
-  margin: 0;
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background: white;
+  padding: 20px 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.breadcrumb-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #606266;
+}
+
+.breadcrumb-nav .separator {
+  color: #c0c4cc;
+  margin: 0 4px;
+}
+
+.breadcrumb-nav .current-page {
+  color: #303133;
+  font-weight: 500;
+}
+
+.breadcrumb-nav .back-home-btn {
+  color: #409EFF;
+  padding: 0;
+  font-size: 13px;
+}
+
+.breadcrumb-nav .back-home-btn:hover {
+  color: #66b1ff;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 24px;
-  color: #333;
+  font-weight: 600;
+  color: #303133;
+  margin: 0;
+}
+
+.page-title .el-icon {
+  font-size: 28px;
+  color: #409EFF;
+}
+
+.stats-row {
+  margin-bottom: 24px;
 }
 
 .stat-card {
-  text-align: center;
+  margin-bottom: 20px;
+  border: none;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 0;
+  padding: 16px;
 }
 
 .stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 32px;
   color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .user-icon {
@@ -163,29 +259,105 @@ onMounted(() => {
 .stat-content {
   flex: 1;
   text-align: right;
+  padding-left: 16px;
 }
 
 .stat-value {
-  font-size: 32px;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 5px;
+  font-size: 36px;
+  font-weight: 700;
+  color: #303133;
+  margin-bottom: 4px;
+  line-height: 1;
 }
 
 .stat-label {
   font-size: 14px;
-  color: #999;
+  color: #909399;
+  font-weight: 500;
+}
+
+.quick-access-card {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 
-.el-button {
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.card-title .el-icon {
+  color: #409EFF;
+}
+
+.quick-btn-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.quick-btn {
   width: 100%;
-  height: 50px;
+  max-width: 280px;
+  height: 56px;
   font-size: 16px;
+  font-weight: 500;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.quick-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.quick-btn .el-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .dashboard-home {
+    padding: 16px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .stat-value {
+    font-size: 28px;
+  }
+  
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+  }
+  
+  .quick-btn {
+    max-width: 100%;
+    height: 48px;
+    font-size: 14px;
+  }
 }
 </style>

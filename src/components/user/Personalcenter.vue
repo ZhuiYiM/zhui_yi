@@ -340,6 +340,13 @@ const loadUserProducts = async () => {
   try {
     productsLoading.value = true;
     
+    // 先检查 token 是否存在
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('ℹ️ 用户未登录，跳过商品加载');
+      return;
+    }
+    
     // 获取当前用户 ID
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
     const userId = userData.id;
@@ -410,16 +417,20 @@ const loadUserProducts = async () => {
     console.log('📋 收藏的商品数量:', favoriteProducts.value.length);
   } catch (error) {
     console.error('❌ 加载用户商品失败:', error);
-    // 如果是 Token 无效，不显示错误提示，直接清空数据
-    if (error.message && error.message.includes('Token')) {
-      console.warn('⚠️ Token 无效，跳过商品数据加载');
-      publishedProducts.value = [];
-      favoriteProducts.value = [];
+    // 如果是 Token 无效或 401 错误，清除本地存储并跳转登录
+    if ((error.message && error.message.includes('Token')) || error.response?.status === 401) {
+      console.warn('⚠️ Token 无效，清除本地存储并跳转登录');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      ElMessage.error('登录已过期，请重新登录');
+      setTimeout(() => {
+        router.push('/login');
+      }, 500);
     } else {
       ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
-      publishedProducts.value = [];
-      favoriteProducts.value = [];
     }
+    publishedProducts.value = [];
+    favoriteProducts.value = [];
   } finally {
     productsLoading.value = false;
   }
@@ -429,6 +440,13 @@ const loadUserProducts = async () => {
 const loadUserTopics = async () => {
   try {
    topicsLoading.value = true;
+    
+    // 先检查 token 是否存在
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('ℹ️ 用户未登录，跳过话题加载');
+      return;
+    }
     
     // 获取当前用户 ID
    const userData = JSON.parse(localStorage.getItem('user') || '{}');
@@ -471,20 +489,22 @@ const loadUserTopics = async () => {
   console.log('📋 收藏的话题数量:', collectedTopics.value.length);
   } catch (error) {
   console.error('❌ 加载话题失败:', error);
-  // 如果是 Token 无效，不显示错误提示，直接清空数据
-  if (error.message && error.message.includes('Token')) {
-    console.warn('⚠️ Token 无效，跳过话题数据加载');
-    publishedTopics.value = [];
-    participatedTopics.value = [];
-    likedTopics.value = [];
-    collectedTopics.value = [];
+  // 如果是 Token 无效或 401 错误，清除本地存储并跳转登录
+  if ((error.message && error.message.includes('Token')) || error.response?.status === 401) {
+    console.warn('⚠️ Token 无效，清除本地存储并跳转登录');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    ElMessage.error('登录已过期，请重新登录');
+    setTimeout(() => {
+      router.push('/login');
+    }, 500);
   } else {
     ElMessage.error('加载失败：' + (error.response?.data?.message || error.message));
-    publishedTopics.value = [];
-    participatedTopics.value = [];
-    likedTopics.value = [];
-    collectedTopics.value = [];
   }
+  publishedTopics.value = [];
+  participatedTopics.value = [];
+  likedTopics.value = [];
+  collectedTopics.value = [];
   } finally {
   topicsLoading.value = false;
   }
@@ -547,7 +567,18 @@ const goToPage = (page) => {
 onMounted(async () => {
   console.log('个人中心页面已挂载');
   updateDeviceDetection();
-  window.addEventListener('resize', updateDeviceDetection);
+  window.addEventListener('resize', updateDeviceDetection());
+  
+  // 检查登录状态
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.warn('⚠️ 用户未登录，跳转到登录页');
+    ElMessage.warning('请先登录');
+    setTimeout(() => {
+      router.push('/login');
+    }, 500);
+    return;
+  }
   
   fetchUserInfo();
   console.log('用户信息初始化完成');

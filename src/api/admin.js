@@ -24,5 +24,100 @@ export const adminAPI = {
     // 修改密码
     changePassword(data) {
         return request.put('/admin/change-password', data);
+    },
+
+    // ========== 用户管理 ==========
+    // 获取用户列表
+    getUserList(params) {
+        return request.get('/admin/users', { params });
+    },
+
+    // 获取用户详情
+    getUserDetail(userId) {
+        return request.get(`/admin/users/${userId}`);
+    },
+
+    // 更新用户状态
+    updateUserStatus(userId, status) {
+        return request.put(`/admin/users/${userId}/status`, { status });
+    },
+
+    // 删除用户
+    deleteUser(userId) {
+        return request.delete(`/admin/users/${userId}`);
+    },
+
+    // 审核用户身份证认证
+    verifyUserIdCard(userId, pass, reason) {
+        return request.put(`/admin/users/${userId}/idcard-verify`, { pass, reason });
+    },
+
+    // 审核用户实名认证
+    verifyUserRealName(userId, pass, reason) {
+        return request.put(`/admin/users/${userId}/realname-verify`, { pass, reason });
+    },
+
+    // ========== 认证申请管理 ==========
+    // 获取认证申请列表
+    getVerificationApplications(params) {
+        return request.get('/admin/verifications', { params });
+    },
+
+    // 获取认证申请详情
+    getApplicationDetail(applicationId) {
+        return request.get(`/admin/verifications/${applicationId}`);
+    },
+
+    // 通过认证申请
+    approveApplication(applicationId, adminRemark) {
+        return request.put(`/admin/verifications/${applicationId}/approve`, { adminRemark });
+    },
+
+    // 拒绝认证申请
+    rejectApplication(applicationId, reason) {
+        return request.put(`/admin/verifications/${applicationId}/reject`, { reason });
+    },
+
+    // ========== 话题管理 ==========
+    // 获取话题列表
+    getTopicList(params) {
+        return request.get('/admin/topics', { params });
+    },
+
+    // 删除话题
+    deleteTopic(topicId) {
+        return request.delete(`/admin/topics/${topicId}`);
+    },
+
+    // 审核话题
+    reviewTopic(topicId, status) {
+        return request.put(`/admin/topics/${topicId}/review`, { status });
+    },
+
+    // ========== 商品管理 ==========
+    // 获取商品列表
+    getProductList(params) {
+        return request.get('/admin/products', { params });
+    },
+
+    // 下架商品
+    removeProduct(productId) {
+        return request.put(`/admin/products/${productId}/remove`);
+    },
+
+    // ========== 举报管理 ==========
+    // 获取举报列表
+    getReportList(params) {
+        return request.get('/admin/reports', { params });
+    },
+
+    // 处理举报
+    handleReport(reportId, status, result) {
+        return request.put(`/admin/reports/${reportId}/handle`, { status, result });
+    },
+
+    // 获取举报统计
+    getReportStats() {
+        return request.get('/admin/reports/stats');
     }
 };

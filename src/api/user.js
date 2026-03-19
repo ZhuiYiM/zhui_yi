@@ -292,5 +292,15 @@ export const userAPI = {
                 'Accept': 'application/json'
             }
         });
+    },
+    
+    // 检查管理员访问权限
+    checkAdminAccess(username, password) {
+        return request.post('/admin/check-user-admin', { username, password }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
     }
 };

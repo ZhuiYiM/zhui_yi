@@ -164,13 +164,61 @@ const routes = [
         path: '/admin/dashboard',
         name: 'AdminDashboard',
         component: AdminDashboard,
-        meta: { requiresAuth: true, role: 'admin' },  // 需要管理员权限
-        redirect: '/admin/dashboard/home',
+        meta: { requiresAdmin: true },  // 需要管理员权限
         children: [
             {
                 path: 'home',
                 name: 'DashboardHome',
                 component: () => import('../views/admin/DashboardHome.vue')
+            },
+            {
+                path: 'users',
+                name: 'AdminUsers',
+                component: () => import('../views/admin/UsersList.vue')
+            },
+            {
+                path: 'verifications',
+                name: 'AdminVerifications',
+                component: () => import('../views/admin/VerificationList.vue')
+            },
+            {
+                path: 'topics',
+                name: 'AdminTopics',
+                component: () => import('../views/admin/TopicList.vue')
+            },
+            {
+                path: 'products',
+                name: 'AdminProducts',
+                component: () => import('../views/admin/ProductList.vue')
+            },
+            {
+                path: 'reports',
+                name: 'AdminReports',
+                component: () => import('../views/admin/ReportList.vue')
+            },
+            {
+                path: 'report-stats',
+                name: 'AdminReportStats',
+                component: () => import('../views/admin/ReportStats.vue')
+            },
+            {
+                path: 'comments',
+                name: 'AdminComments',
+                component: () => import('../views/admin/CommentList.vue')
+            },
+            {
+                path: 'logs',
+                name: 'AdminLogs',
+                component: () => import('../views/admin/OperationLogs.vue')
+            },
+            {
+                path: 'settings',
+                name: 'AdminSettings',
+                component: () => import('../views/admin/SystemSettings.vue')
+            },
+            {
+                path: '',
+                redirect: 'home'
             }
         ]
     },
@@ -190,22 +238,53 @@ const router = createRouter({
 // 路由守卫 - 统一处理认证检查
 router.beforeEach((to, from, next) => {
     const token = localStorage.getItem('token');
-    const requiresAuth = to.meta.requiresAuth;
+    const adminToken = localStorage.getItem('admin_token');
+    const isAdminRoute = to.path.startsWith('/admin');
+    const isAdminLoginRoute = to.path === '/admin/login';
     
-    // 如果路由需要认证
-    if (requiresAuth) {
-        if (!token) {
-            // 未登录，重定向到登录页
+    console.log('路由守卫触发:', {
+        path: to.path,
+        isAdminRoute,
+        hasAdminToken: !!adminToken,
+        hasToken: !!token
+    });
+    
+    // 如果是管理员路由
+    if (isAdminRoute) {
+        // 管理员登录页无需认证
+        if (isAdminLoginRoute) {
+            console.log('允许访问管理员登录页');
+            next();
+        } else if (!adminToken) {
+            // 未登录，重定向到管理员登录页
+            console.warn('管理员未登录，重定向到 /admin/login');
             next({
-                path: '/login',
-                query: { redirect: to.fullPath } // 保存原始目标路径
+                path: '/admin/login',
+                query: { redirect: to.fullPath }
             });
         } else {
             // 已登录，允许访问
+            console.log('管理员已登录，允许访问');
+            next();
+        }
+    }
+    // 其他需要认证的普通用户路由
+    else if (to.meta.requiresAuth) {
+        if (!token) {
+            // 未登录，重定向到登录页
+            console.warn('用户未登录，重定向到 /login');
+            next({
+                path: '/login',
+                query: { redirect: to.fullPath }
+            });
+        } else {
+            // 已登录，允许访问
+            console.log('用户已登录，允许访问');
             next();
         }
     } else {
         // 不需要认证的路由，直接访问
+        console.log('无需认证，直接访问');
         next();
     }
 });

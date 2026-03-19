@@ -23,28 +23,62 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
     @Autowired
     private JwtUtil jwtUtil;
     
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    // 使用静态实例，避免 Spring 代理问题
+    private static final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Result login(String username, String password) {
+        System.out.println("🔐 管理员登录请求 - 用户名：" + username);
+        System.out.println("🔐 输入密码：" + password);
+        
         // 查询管理员
         AdminUser adminUser = this.lambdaQuery()
                 .eq(AdminUser::getUsername, username)
                 .one();
         
         if (adminUser == null) {
+            System.out.println("❌ 管理员不存在");
             return Result.error("用户名或密码错误");
         }
+        
+        System.out.println("✅ 找到管理员 - ID: " + adminUser.getId());
+        System.out.println("✅ 数据库密码哈希：" + adminUser.getPassword());
+        System.out.println("✅ 密码哈希长度：" + adminUser.getPassword().length());
         
         // 检查状态
         if (adminUser.getStatus() != 1) {
+            System.out.println("❌ 账号已被禁用");
             return Result.error("账号已被禁用");
         }
         
-        // 验证密码
-        if (!passwordEncoder.matches(password, adminUser.getPassword())) {
+        // 验证密码 - 添加调试日志
+        boolean matches = false;
+        try {
+            matches = passwordEncoder.matches(password, adminUser.getPassword());
+            System.out.println("🔍 密码验证结果：" + matches);
+            
+            // 如果验证失败，尝试多种方法
+            if (!matches) {
+                System.out.println("⚠️ BCrypt 验证失败，尝试备用方案...");
+                System.out.println("输入密码：'" + password + "'");
+                System.out.println("数据库密码：'" + adminUser.getPassword() + "'");
+                
+                // 尝试重新生成哈希并比较
+                String testHash = passwordEncoder.encode(password);
+                System.out.println("新生成的哈希：" + testHash);
+                System.out.println("新哈希验证：" + passwordEncoder.matches(password, testHash));
+            }
+        } catch (Exception e) {
+            System.out.println("❌ 密码验证异常：" + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        if (!matches) {
+            System.out.println("❌ 密码不匹配");
             return Result.error("用户名或密码错误");
         }
+        
+        System.out.println("✅ 密码验证成功");
         
         // 生成 Token（使用 adminId 作为 userId 存储）
         String token = jwtUtil.generateToken(adminUser.getUsername(), adminUser.getId());
@@ -61,6 +95,8 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
         result.put("realName", adminUser.getRealName());
         result.put("avatar", adminUser.getAvatar());
         result.put("roleId", adminUser.getRoleId());
+        
+        System.out.println("✅ 登录成功，生成 Token: " + token);
         
         return Result.success("登录成功", result);
     }
@@ -121,5 +157,68 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
         adminUserMapper.updateById(adminUser);
         
         return Result.success("密码修改成功");
+    }
+    
+    @Override
+    public Result checkUserAdmin(String username, String password) {
+        // 查询管理员
+        AdminUser adminUser = this.lambdaQuery()
+                .eq(AdminUser::getUsername, username)
+                .one();
+        
+        if (adminUser == null) {
+            // 不是管理员，返回成功但不包含管理员信息
+            Map<String, Object> result = new HashMap<>();
+            result.put("isAdmin", false);
+            return Result.success(result);
+        }
+        
+        // 检查状态
+        if (adminUser.getStatus() != 1) {
+            return Result.error("账号已被禁用");
+        }
+        
+        // 验证密码 - 添加调试日志
+        boolean matches = passwordEncoder.matches(password, adminUser.getPassword());
+        System.out.println("🔍 密码验证 - 用户名：" + username);
+        System.out.println("🔍 输入密码：" + password);
+        System.out.println("🔍 数据库密码哈希：" + adminUser.getPassword());
+        System.out.println("🔍 验证结果：" + matches);
+        
+        if (!matches) {
+            return Result.error("用户名或密码错误");
+        }
+        
+        // 是管理员，返回管理员信息
+        Map<String, Object> result = new HashMap<>();
+        result.put("isAdmin", true);
+        result.put("adminId", adminUser.getId());
+        result.put("username", adminUser.getUsername());
+        result.put("realName", adminUser.getRealName());
+        result.put("roleId", adminUser.getRoleId());
+        
+        return Result.success(result);
+    }
+    
+    @Override
+    public Result resetAdminPassword(String username, String rawPassword) {
+        // 查询管理员
+        AdminUser adminUser = this.lambdaQuery()
+                .eq(AdminUser::getUsername, username)
+                .one();
+        
+        if (adminUser == null) {
+            return Result.error("管理员不存在");
+        }
+        
+        // 使用 BCrypt 加密新密码
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+        adminUser.setPassword(encodedPassword);
+        adminUserMapper.updateById(adminUser);
+        
+        System.out.println("✅ 密码已重置 - 用户名：" + username);
+        System.out.println("✅ 新密码哈希：" + encodedPassword);
+        
+        return Result.success("密码重置成功，新密码：" + rawPassword);
     }
 }

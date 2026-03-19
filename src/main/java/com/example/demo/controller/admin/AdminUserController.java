@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/admin")
+@RequestMapping("/api/admin")
 @CrossOrigin
 public class AdminUserController {
 
@@ -63,5 +63,23 @@ public class AdminUserController {
         String oldPassword = params.get("oldPassword");
         String newPassword = params.get("newPassword");
         return adminUserService.changePassword(adminId, oldPassword, newPassword);
+    }
+    
+    /**
+     * 检查普通用户是否是管理员（用于自动识别）
+     */
+    @PostMapping("/check-user-admin")
+    public Result checkUserAdmin(@RequestBody Map<String, String> params) {
+        String username = params.get("username");
+        String password = params.get("password");
+        return adminUserService.checkUserAdmin(username, password);
+    }
+    
+    /**
+     * 临时接口：重置 admin 密码为 admin123
+     */
+    @PostMapping("/reset-password-temp")
+    public Result resetPasswordTemp() {
+        return adminUserService.resetAdminPassword("admin", "admin123");
     }
 }

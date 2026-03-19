@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { orderAPI } from '@/api/order';
+import router from '@/router';
 
 /**
  * 用户订单管理 composable
@@ -11,12 +12,20 @@ export function useUserOrders() {
   const ordersLoading = ref(false);
 
   /**
-   * 加载最近订单（从 API 获取）- 仅包含买家订单
+   * 加载最近订单（从 API 获取） - 仅包含买家订单
    */
   const loadRecentOrders = async () => {
     try {
+      // 先检查登录状态
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('⚠️ 用户未登录，跳过订单加载');
+        recentOrders.value = [];
+        return;
+      }
+        
       ordersLoading.value = true;
-      
+        
       // 从 API 获取订单列表（买家视角）
       const response = await orderAPI.getMyOrders({ page: 1, size: 6 });
       
@@ -36,7 +45,20 @@ export function useUserOrders() {
       }
     } catch (error) {
       console.error('❌ 加载订单失败:', error);
-      ElMessage.error(error.response?.data?.message || error.message || '加载订单失败');
+      // 如果是 Token 无效或 401 错误，清除本地存储并跳转登录
+      if ((error.message && error.message.includes('Token')) || error.response?.status === 401) {
+        console.warn('⚠️ Token 无效，清除本地存储并跳转登录');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        ElMessage.error('登录已过期，请重新登录');
+        setTimeout(() => {
+          if (window.location.pathname !== '/login') {
+            router.push('/login');
+          }
+        }, 500);
+      } else {
+        ElMessage.error(error.response?.data?.message || error.message || '加载订单失败');
+      }
       recentOrders.value = [];
     } finally {
       ordersLoading.value = false;

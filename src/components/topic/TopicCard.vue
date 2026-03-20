@@ -42,6 +42,13 @@
         :forwarded-from-topic-id="post.forwardedFromTopicId"
         @click="(topicId) => emit('view-forwarded-topic', topicId)"
       />
+      
+      <!-- 分享的商品引用（使用新组件） -->
+      <ForwardedProductCard
+        v-if="post.isForwarded && post.forwardedFromProductId"
+        :forwarded-from-product-id="post.forwardedFromProductId"
+        @click="(productId) => emit('view-forwarded-product', productId)"
+      />
 
       <!-- 图片展示 -->
       <div v-if="post.images && post.images.length > 0" class="post-images">
@@ -123,6 +130,7 @@ import { computed, ref, watch } from 'vue';
 import { topicAPI } from '@/api/topic';
 import { ElMessage } from 'element-plus';
 import ForwardedTopicCard from './ForwardedTopicCard.vue';
+import ForwardedProductCard from './ForwardedProductCard.vue';
 
 // Props
 const props = defineProps({
@@ -140,6 +148,10 @@ watch(() => props.post, (newVal) => {
     console.log('🖼️ 图片数量:', newVal.images.length);
     console.log('🖼️ 图片 URLs:', newVal.images);
   }
+  // 添加转发字段调试
+  console.log('🔁 isForwarded:', newVal?.isForwarded);
+  console.log('🔁 forwardedFromTopicId:', newVal?.forwardedFromTopicId);
+  console.log('🔁 forwardedFromProductId:', newVal?.forwardedFromProductId);
 }, { immediate: true, deep: true });
 
 // Emits
@@ -152,7 +164,8 @@ const emit = defineEmits([
   'avatar-hover',
   'hide-popover',
   'like-change', // 新增：点赞状态变化事件
-  'view-forwarded-topic' // 查看被转发的话题
+  'view-forwarded-topic', // 查看被转发的话题
+  'view-forwarded-product' // 查看被分享的商品
 ]);
 
 // 默认头像

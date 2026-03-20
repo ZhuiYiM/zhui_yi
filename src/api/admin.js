@@ -105,6 +105,16 @@ export const adminAPI = {
         return request.put(`/admin/products/${productId}/remove`);
     },
 
+    // 更新商品状态
+    updateProductStatus(productId, status) {
+        return request.put(`/admin/products/${productId}/status`, { status });
+    },
+
+    // 删除商品
+    deleteProduct(productId) {
+        return request.delete(`/admin/products/${productId}`);
+    },
+
     // ========== 举报管理 ==========
     // 获取举报列表
     getReportList(params) {
@@ -119,5 +129,33 @@ export const adminAPI = {
     // 获取举报统计
     getReportStats() {
         return request.get('/admin/reports/stats');
+    },
+
+    // ========== 评论管理 ==========
+    // 获取评论列表
+    getCommentList(params) {
+        return request.get('/admin/comments', { params });
+    },
+
+    // 删除评论
+    deleteComment(commentId) {
+        return request.delete(`/admin/comments/${commentId}`);
+    },
+
+    // ========== 操作日志 ==========
+    // 获取操作日志列表
+    getOperationLogs(params) {
+        return request.get('/admin/logs', { params });
+    },
+
+    // ========== 系统设置 ==========
+    // 获取系统设置
+    getSystemSettings() {
+        return request.get('/admin/settings');
+    },
+
+    // 更新系统设置
+    updateSystemSettings(data) {
+        return request.put('/admin/settings', data);
     }
 };

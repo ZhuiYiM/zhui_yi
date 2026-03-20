@@ -980,7 +980,7 @@ public class UserServiceimpl extends ServiceImpl<UserMapper, User> implements Us
             QueryWrapper<Topics> wrapper = new QueryWrapper<>();
             wrapper.eq("user_id", userId)
                    .eq("status", 1)  // 只查询正常状态的话题
-                   .orderByDesc("created_at");
+                   .orderByDesc("create_time");
             
             Page<Topics> result = topicsMapper.selectPage(topicsPage, wrapper);
             

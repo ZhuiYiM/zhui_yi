@@ -90,6 +90,16 @@
           @reply="replyReview"
         />
 
+        <!-- 分享弹窗 -->
+        <ShareModal
+          v-model:visible="showShareModal"
+          :topic-id="product.id"
+          :topic-url="currentShareUrl"
+          source-type="product"
+          @repost="handleRepost"
+          @copy="handleCopyLink"
+        />
+
         <!-- 猜你喜欢 -->
         <RecommendedProducts 
           :products="recommendedProducts"
@@ -131,6 +141,8 @@ import RecommendedProducts from './RecommendedProducts.vue';
 import BuyConfirmModal from './BuyConfirmModal.vue';
 import { productAPI } from '@/api/product';
 import { orderAPI } from '@/api/order';
+import { reviewAPI } from '@/api/review';
+import ShareModal from '@/components/topic/ShareModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -150,6 +162,8 @@ const previewImageUrl = ref('');
 const showBuyModal = ref(false);
 const buyingLoading = ref(false);
 const productSpecifications = ref({}); // 商品规格数据
+const showShareModal = ref(false);
+const currentShareUrl = ref('');
 
 // 判断是否是当前用户发布的商品
 const isCurrentProductOwner = computed(() => {
@@ -289,27 +303,25 @@ const loadSellerProducts = async (sellerId) => {
 // 加载卖家评价
 const loadSellerReviews = async (sellerId) => {
   try {
-    // 模拟数据 - 实际应调用 API
-    reviews.value = [
-      {
-        id: 1,
-        userId: 2,
-        userName: '张三',
-        userAvatar: 'https://placehold.co/50x50/4A90E2/FFFFFF?text=Z',
-        content: '商品质量很好，卖家服务态度也很棒！',
-        rating: 5,
-        createdAt: new Date().toISOString(),
-        likeCount: 3,
-        isLiked: false,
-        images: [],
-        product: {
-          id: 259,
-          title: '电脑清灰换硅脂',
-          price: 30,
-          image: 'https://placehold.co/100x100/4A90E2/FFFFFF?text=服务'
-        }
-      }
-    ];
+    const response = await reviewAPI.getSellerReviews(sellerId, 1, 50);
+    const reviewsData = response || response?.data || [];
+    
+    // 转换数据格式以适配 ReviewItem 组件
+    reviews.value = reviewsData.map(review => ({
+      id: review.id,
+      userId: review.buyerId,
+      userName: '用户' + review.buyerId, // 实际应该获取用户名
+      userAvatar: 'https://placehold.co/50x50/4A90E2/FFFFFF?text=U',
+      content: review.content,
+      rating: review.rating,
+      createdAt: review.createdAt,
+      likeCount: 0, // 暂时设为 0
+      isLiked: false,
+      images: review.images ? review.images.split(',') : [],
+      reply: review.reply,
+      replyTime: review.replyTime,
+      product: review.product
+    }));
     
     if (reviews.value.length > 0) {
       const total = reviews.value.reduce((sum, r) => sum + r.rating, 0);
@@ -426,14 +438,96 @@ const confirmBuy = async (orderInfo) => {
 };
 
 // 切换收藏
-const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value;
-  ElMessage.success(isFavorite.value ? '收藏成功' : '取消收藏');
+const toggleFavorite = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      ElMessage.warning('请先登录');
+      return;
+    }
+    
+    // 先更新本地状态
+    isFavorite.value = !isFavorite.value;
+    
+    // 调用 API
+    await productAPI.toggleFavorite(product.value.id);
+    
+    ElMessage.success(isFavorite.value ? '收藏成功' : '取消收藏');
+    
+    // 更新商品的收藏数显示
+    if (isFavorite.value) {
+      product.value.favoriteCount = (product.value.favoriteCount || 0) + 1;
+    } else {
+      product.value.favoriteCount = Math.max(0, (product.value.favoriteCount || 0) - 1);
+    }
+  } catch (error) {
+    console.error('收藏操作失败:', error);
+    // 恢复状态
+    isFavorite.value = !isFavorite.value;
+    ElMessage.error(error.response?.data?.message || '操作失败，请稍后重试');
+  }
 };
 
 // 分享商品
 const shareProduct = () => {
-  ElMessage.info('分享功能开发中');
+  if (!product.value.id) {
+    ElMessage.warning('商品信息不完整');
+    return;
+  }
+  
+  // 生成分享链接
+  const baseUrl = window.location.origin;
+  currentShareUrl.value = `${baseUrl}/product/${product.value.id}`;
+  showShareModal.value = true;
+};
+
+// 处理转发
+const handleRepost = async (productId) => {
+  try {
+    // 获取商品信息
+    const product = productAPI.getProductDetail(productId);
+    if (!product) return;
+    
+    // 准备分享数据
+    const shareData = {
+      id: productId,
+      sourceId: productId,  // 添加 sourceId 字段
+      type: 'product',
+      sourceType: 'product',  // 添加 sourceType 字段
+      title: product.title,
+      content: product.description,
+      image: product.images && product.images.length > 0 ? product.images[0] : null,
+      author: product.sellerName || '未知用户',
+      url: currentShareUrl.value
+    };
+    
+    // 存储到 sessionStorage
+    sessionStorage.setItem('shareData', JSON.stringify(shareData));
+    
+    // 跳转到话题墙并发布
+    router.push({
+      path: '/topicwall',
+      query: {
+        from: 'share',
+        sourceType: 'product',
+        sourceId: productId
+      }
+    });
+  } catch (error) {
+    console.error('转发商品失败:', error);
+    ElMessage.error('转发失败，请稍后重试');
+  }
+};
+
+// 处理复制链接
+const handleCopyLink = async (url) => {
+  try {
+    await navigator.clipboard.writeText(url);
+    ElMessage.success('链接已复制到剪贴板');
+  } catch (error) {
+    console.error('复制失败:', error);
+    ElMessage.error('复制失败，请手动复制');
+  }
 };
 
 // 写评价

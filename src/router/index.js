@@ -192,6 +192,11 @@ const routes = [
                 component: () => import('../views/admin/ProductList.vue')
             },
             {
+                path: 'locations',
+                name: 'AdminLocations',
+                component: () => import('../views/admin/LocationList.vue')
+            },
+            {
                 path: 'reports',
                 name: 'AdminReports',
                 component: () => import('../views/admin/ReportList.vue')

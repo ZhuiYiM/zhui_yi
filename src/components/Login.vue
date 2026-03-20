@@ -7,10 +7,7 @@
         <p v-else>找回密码</p>
       </div>
       
-      <!-- 管理员登录入口 -->
-      <div v-if="isLogin && !showRecovery && !showWechatQR" class="admin-login-link">
-        <router-link to="/admin/login">管理员登录 →</router-link>
-      </div>
+
       
       <form @submit.prevent="handleSubmit" class="login-form">
         <!-- 登录类型选择 -->
@@ -250,9 +247,10 @@
           {{ showRecovery ? '重置密码' : (isLogin ? '登录' : '注册') }}
         </button>
         
-        <!-- 找回密码链接 -->
-        <div v-if="isLogin && !showRecovery && !showWechatQR" class="forgot-password-link">
-          <a href="#" @click.prevent="showPasswordRecovery">忘记密码？</a>
+        <!-- 找回密码链接和管理员登录 -->
+        <div v-if="isLogin && !showRecovery && !showWechatQR" class="bottom-links">
+          <a href="#" @click.prevent="showPasswordRecovery" class="forgot-password-link">忘记密码？</a>
+          <router-link to="/admin/login" class="admin-login-btn">管理员登录</router-link>
         </div>
         
         <!-- 返回登录链接 -->
@@ -910,47 +908,47 @@ export default {
   color: white;
 }
 
-.forgot-password-link,
-.back-login-link {
-  text-align: center;
+
+
+/* 底部链接容器 - 忘记密码和管理员登录同行 */
+.bottom-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin: 15px 0;
 }
 
-.forgot-password-link a,
-.back-login-link a {
+.forgot-password-link {
   color: #667eea;
   text-decoration: none;
   font-size: 0.9rem;
+  transition: all 0.3s ease;
 }
 
-.forgot-password-link a:hover,
-.back-login-link a:hover {
+.forgot-password-link:hover {
   text-decoration: underline;
+  color: #5a6fd8;
 }
 
-/* 管理员登录链接 */
-.admin-login-link {
-  text-align: center;
-  margin: 10px 0 15px;
-}
-
-.admin-login-link a {
+/* 管理员登录按钮 - 缩小版本 */
+.admin-login-btn {
   color: #667eea;
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  padding: 8px 16px;
-  border: 2px solid #667eea;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border: 1px solid #667eea;
+  border-radius: 4px;
   transition: all 0.3s ease;
   display: inline-block;
+  white-space: nowrap;
 }
 
-.admin-login-link a:hover {
+.admin-login-btn:hover {
   background: #667eea;
   color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 /* 微信登录样式 */

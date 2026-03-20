@@ -65,6 +65,13 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
                 return ApiResult.error(401, "用户未登录");
             }
                 
+            // 打印前端传来的数据
+            System.out.println("📥 收到话题创建请求:");
+            System.out.println("   isForwarded: " + topicDTO.getIsForwarded());
+            System.out.println("   forwardedFromTopicId: " + topicDTO.getForwardedFromTopicId());
+            System.out.println("   forwardedFromProductId: " + topicDTO.getForwardedFromProductId());
+            System.out.println("   content: " + topicDTO.getContent());
+                
             // ✅ 获取用户并自动设置身份标签
             User user = userMapper.selectById(userId);
             if (user == null) {
@@ -125,10 +132,17 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             topic.setLevel4TagCodes(convertListToJson(topicDTO.getLevel4TagCodes()));
             
             // 处理转发逻辑
-            if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded() && 
-                topicDTO.getForwardedFromTopicId() != null) {
+            if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded()) {
                 topic.setIsForwarded(true);
-                topic.setForwardedFromTopicId(topicDTO.getForwardedFromTopicId());
+                
+                // 检查是商品转发还是话题转发
+                if (topicDTO.getForwardedFromProductId() != null) {
+                    topic.setForwardedFromProductId(topicDTO.getForwardedFromProductId());
+                    System.out.println("🛍️ 商品转发：forwardedFromProductId = " + topicDTO.getForwardedFromProductId());
+                } else if (topicDTO.getForwardedFromTopicId() != null) {
+                    topic.setForwardedFromTopicId(topicDTO.getForwardedFromTopicId());
+                    System.out.println("ℹ️ 话题转发：forwardedFromTopicId = " + topicDTO.getForwardedFromTopicId());
+                }
             } else {
                 topic.setIsForwarded(false);
             }
@@ -381,6 +395,7 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             result.put("isTop", topic.getIsTop() != null ? topic.getIsTop() : 0);
             result.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
             result.put("forwardedFromTopicId", topic.getForwardedFromTopicId());
+            result.put("forwardedFromProductId", topic.getForwardedFromProductId());
             result.put("createdAt", topic.getCreatedAt());
             result.put("isLiked", isLiked);
             result.put("isCollected", isCollected);
@@ -725,6 +740,7 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         // 添加转发信息（始终返回，即使为 false）
         map.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
         map.put("forwardedFromTopicId", topic.getForwardedFromTopicId());
+        map.put("forwardedFromProductId", topic.getForwardedFromProductId());
         
         map.put("likesCount", topic.getLikesCount());
         map.put("commentsCount", topic.getCommentsCount());

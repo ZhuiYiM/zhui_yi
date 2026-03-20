@@ -59,6 +59,13 @@
         :forwarded-from-topic-id="forwardedFromTopicId"
         @click="$emit('view-forwarded', forwardedFromTopicId)"
       />
+      
+      <!-- 分享的商品引用 -->
+      <ForwardedProductCard
+        v-if="isForwarded && forwardedFromProductId"
+        :forwarded-from-product-id="forwardedFromProductId"
+        @click="$emit('view-forwarded-product', forwardedFromProductId)"
+      />
 
       <!-- 图片展示 -->
       <div v-if="images && images.length > 0" class="content-images">
@@ -157,6 +164,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import ForwardedTopicCard from './ForwardedTopicCard.vue';
+import ForwardedProductCard from './ForwardedProductCard.vue';
 
 const props = defineProps({
   id: { type: [Number, String], required: true },
@@ -191,12 +199,13 @@ const props = defineProps({
   },
   isForwarded: { type: Boolean, default: false },
   forwardedFromTopicId: { type: [Number, String], default: null },
+  forwardedFromProductId: { type: [Number, String], default: null },
   createdAt: { type: String, default: '' },
   authorPublicInfo: { type: Object, default: null },
   currentUserId: { type: [Number, String], default: null }
 });
 
-const emit = defineEmits(['like', 'collect', 'share', 'edit', 'delete', 'report', 'preview-image', 'view-forwarded', 'view-user']);
+const emit = defineEmits(['like', 'collect', 'share', 'edit', 'delete', 'report', 'preview-image', 'view-forwarded', 'view-forwarded-product', 'view-user']);
 
 const showAuthorTooltip = ref(false);
 const defaultAvatar = 'https://placehold.co/100x100/4A90E2/FFFFFF?text=User';

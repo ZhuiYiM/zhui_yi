@@ -32,6 +32,7 @@
             </template>
             <el-menu-item index="/admin/dashboard/topics">话题管理</el-menu-item>
             <el-menu-item index="/admin/dashboard/products">商品管理</el-menu-item>
+            <el-menu-item index="/admin/dashboard/locations">地点管理</el-menu-item>
             <el-menu-item index="/admin/dashboard/comments">评论管理</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="report">
@@ -121,6 +122,7 @@ const getPageTitle = () => {
     'AdminVerifications': '认证审核',
     'AdminTopics': '话题管理',
     'AdminProducts': '商品管理',
+    'AdminLocations': '地点管理',
     'AdminComments': '评论管理',
     'AdminReports': '举报管理',
     'AdminReportStats': '举报统计',

@@ -21,14 +21,227 @@
       </div>
     </div>
 
-    <el-card class="placeholder-card">
-      <el-empty description="举报统计功能开发中..." />
+    <el-row :gutter="20">
+      <!-- 统计卡片 -->
+      <el-col :span="6">
+        <el-card class="stat-card">
+          <el-statistic title="总举报数" :value="stats.total">
+            <template #prefix>
+              <el-icon><Warning /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card">
+          <el-statistic title="待处理" :value="stats.pending">
+            <template #prefix>
+              <el-icon style="color: #E6A23C"><Warning /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card">
+          <el-statistic title="处理中" :value="stats.processing">
+            <template #prefix>
+              <el-icon style="color: #409EFF"><Warning /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card class="stat-card">
+          <el-statistic title="已处理" :value="stats.processed">
+            <template #prefix>
+              <el-icon style="color: #67C23A"><Warning /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="20" style="margin-top: 20px">
+      <!-- 按类型统计 -->
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>按类型统计</span>
+            </div>
+          </template>
+          <div class="chart-container">
+            <div v-for="item in stats.byType" :key="item.type" class="stat-item">
+              <div class="stat-label">{{ formatType(item.type) }}</div>
+              <el-progress :percentage="calculatePercentage(item.count)" :format="() => item.count + '件'" />
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 按状态统计 -->
+      <el-col :span="12">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>按状态统计</span>
+            </div>
+          </template>
+          <div class="chart-container">
+            <div v-for="item in stats.byStatus" :key="item.status" class="stat-item">
+              <div class="stat-label">{{ formatStatus(item.status) }}</div>
+              <el-progress 
+                :percentage="calculatePercentage(item.count)" 
+                :color="getStatusColor(item.status)"
+                :format="() => item.count + '件'" 
+              />
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 最近处理记录 -->
+    <el-card style="margin-top: 20px">
+      <template #header>
+        <div class="card-header">
+          <span>最近处理记录</span>
+          <el-button type="primary" size="small" @click="loadStats">刷新</el-button>
+        </div>
+      </template>
+      <el-table :data="recentReports" border stripe>
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="type" label="类型" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getTypeTag(row.type)" size="small">{{ formatType(row.type) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="原因" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTag(row.status)" size="small">{{ formatStatus(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="processedAt" label="处理时间" width="180">
+          <template #default="{ row }">
+            {{ row.processedAt ? new Date(row.processedAt).toLocaleString() : '-' }}
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
   </div>
 </template>
 
 <script setup>
-import { DataAnalysis } from '@element-plus/icons-vue';
+import { ref, reactive, onMounted } from 'vue';
+import { Warning, DataAnalysis, HomeFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import request from '@/api/request';
+
+const loading = ref(false);
+const stats = reactive({
+  total: 0,
+  pending: 0,
+  processing: 0,
+  processed: 0,
+  byType: [],
+  byStatus: []
+});
+
+const recentReports = ref([]);
+
+// 格式化举报类型
+const formatType = (type) => {
+  const typeMap = {
+    topic: '话题',
+    product: '商品',
+    user: '用户',
+    comment: '评论'
+  };
+  return typeMap[type] || type;
+};
+
+// 格式化状态
+const formatStatus = (status) => {
+  const statusMap = {
+    0: '待处理',
+    1: '处理中',
+    2: '已处理',
+    3: '已忽略'
+  };
+  return statusMap[status] || '未知';
+};
+
+// 获取状态标签类型
+const getStatusTag = (status) => {
+  const statusMap = {
+    0: 'warning',
+    1: 'primary',
+    2: 'success',
+    3: 'info'
+  };
+  return statusMap[status] || 'info';
+};
+
+// 获取类型标签类型
+const getTypeTag = (type) => {
+  const typeMap = {
+    topic: 'success',
+    product: 'warning',
+    user: 'danger',
+    comment: 'info'
+  };
+  return typeMap[type] || 'info';
+};
+
+// 获取状态颜色
+const getStatusColor = (status) => {
+  const colorMap = {
+    0: '#E6A23C',
+    1: '#409EFF',
+    2: '#67C23A',
+    3: '#909399'
+  };
+  return colorMap[status] || '#909399';
+};
+
+// 计算百分比
+const calculatePercentage = (count) => {
+  if (stats.total === 0) return 0;
+  return Math.round((count / stats.total) * 100);
+};
+
+// 加载统计数据
+const loadStats = async () => {
+  loading.value = true;
+  try {
+    const response = await request.get('/admin/reports/stats');
+    
+    console.log('📊 举报统计响应:', response);
+    if (response.code === 200 && response.data) {
+      const data = response.data;
+      stats.total = data.total || 0;
+      stats.pending = data.pending || 0;
+      stats.processing = data.processing || 0;
+      stats.processed = data.processed || 0;
+      stats.byType = data.byType || [];
+      stats.byStatus = data.byStatus || [];
+      recentReports.value = data.recent || [];
+      console.log('✅ 举报统计加载成功');
+    } else {
+      ElMessage.error(response.message || '加载失败');
+    }
+  } catch (error) {
+    console.error('❌ 加载举报统计失败:', error);
+    ElMessage.error('加载失败，请稍后重试');
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  loadStats();
+});
 </script>
 
 <style scoped>
@@ -72,11 +285,28 @@ import { DataAnalysis } from '@element-plus/icons-vue';
   margin: 0;
 }
 
-.placeholder-card {
-  border-radius: 12px;
-  min-height: 400px;
+.stat-card {
+  border-radius: 8px;
+  text-align: center;
+}
+
+.card-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
+}
+
+.chart-container {
+  padding: 10px;
+}
+
+.stat-item {
+  margin-bottom: 20px;
+}
+
+.stat-label {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266;
 }
 </style>

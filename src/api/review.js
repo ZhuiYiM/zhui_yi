@@ -21,5 +21,17 @@ export const reviewAPI = {
     // 卖家回复评价
     replyReview(reviewId, data) {
         return request.put(`/reviews/${reviewId}/reply`, data);
+    },
+
+    // 获取卖家评价列表（商户评价）
+    getSellerReviews(sellerId, page = 1, size = 10) {
+        return request.get(`/reviews/seller/${sellerId}`, {
+            params: { page, size }
+        });
+    },
+
+    // 获取用户可评价的订单列表
+    getReviewableOrders() {
+        return request.get('/reviews/reviewable');
     }
 };

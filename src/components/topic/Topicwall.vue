@@ -19,7 +19,6 @@
             :selected-tags-model="selectedSearchTags"
             :active-quick-filters="quickFilters"
             :available-tags="allTagsForSearch"
-            :quick-filter-options="quickFilterTags"
             placeholder="搜索话题、标签或用户..."
            tag-selector-title="选择标签进行搜索"
             :show-quick-filters="true"
@@ -28,8 +27,8 @@
             :enable-result-page="true"
             :default-search-type="'topic'"
             @search="handleSearch"
-            @apply-tags="applySearchTags"
-            @clear-tags="clearSearchTags"
+            @apply-tags="handleApplySearchTags"
+            @clear-tags="handleClearSearchTags"
             @clear-filters="clearAllFilters"
         />
       </header>
@@ -134,6 +133,7 @@
                 @avatar-hover="handleAvatarHover"
                 @hide-popover="hidePopover"
                 @view-forwarded-topic="viewForwardedTopic"
+                @view-forwarded-product="viewForwardedProduct"
               />
 
               <!-- 分页 -->
@@ -360,6 +360,7 @@ const fetchTopicsWithFilters = async () => {
         isEssence: topic.isEssence || 0,
         isForwarded: topic.isForwarded || false, // 添加转发标识
         forwardedFromTopicId: topic.forwardedFromTopicId || null, // 添加被转发的话题 ID
+        forwardedFromProductId: topic.forwardedFromProductId || null, // 添加被分享的商品 ID
         createdAt: topic.createdAt,
         author: {
           id: topic.author?.id || null,
@@ -521,6 +522,17 @@ const viewForwardedTopic = async (topicId) => {
         type: 'warning'
       }
     );
+  }
+};
+
+// 查看被分享的商品
+const viewForwardedProduct = async (productId) => {
+  try {
+    // 跳转到商品详情页
+    router.push(`/product/${productId}`);
+  } catch (error) {
+    console.error('查看商品失败:', error);
+    ElMessage.error('商品不存在或已下架');
   }
 };
 
@@ -689,13 +701,20 @@ const loadMoreTopics = async () => {
 // 处理分享参数
 const handleShareFromQuery = async () => {
   const routeParams = router.currentRoute.value.query;
-  if (routeParams.from === 'share' && routeParams.sourceType === 'topic' && routeParams.sourceId) {
+  if (routeParams.from === 'share' && routeParams.sourceId) {
     // 从 sessionStorage 获取分享数据
     const shareData = sessionStorage.getItem('shareData');
     if (shareData) {
       try {
         const parsedData = JSON.parse(shareData);
-        shareInfo.value = parsedData;
+        // 确保 sourceType 正确设置
+        shareInfo.value = {
+          ...parsedData,
+          sourceType: routeParams.sourceType || 'product',
+          sourceId: routeParams.sourceId
+        };
+        
+        console.log('🔗 设置分享信息:', shareInfo.value);
         
         // 打开分享弹窗
         setTimeout(() => {
@@ -716,19 +735,32 @@ const handleShareFromQuery = async () => {
   }
 };
 
+// 处理搜索标签应用
+const handleApplySearchTags = (tags) => {
+  console.log('🔍 应用搜索标签:', tags);
+  // 可以在这里处理标签应用逻辑
+};
+
+// 处理清除搜索标签
+const handleClearSearchTags = () => {
+  console.log('🗑️ 清除搜索标签');
+  selectedSearchTags.value = [];
+};
+
 // ========== 生命周期 ==========
 onMounted(async () => {
   updateDeviceDetection();
   getUserInfo();
   window.addEventListener('resize', updateDeviceDetection);
   
+  // 先检查是否从分享跳转而来（在获取话题列表之前）
+  await handleShareFromQuery();
+  
+  // 再获取话题列表和标签
   await Promise.all([
     fetchTopicsWithFilters(),
     loadTags()
   ]);
-  
-  // 检查是否从分享跳转而来
-  handleShareFromQuery();
 });
 
 onUnmounted(() => {
@@ -756,7 +788,7 @@ onUnmounted(() => {
 .main-content {
   grid-area: main;
   padding: 0;
-  margin-left: 250px;
+  margin-left: 10px;
   overflow-y: auto;
 }
 

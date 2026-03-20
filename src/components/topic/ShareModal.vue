@@ -2,7 +2,7 @@
   <div v-if="visible" class="share-modal-overlay" @click="handleClose">
     <div class="share-modal" @click.stop>
       <div class="share-header">
-        <h3>分享话题</h3>
+        <h3>{{ sourceType === 'product' ? '分享商品' : '分享话题' }}</h3>
         <button class="close-btn" @click="handleClose">×</button>
       </div>
       
@@ -11,7 +11,7 @@
           <div class="option-icon">🔗</div>
           <div class="option-content">
             <div class="option-title">复制链接</div>
-            <div class="option-desc">复制话题链接到剪贴板</div>
+            <div class="option-desc">复制{{ sourceType === 'product' ? '商品' : '话题' }}链接到剪贴板</div>
           </div>
         </div>
         
@@ -19,7 +19,7 @@
           <div class="option-icon">🔁</div>
           <div class="option-content">
             <div class="option-title">转发</div>
-            <div class="option-desc">带上你的评论转发这个话题</div>
+            <div class="option-desc">带上你的评论转发到话题墙</div>
           </div>
         </div>
       </div>
@@ -42,6 +42,11 @@ const props = defineProps({
   topicUrl: {
     type: String,
     required: true
+  },
+  sourceType: {
+    type: String,
+    default: 'topic', // 'topic' 或 'product'
+    validator: (value) => ['topic', 'product'].includes(value)
   }
 });
 

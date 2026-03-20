@@ -31,7 +31,9 @@ public class User {
     private Integer status;
     private Integer isVerified;
     private Integer isRealNameVerified;
+    @TableField("create_time")
     private LocalDateTime createTime;
+    @TableField("update_time")
     private LocalDateTime updateTime;
     private String department;
     

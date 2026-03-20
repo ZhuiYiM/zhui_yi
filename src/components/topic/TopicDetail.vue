@@ -47,6 +47,7 @@
             @report="reportTopic"
             @preview-image="previewImage"
             @view-forwarded="viewForwardedTopic"
+            @view-forwarded-product="viewForwardedProduct"
             @view-user="viewUserProfile"
         />
 
@@ -156,6 +157,7 @@ const fetchTopicDetail = async () => {
         isEssence: data.isEssence || 0,
         isForwarded: data.isForwarded || false,
         forwardedFromTopicId: data.forwardedFromTopicId || null,
+        forwardedFromProductId: data.forwardedFromProductId || null,
         createdAt: data.createdAt
       };
 
@@ -382,6 +384,21 @@ const viewForwardedTopic = async (forwardedFromTopicId) => {
     }
   } else {
     ElMessage.warning('无法获取原话题信息');
+  }
+};
+
+// 查看被分享的商品
+const viewForwardedProduct = async (forwardedFromProductId) => {
+  if (forwardedFromProductId) {
+    try {
+      // 跳转到商品详情页
+      router.push(`/product/${forwardedFromProductId}`);
+    } catch (error) {
+      console.error('查看商品失败:', error);
+      ElMessage.error('商品不存在或已下架');
+    }
+  } else {
+    ElMessage.warning('无法获取商品信息');
   }
 };
 

@@ -111,9 +111,24 @@
         />
         
         <!-- 商户评价内容 -->
-        <div v-else-if="currentTab === 'reviews'" class="reviews-placeholder">
-          <div class="empty-icon">⭐</div>
-          <p>商户评价功能开发中...</p>
+        <div v-else-if="currentTab === 'reviews'" class="seller-reviews-section">
+          <div v-if="sellerReviewsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
+          <div v-else-if="sellerReviews.length === 0" class="empty-state">
+            <div class="empty-icon">⭐</div>
+            <p>暂无商户评价</p>
+          </div>
+          <div v-else class="reviews-list">
+            <ReviewItem
+              v-for="review in sellerReviews"
+              :key="review.id"
+              :review="review"
+              @view-product="viewProduct"
+              @view-image="viewImage"
+            />
+          </div>
         </div>
         
         <!-- 话题内容 -->
@@ -197,6 +212,7 @@ import { topicAPI } from '@/api/topic';
 import { productAPI } from '@/api/product';
 import { messageAPI } from '@/api/message';
 import { blockAPI } from '@/api/block';
+import { reviewAPI } from '@/api/review';
 import axios from 'axios';
 
 // 导入子组件
@@ -208,6 +224,7 @@ import UserActions from './UserActions.vue';
 import ProductSection from './ProductSection.vue';
 import TopicSection from './TopicSection.vue';
 import ReportModal from './ReportModal.vue';
+import ReviewItem from '@/components/mall/ReviewItem.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -234,6 +251,10 @@ const blocking = ref(false); // 拉黑操作中
 // 商品相关
 const productsLoading = ref(false);
 const userPublishedProducts = ref([]);
+
+// 商户评价相关
+const sellerReviewsLoading = ref(false);
+const sellerReviews = ref([]);
 
 // 计算属性
 const currentUserId = computed(() => {
@@ -304,6 +325,7 @@ const loadUserInfo = async () => {
       // 加载话题和商品
       loadUserTopics();
       loadUserProducts();
+      loadSellerReviews();
     } else {
       throw new Error('用户信息为空');
     }
@@ -371,6 +393,25 @@ const loadUserProducts = async () => {
   }
 };
 
+// 加载卖家评价
+const loadSellerReviews = async () => {
+  const userId = route.params.userId;
+  if (!userId) return;
+  
+  sellerReviewsLoading.value = true;
+  
+  try {
+    const response = await reviewAPI.getSellerReviews(parseInt(userId), 1, 50);
+    sellerReviews.value = response || response?.data || [];
+    console.log('卖家评价数据:', sellerReviews.value);
+  } catch (error) {
+    console.error('加载卖家评价失败:', error);
+    sellerReviews.value = [];
+  } finally {
+    sellerReviewsLoading.value = false;
+  }
+};
+
 // 检查拉黑状态
 const checkBlockStatus = async () => {
   const userId = route.params.userId;
@@ -388,6 +429,11 @@ const checkBlockStatus = async () => {
 // 操作处理
 const viewProduct = (product) => {
   router.push(`/product/${product.id}`);
+};
+
+const viewImage = (imageUrl) => {
+  // 查看图片逻辑（可以添加图片预览弹窗）
+  console.log('查看图片:', imageUrl);
 };
 
 const handleFollow = () => {
@@ -668,6 +714,50 @@ watch(
   margin: 0;
   color: #999;
   font-size: 16px;
+}
+
+/* 卖家评价区域 */
+.seller-reviews-section {
+  margin-top: 20px;
+}
+
+.seller-reviews-section .loading-state,
+.seller-reviews-section .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.seller-reviews-section .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4A90E2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.seller-reviews-section .empty-state .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  color: #ccc;
+}
+
+.seller-reviews-section .empty-state p {
+  margin: 0;
+  color: #999;
+  font-size: 16px;
+}
+
+.seller-reviews-section .reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .message-dialog-content {

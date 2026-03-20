@@ -123,6 +123,42 @@ public class OrderReviewController {
     }
     
     /**
+     * 获取卖家评价列表（商户评价）
+     */
+    @GetMapping("/seller/{sellerId}")
+    public Result getSellerReviews(@PathVariable Integer sellerId,
+                                   @RequestParam(required = false, defaultValue = "1") Integer page,
+                                   @RequestParam(required = false, defaultValue = "10") Integer size,
+                                   HttpServletRequest request) {
+        try {
+            List<Map<String, Object>> reviews = orderReviewService.getSellerReviews(sellerId, page, size);
+            return Result.success(reviews);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取用户可评价的订单列表
+     */
+    @GetMapping("/reviewable")
+    public Result getReviewableOrders(HttpServletRequest request) {
+        try {
+            Integer userId = getCurrentUserId(request);
+            if (userId == null) {
+                return Result.error("请先登录");
+            }
+            
+            List<Map<String, Object>> orders = orderReviewService.getReviewableOrders(userId);
+            return Result.success(orders);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error(e.getMessage());
+        }
+    }
+    
+    /**
      * 获取当前用户 ID
      */
     private Integer getCurrentUserId(HttpServletRequest request) {

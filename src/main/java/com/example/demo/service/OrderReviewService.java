@@ -30,4 +30,14 @@ public interface OrderReviewService extends IService<OrderReview> {
      * 卖家回复评价
      */
     void replyReview(Integer reviewId, Integer userId, String reply);
+    
+    /**
+     * 获取卖家评价列表（商户评价）
+     */
+    List<Map<String, Object>> getSellerReviews(Integer sellerId, Integer page, Integer size);
+    
+    /**
+     * 获取用户可评价的订单列表
+     */
+    List<Map<String, Object>> getReviewableOrders(Integer userId);
 }

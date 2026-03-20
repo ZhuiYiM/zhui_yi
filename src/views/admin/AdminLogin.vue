@@ -2,6 +2,9 @@
   <div class="admin-login-page">
     <div class="login-container">
       <div class="login-box">
+        <el-button class="back-btn" @click="backToUserLogin">
+          ← 返回
+        </el-button>
         <h1 class="login-title">校园信息平台 - 管理后台</h1>
         <el-form
           ref="loginFormRef"
@@ -45,10 +48,6 @@
             </el-button>
           </el-form-item>
         </el-form>
-        <div class="login-tips">
-          <p>默认账号：admin</p>
-          <p>默认密码：admin123</p>
-        </div>
       </div>
     </div>
   </div>
@@ -121,6 +120,11 @@ const handleLogin = async () => {
     }
   });
 };
+
+// 返回普通用户登录
+const backToUserLogin = () => {
+  router.push('/login');
+};
 </script>
 
 <style scoped>
@@ -165,6 +169,29 @@ const handleLogin = async () => {
   padding: 48px 40px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 8px;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: #666;
+  transition: all 0.3s ease;
+  z-index: 10;
+}
+
+.back-btn:hover {
+  background: #e8e8e8;
+  border-color: #d0d0d0;
+  color: #333;
+  transform: translateX(-2px);
 }
 
 .login-title {
@@ -174,6 +201,7 @@ const handleLogin = async () => {
   color: #1a202c;
   margin-bottom: 12px;
   letter-spacing: -0.5px;
+  margin-top: 20px;
 }
 
 .login-subtitle {
@@ -228,28 +256,7 @@ const handleLogin = async () => {
   transform: translateY(0);
 }
 
-.login-tips {
-  margin-top: 24px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
-  border-radius: 12px;
-  font-size: 13px;
-  color: #4a5568;
-  line-height: 1.8;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
 
-.login-tips p {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.login-tips p::before {
-  content: '💡';
-  font-size: 16px;
-}
 
 /* 响应式调整 */
 @media screen and (max-width: 768px) {
@@ -260,6 +267,14 @@ const handleLogin = async () => {
   .login-box {
     padding: 36px 28px;
     border-radius: 16px;
+  }
+  
+  .back-btn {
+    top: 16px;
+    left: 16px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
   }
   
   .login-title {

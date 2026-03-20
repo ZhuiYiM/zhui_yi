@@ -1,8 +1,10 @@
 package com.example.demo.service.admin.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.demo.entity.UserVerification;
 import com.example.demo.entity.admin.AdminUser;
 import com.example.demo.mapper.admin.AdminUserMapper;
+import com.example.demo.mapper.UserVerificationMapper;
 import com.example.demo.service.admin.AdminUserService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
@@ -19,6 +21,9 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
 
     @Autowired
     private AdminUserMapper adminUserMapper;
+    
+    @Autowired
+    private UserVerificationMapper userVerificationMapper;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -220,5 +225,164 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
         System.out.println("✅ 新密码哈希：" + encodedPassword);
         
         return Result.success("密码重置成功，新密码：" + rawPassword);
+    }
+    
+    @Override
+    public Result getUserList(Map<String, Object> params) {
+        // TODO: 实现用户列表获取
+        return Result.success("用户列表获取功能待实现");
+    }
+    
+    @Override
+    public Result getUserDetail(Integer userId) {
+        // TODO: 实现用户详情获取
+        return Result.success("用户详情获取功能待实现");
+    }
+    
+    @Override
+    public Result updateUserStatus(Integer userId, Integer status) {
+        // TODO: 实现用户状态更新
+        return Result.success("用户状态更新功能待实现");
+    }
+    
+    @Override
+    public Result deleteUser(Integer userId) {
+        // TODO: 实现用户删除
+        return Result.success("用户删除功能待实现");
+    }
+    
+    @Override
+    public Result verifyUserIdCard(Integer userId, boolean pass, String reason) {
+        // TODO: 实现身份证认证审核
+        return Result.success("身份证认证审核功能待实现");
+    }
+    
+    @Override
+    public Result verifyUserRealName(Integer userId, boolean pass, String reason) {
+        try {
+            // 查询待审核的认证申请
+            UserVerification verification = userVerificationMapper.selectById(userId);
+            if (verification == null) {
+                return Result.error("认证申请不存在");
+            }
+            
+            if (!"pending".equals(verification.getStatus())) {
+                return Result.error("该申请已审核过");
+            }
+            
+            // 获取当前管理员 ID（从上下文或参数中获取，这里暂时硬编码）
+            Integer adminId = 1; // TODO: 从登录上下文中获取
+            
+            if (pass) {
+                // 通过认证
+                verification.setStatus("approved");
+                verification.setReviewerId(adminId);
+                verification.setReviewedAt(LocalDateTime.now());
+                
+                // 根据认证类型更新用户表
+                if ("id_card".equals(verification.getVerificationType())) {
+                    // 更新用户实名信息
+                    Map<String, Object> userUpdate = new HashMap<>();
+                    userUpdate.put("is_real_name_verified", 1);
+                    userUpdate.put("real_name", verification.getRealName());
+                    userUpdate.put("id_card", verification.getIdCard());
+                    // TODO: 调用 UserMapper 更新用户信息
+                } else if ("student_id".equals(verification.getVerificationType())) {
+                    // 更新学生身份信息
+                    Map<String, Object> userUpdate = new HashMap<>();
+                    userUpdate.put("is_verified", 1);
+                    userUpdate.put("student_id", verification.getStudentId());
+                    userUpdate.put("college", verification.getCollege());
+                    // TODO: 调用 UserMapper 更新用户信息
+                }
+                
+                userVerificationMapper.updateById(verification);
+                return Result.success("认证已通过");
+            } else {
+                // 拒绝认证
+                verification.setStatus("rejected");
+                verification.setRejectionReason(reason);
+                verification.setReviewerId(adminId);
+                verification.setReviewedAt(LocalDateTime.now());
+                
+                userVerificationMapper.updateById(verification);
+                return Result.success("认证已拒绝");
+            }
+        } catch (Exception e) {
+            return Result.error("审核失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    public Result getVerificationApplications(Map<String, Object> params) {
+        // TODO: 实现认证申请列表获取
+        return Result.success("认证申请列表获取功能待实现");
+    }
+    
+    @Override
+    public Result getApplicationDetail(Integer applicationId) {
+        // TODO: 实现认证申请详情获取
+        return Result.success("认证申请详情获取功能待实现");
+    }
+    
+    @Override
+    public Result approveApplication(Integer applicationId, String adminRemark) {
+        try {
+            // 查询待审核的认证申请
+            UserVerification verification = userVerificationMapper.selectById(applicationId);
+            if (verification == null) {
+                return Result.error("认证申请不存在");
+            }
+            
+            if (!"pending".equals(verification.getStatus())) {
+                return Result.error("该申请已审核过");
+            }
+            
+            // 获取当前管理员 ID
+            Integer adminId = 1; // TODO: 从登录上下文中获取
+            
+            // 通过认证
+            verification.setStatus("approved");
+            verification.setReviewerId(adminId);
+            verification.setReviewedAt(LocalDateTime.now());
+            if (adminRemark != null && !adminRemark.trim().isEmpty()) {
+                // 如果有备注，可以存储在某个字段中
+                // 可以考虑添加 admin_remark 字段到 UserVerification 实体
+            }
+            
+            userVerificationMapper.updateById(verification);
+            return Result.success("认证申请已通过");
+        } catch (Exception e) {
+            return Result.error("审核失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    public Result rejectApplication(Integer applicationId, String reason) {
+        try {
+            // 查询待审核的认证申请
+            UserVerification verification = userVerificationMapper.selectById(applicationId);
+            if (verification == null) {
+                return Result.error("认证申请不存在");
+            }
+            
+            if (!"pending".equals(verification.getStatus())) {
+                return Result.error("该申请已审核过");
+            }
+            
+            // 获取当前管理员 ID
+            Integer adminId = 1; // TODO: 从登录上下文中获取
+            
+            // 拒绝认证
+            verification.setStatus("rejected");
+            verification.setRejectionReason(reason);
+            verification.setReviewerId(adminId);
+            verification.setReviewedAt(LocalDateTime.now());
+            
+            userVerificationMapper.updateById(verification);
+            return Result.success("认证申请已拒绝");
+        } catch (Exception e) {
+            return Result.error("审核失败：" + e.getMessage());
+        }
     }
 }

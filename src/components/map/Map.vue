@@ -52,6 +52,7 @@
               <option value="baidu">百度地图</option>
               <option value="gaode">高德地图</option>
               <option value="tencent">腾讯地图</option>
+              <option value="handdrawn">手绘地图</option>
             </select>
             <button class="view-more-btn" @click="goToPage('full-map')">
               查看全图
@@ -73,10 +74,17 @@
             <button @click="initMap">重新加载</button>
           </div>
           <div v-else class="map-content">
-            <div class="map-placeholder">
-              <p>{{ selectedCampusName }}地图展示区</p>
-              <p>支持缩放、拖拽、地点搜索等功能</p>
-              <p class="map-provider-info">当前使用：{{ currentMapProviderName }}</p>
+            <!-- 手绘地图 -->
+            <div v-if="selectedMapProvider === 'handdrawn'" class="handdrawn-map-wrapper">
+              <InteractiveMap ref="interactiveMapRef" />
+            </div>
+            <!-- 其他地图 -->
+            <div v-else>
+              <div class="map-placeholder">
+                <p>{{ selectedCampusName }}地图展示区</p>
+                <p>支持缩放、拖拽、地点搜索等功能</p>
+                <p class="map-provider-info">当前使用：{{ currentMapProviderName }}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -134,6 +142,7 @@ import { campusAPI } from '@/api/campus';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
+import InteractiveMap from '@/components/map/InteractiveMap.vue';
 import { MAP_PROVIDERS, loadMapScript, formatLocationData } from '@/utils/mapHelper';
 
 const router = useRouter(); // 创建路由实例
@@ -188,17 +197,22 @@ const showCampusModal = ref(false);
 const tempSelectedCampus = ref(null);
 
 // 地图相关
-const mapProvider = ref('gaode'); // 默认使用高德地图
-const selectedMapProvider = ref('gaode');
+const mapProvider = ref('handdrawn'); // 默认使用手绘地图
+const selectedMapProvider = ref('handdrawn'); // 默认使用手绘地图
 const mapInstance = ref(null);
 const mapLoading = ref(false);
 const mapError = ref('');
 const mapContainer = ref(null);
 
+// 手绘地图相关
+const hoveredZoneId = ref(null);
+const handDrawnLocations = ref([]);
+const interactiveMapRef = ref(null);
+
 // 获取当前地图服务商名称
 const currentMapProviderName = computed(() => {
     const provider = MAP_PROVIDERS[selectedMapProvider.value.toUpperCase()];
-    return provider ? provider.name : '地图';
+    return provider ? provider.name : selectedMapProvider.value === 'handdrawn' ? '手绘地图' : '地图';
 });
 
 // 获取选中校区的名称
@@ -239,6 +253,12 @@ const loadMapConfig = async (campusId) => {
 
 // 初始化地图
 const initMap = async (config = null) => {
+  // 如果是手绘地图，不需要加载地图 SDK
+  if (selectedMapProvider.value === 'handdrawn') {
+    mapLoading.value = false;
+    return;
+  }
+  
   mapLoading.value = true;
   mapError.value = '';
   
@@ -302,12 +322,32 @@ const fetchLocations = async (campusId) => {
   try {
     const response = await campusAPI.getCampusLocations(campusId);
     locations.value = response;
+    // 加载手绘地图标注点
+    loadHandDrawnLocations(response);
   } catch (error) {
     console.error('获取地点信息失败:', error);
     ElMessage.error('获取地点信息失败');
   } finally {
     loading.value = false;
   }
+};
+
+// 加载手绘地图地点数据 - 从数据库 locations 转换为 InteractiveMap 可用的格式
+const loadHandDrawnLocations = (locations) => {
+  if (!locations || locations.length === 0) {
+    handDrawnLocations.value = [];
+    return;
+  }
+  
+  // 将数据库地点数据转换为 InteractiveMap 可用的格式
+  // 注意：这里需要从数据库的经纬度转换为百分比坐标
+  // 但由于我们已经有 handdrawn-map-locations.json，暂时不使用这个转换
+  handDrawnLocations.value = [];
+};
+
+// 显示地点提示
+const showLocationTooltip = (location) => {
+  hoveredZoneId.value = location;
 };
 
 // 搜索地点
@@ -400,11 +440,14 @@ const checkUserCampusInfo = () => {
 
 // 获取当前校区的热门地点
 const getCampusHotLocations = (campusId) => {
-  // 从 locations 数据中筛选热门地点
-  const campusLocations = locations.value.filter(loc => loc.campusId === campusId);
+  // 从 locations 数据中筛选热门地点 (注意：后端返回的字段是 campus_id)
+  const campusLocations = locations.value.filter(loc => {
+    // 兼容两种字段命名：campus_id 或 campusId
+    return (loc.campus_id || loc.campusId) === campusId;
+  });
   
   // 优先显示热门地点（isPopular=true），如果没有则取前 4 个
-  const popularLocations = campusLocations.filter(loc => loc.isPopular);
+  const popularLocations = campusLocations.filter(loc => loc.is_popular || loc.isPopular);
   
   if (popularLocations.length > 0) {
     return popularLocations.slice(0, 4).map(loc => ({
@@ -429,12 +472,12 @@ const getCampusHotLocations = (campusId) => {
 // 获取快速导航项目
 const getQuickNavItems = () => {
   return [
-    { id: 'dormitory', icon: '🏠', name: '宿舍区', type: 'nav' },
-    { id: 'canteen', icon: '🍽️', name: '食堂', type: 'nav' },
-    { id: 'library', icon: '📚', name: '图书馆', type: 'nav' },
-    { id: 'teaching', icon: '🏫', name: '教学楼', type: 'nav' },
-    { id: 'sports', icon: '⚽', name: '体育设施', type: 'nav' },
-    { id: 'admin', icon: '🏢', name: '行政楼', type: 'nav' }
+    { id: 'dormitory', icon: '🏠', name: '宿舍区', type: 'nav', category: 'dormitory' },
+    { id: 'cafeteria', icon: '🍽️', name: '食堂', type: 'nav', category: 'cafeteria' },
+    { id: 'library', icon: '📚', name: '图书馆', type: 'nav', category: 'library' },
+    { id: 'teaching', icon: '🏫', name: '教学楼', type: 'nav', category: 'teaching' },
+    { id: 'sports', icon: '⚽', name: '体育设施', type: 'nav', category: 'sports' },
+    { id: 'admin', icon: '🏢', name: '行政楼', type: 'nav', category: 'admin' }
   ];
 };
 
@@ -473,7 +516,8 @@ const handleItemClick = (item) => {
   if (item.type === 'location') {
     goToLocation(item.id);
   } else if (item.type === 'nav') {
-    goToNav(item.id);
+    // 传递 category 参数（如果有）
+    goToNav(item.id, item.category);
   }
 };
 
@@ -485,9 +529,59 @@ const goToLocation = (locationId) => {
 };
 
 // 导航跳转功能
-const goToNav = (navId) => {
-  console.log(`导航到: ${navId}`);
-  // 实际项目中可以导航到特定类别区域
+const goToNav = (navId, category) => {
+  console.log(`导航到：${navId}, 分类：${category}`);
+  
+  // 使用传入的 category 参数，如果没有则使用 navId
+  const targetCategory = category || navId;
+  
+  // 根据导航分类筛选地点
+  const filteredLocations = locations.value.filter(loc => {
+    // 按分类筛选，兼容 campus_id 和 campusId
+    const locCategory = loc.category || '';
+    return locCategory === targetCategory;
+  });
+  
+  if (filteredLocations.length === 0) {
+    ElMessage.warning(`未找到${getNavName(navId)}相关地点`);
+    return;
+  }
+  
+  // 切换到手绘地图
+  if (selectedMapProvider.value !== 'handdrawn') {
+    selectedMapProvider.value = 'handdrawn';
+  }
+  
+  // 滚动到地图区域
+  const mapSection = document.querySelector('.map-section');
+  if (mapSection) {
+    mapSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  
+  // 显示提示消息
+  ElMessage.success(`找到 ${filteredLocations.length} 个${getNavName(navId)}地点`);
+  
+  // 调用 InteractiveMap 组件的搜索方法
+  if (interactiveMapRef.value && interactiveMapRef.value.searchByCategory) {
+    // 等待下一帧，确保组件已经切换到手绘地图
+    setTimeout(() => {
+      interactiveMapRef.value.searchByCategory(targetCategory, filteredLocations);
+    }, 100);
+  }
+};
+
+// 获取导航分类名称
+const getNavName = (navId) => {
+  const navNames = {
+    'teaching': '教学楼',
+    'library': '图书馆',
+    'cafeteria': '食堂',
+    'dormitory': '宿舍',
+    'sports': '体育设施',
+    'admin': '行政楼',
+    'other': '其他'
+  };
+  return navNames[navId] || navId;
 };
 
 // 导航相关
@@ -646,7 +740,7 @@ const goToPage = (page) => {
   grid-area: main;
   padding: 20px;
   overflow-y: auto;
-  margin-left: 200px; /* 与侧边栏宽度一致，避免内容被覆盖 */
+  margin-left: 40px; /* 与侧边栏宽度一致，避免内容被覆盖 */
 }
 
 /* 通用部分样式 */
@@ -752,7 +846,8 @@ const goToPage = (page) => {
 
 /* 地图容器样式 */
 .map-container {
-  height: 400px;
+  height: 750px;  /* 增加高度，使用视口高度计算 */
+
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -762,6 +857,21 @@ const goToPage = (page) => {
   align-items: center;
   justify-content: center;
   position: relative;
+}
+
+/* 手绘地图样式 */
+.handdrawn-map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.handdrawn-map-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: #f0f9ff;
 }
 
 .map-loading,

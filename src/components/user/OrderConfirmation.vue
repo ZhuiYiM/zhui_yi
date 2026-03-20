@@ -10,6 +10,17 @@
       :user-info="currentUser"
     />
 
+    <!-- 写评价弹窗 -->
+    <WriteReviewModal
+      v-if="showReviewModal"
+      :visible="showReviewModal"
+      :order-id="orderData?.order?.id"
+      :product="reviewProductInfo"
+      :order-info="orderData?.order"
+      @close="closeReviewModal"
+      @success="handleReviewSuccess"
+    />
+
     <!-- 主要内容区域 -->
     <main :class="['main-content', { 'full-width': isMobile }]">
       <div class="confirmation-wrapper">
@@ -38,7 +49,7 @@
           <!-- 商品信息 -->
           <div class="product-section">
             <h3>商品信息</h3>
-            <div class="product-item">
+            <div class="product-item" @click="goToProductDetail(orderData.order.productId)">
               <img :src="productImage" alt="商品图片" class="product-image">
               <div class="product-info">
                 <div class="product-title">{{ productData?.title || orderData.product?.title }}</div>
@@ -128,6 +139,15 @@
             >
               立即支付
             </el-button>
+            <!-- 评价按钮：只有已完成的订单可以评价 -->
+            <el-button 
+              v-if="orderData.order && orderData.order.orderStatus === 3" 
+              type="success" 
+              size="large"
+              @click="openReviewModal"
+            >
+              ✍️ 写评价
+            </el-button>
           </div>
         </div>
 
@@ -149,6 +169,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { CircleCheckFilled, CopyDocument, WarningFilled } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
+import WriteReviewModal from '@/components/mall/WriteReviewModal.vue';
 import { orderAPI } from '@/api/order';
 
 const route = useRoute();
@@ -163,6 +184,8 @@ const productData = ref(null);
 const selectedSpecs = ref([]);
 const quantity = ref(1);
 const productImage = ref('');
+const showReviewModal = ref(false);
+const reviewProductInfo = ref({});
 
 // 获取用户信息
 const getUserInfo = () => {
@@ -330,6 +353,41 @@ const goBack = () => {
   router.back();
 };
 
+// 跳转到商品详情页
+const goToProductDetail = (productId) => {
+  if (!productId) {
+    ElMessage.warning('商品信息不完整');
+    return;
+  }
+  router.push(`/product/${productId}`);
+};
+
+// 打开评价弹窗
+const openReviewModal = () => {
+  if (!orderData.value?.order) return;
+  
+  // 准备商品信息
+  reviewProductInfo.value = {
+    id: orderData.value.order.productId,
+    title: productData.value?.title || '商品',
+    price: orderData.value.order.totalAmount,
+    image: productImage.value
+  };
+  
+  showReviewModal.value = true;
+};
+
+// 关闭评价弹窗
+const closeReviewModal = () => {
+  showReviewModal.value = false;
+};
+
+// 评价成功
+const handleReviewSuccess = () => {
+  // 刷新订单详情
+  fetchOrderDetail();
+};
+
 // 设备检测
 const updateDeviceDetection = () => {
   isMobile.value = window.innerWidth <= 768;
@@ -458,6 +516,13 @@ onMounted(() => {
   padding: 15px;
   background: #fafafa;
   border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.product-item:hover {
+  background: #f0f0f0;
+  transform: translateX(5px);
 }
 
 .product-image {

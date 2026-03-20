@@ -1,0 +1,613 @@
+{
+	"info": {
+		"_postman_id": "admin-system-test-collection",
+		"name": "管理员系统功能测试",
+		"description": "测试管理员系统的评论管理、操作日志、系统设置和举报管理功能",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "认证管理",
+			"item": [
+				{
+					"name": "管理员登录",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.code === 200 && jsonData.data) {",
+									"        pm.collectionVariables.set('adminToken', jsonData.data);",
+									"        console.log('✅ 登录成功，Token 已保存');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "login"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "评论管理",
+			"item": [
+				{
+					"name": "分页查询评论列表",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码为 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('返回数据结构正确', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"    pm.expect(jsonData.data).to.have.property('list');",
+									"    pm.expect(jsonData.data).to.have.property('total');",
+									"    pm.expect(jsonData.data).to.have.property('page');",
+									"    pm.expect(jsonData.data).to.have.property('limit');",
+									"});",
+									"",
+									"console.log('✅ 评论列表查询成功');",
+									"console.log('总记录数:', pm.response.json().data.total);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/comments?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "comments"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "关键词搜索评论",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/comments?page=1&limit=10&keyword=test",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "comments"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "keyword",
+									"value": "test"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按状态筛选评论",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/comments?page=1&limit=10&status=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "comments"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "删除评论",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/comments/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "comments", "1"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "操作日志",
+			"item": [
+				{
+					"name": "分页查询操作日志",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码为 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('返回数据结构正确', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"    pm.expect(jsonData.data).to.have.property('list');",
+									"    pm.expect(jsonData.data).to.have.property('total');",
+									"});",
+									"",
+									"console.log('✅ 操作日志查询成功');",
+									"console.log('总记录数:', pm.response.json().data.total);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/logs?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "logs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按模块筛选日志",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/logs?page=1&limit=10&module=topic",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "logs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "module",
+									"value": "topic"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按操作类型筛选日志",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/logs?page=1&limit=10&operation=delete",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "logs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "operation",
+									"value": "delete"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按操作人筛选日志",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/logs?page=1&limit=10&adminId=1",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "logs"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "adminId",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "系统设置",
+			"item": [
+				{
+					"name": "获取系统设置",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码为 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('返回数据是数组', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"    pm.expect(jsonData.data).to.be.an('array');",
+									"});",
+									"",
+									"console.log('✅ 系统设置获取成功');",
+									"console.log('设置项数量:', pm.response.json().data.length);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "更新系统设置",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"site_name\": \"Test Campus Platform\",\n    \"allow_registration\": \"true\",\n    \"max_upload_size\": \"10485760\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "举报管理",
+			"item": [
+				{
+					"name": "分页查询举报列表",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码为 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('返回数据结构正确', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"    pm.expect(jsonData.data).to.have.property('list');",
+									"    pm.expect(jsonData.data).to.have.property('total');",
+									"});",
+									"",
+									"console.log('✅ 举报列表查询成功');",
+									"console.log('总记录数:', pm.response.json().data.total);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports?page=1&limit=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按类型筛选举报",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports?page=1&limit=10&type=spam",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "type",
+									"value": "spam"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "按状态筛选举报",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports?page=1&limit=10&status=0",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "获取举报统计",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('状态码为 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('返回数据结构正确', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.code).to.eql(200);",
+									"    pm.expect(jsonData.data).to.have.property('total');",
+									"    pm.expect(jsonData.data).to.have.property('pending');",
+									"    pm.expect(jsonData.data).to.have.property('processing');",
+									"    pm.expect(jsonData.data).to.have.property('processed');",
+									"});",
+									"",
+									"console.log('✅ 举报统计获取成功');",
+									"var data = pm.response.json().data;",
+									"console.log('总举报数:', data.total);",
+									"console.log('待处理:', data.pending);",
+									"console.log('处理中:', data.processing);",
+									"console.log('已处理:', data.processed);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{adminToken}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports/stats",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports", "stats"]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

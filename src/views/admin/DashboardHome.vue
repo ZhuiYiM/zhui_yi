@@ -74,6 +74,20 @@
           </div>
         </el-card>
       </el-col>
+      
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-item">
+            <div class="stat-icon location-icon">
+              <el-icon><Location /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.locationCount }}</div>
+              <div class="stat-label">地点总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- 快捷入口 -->
@@ -111,6 +125,14 @@
             </el-button>
           </div>
         </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/locations')" class="quick-btn">
+              <el-icon><Location /></el-icon>
+              <span>地点管理</span>
+            </el-button>
+          </div>
+        </el-col>
       </el-row>
     </el-card>
   </div>
@@ -118,12 +140,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { User, ChatDotRound, Shop, Warning, Document, DataAnalysis, Grid, DocumentChecked } from '@element-plus/icons-vue';
+import { User, ChatDotRound, Shop, Warning, Document, DataAnalysis, Grid, DocumentChecked, Location } from '@element-plus/icons-vue';
 
 const stats = reactive({
   userCount: 0,
   topicCount: 0,
   productCount: 0,
+  locationCount: 0,
   reportCount: 0
 });
 
@@ -133,6 +156,7 @@ onMounted(() => {
   stats.userCount = 1234;
   stats.topicCount = 5678;
   stats.productCount = 901;
+  stats.locationCount = 345;
   stats.reportCount = 23;
 });
 </script>
@@ -250,6 +274,10 @@ onMounted(() => {
 
 .product-icon {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.location-icon {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
 }
 
 .report-icon {

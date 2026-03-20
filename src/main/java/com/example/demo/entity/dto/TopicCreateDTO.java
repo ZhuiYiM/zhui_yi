@@ -33,4 +33,5 @@ public class TopicCreateDTO {
     // 转发相关字段
     private Boolean isForwarded;  // 是否为转发话题
     private Long forwardedFromTopicId;  // 被转发的话题 ID（如果是转发）
+    private Long forwardedFromProductId;  // 被转发的商品 ID（如果是分享商品）
 }

@@ -41,12 +41,12 @@
         </div>
 
         <!-- 分享信息提示 -->
-        <div v-if="isShareMode && shareInfo" class="share-info-box">
-          <div class="info-icon">ℹ️</div>
+        <div v-if="isShareMode && shareInfo" :class="['share-info-box', { 'product-share': shareInfo.sourceType === 'product' }]">
+          <div class="info-icon">{{ shareInfo.sourceType === 'product' ? '🛍️' : 'ℹ️' }}</div>
           <div class="info-content">
-            <p class="info-title">分享内容预览</p>
+            <p class="info-title">{{ shareInfo.sourceType === 'product' ? '商品信息预览' : '分享内容预览' }}</p>
             <p class="info-text">来自用户：<strong>@{{ shareInfo.author }}</strong></p>
-            <p class="info-hint">转发时会自动添加“转发”标签，无需手动选择</p>
+            <p class="info-hint">{{ shareInfo.sourceType === 'product' ? '转发时会自动添加"分享"标签' : '转发时会自动添加“转发”标签，无需手动选择' }}</p>
           </div>
         </div>
       </div>
@@ -343,7 +343,22 @@ const handlePublish = async () => {
     // 如果是转发模式，添加转发相关字段
     if (props.isShareMode && props.shareInfo) {
       topicData.isForwarded = true;
-      topicData.forwardedFromTopicId = parseInt(props.shareInfo.sourceId);
+      
+      // 根据分享类型设置不同的字段
+      if (props.shareInfo.sourceType === 'product') {
+        const productId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
+        console.log('🛍️ 设置商品转发 ID:', productId, 'from sourceId:', props.shareInfo.sourceId);
+        if (!isNaN(productId)) {
+          topicData.forwardedFromProductId = productId;
+        }
+      } else {
+        // 默认作为话题处理
+        const topicId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
+        console.log('ℹ️ 设置话题转发 ID:', topicId, 'from sourceId:', props.shareInfo.sourceId);
+        if (!isNaN(topicId)) {
+          topicData.forwardedFromTopicId = topicId;
+        }
+      }
     }
 
     const response = await topicAPI.createTopic(topicData);
@@ -477,6 +492,12 @@ const handlePublish = async () => {
   background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
   border: 2px solid #4A90E2;
   border-radius: 8px;
+}
+
+/* 商品分享样式 */
+.share-info-box.product-share {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
+  border-color: #FF6B6B;
 }
 
 .info-icon {

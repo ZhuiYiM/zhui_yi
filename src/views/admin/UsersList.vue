@@ -211,9 +211,26 @@ const loadUserList = async () => {
       ...searchForm
     };
     const res = await adminAPI.getUserList(params);
-    if (res.code === 200) {
-      userList.value = res.data.records || res.data;
-      pagination.total = res.data.total || 0;
+    console.log('用户列表响应:', res);
+    
+    // 响应拦截器已经返回了 data，所以直接使用 res
+    const data = res;
+    console.log('解析后的数据:', data);
+    console.log('records:', data?.records);
+    console.log('total:', data?.total);
+    
+    if (res.code === 200 || data) {
+      // 处理不同的数据结构
+      const records = data?.records || data?.list || data || [];
+      console.log('最终使用的数据:', records);
+      console.log('是否为数组:', Array.isArray(records));
+      userList.value = Array.isArray(records) ? records : [];
+      pagination.total = data?.total ?? userList.value.length ?? 0;
+      console.log('用户列表数据:', userList.value);
+      console.log('分页总数:', pagination.total);
+      if (userList.value.length === 0) {
+        console.warn('数据为空！完整响应:', res);
+      }
     } else {
       ElMessage.error(res.message || '加载用户列表失败');
     }
@@ -227,7 +244,8 @@ const loadUserList = async () => {
 
 // 搜索
 const handleSearch = () => {
-  pagination.page = 1;
+  console.log('🔍 handleSearch 触发，当前 pagination:', pagination);
+  // 注意：不要重置 pagination.page，因为 v-model 会自动更新它
   loadUserList();
 };
 

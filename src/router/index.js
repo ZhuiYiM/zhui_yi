@@ -222,6 +222,16 @@ const routes = [
                 component: () => import('../views/admin/SystemSettings.vue')
             },
             {
+                path: 'profile',
+                name: 'AdminProfile',
+                component: () => import('../views/admin/AdminProfile.vue')
+            },
+            {
+                path: 'change-password',
+                name: 'AdminChangePassword',
+                component: () => import('../views/admin/ChangePassword.vue')
+            },
+            {
                 path: '',
                 redirect: 'home'
             }

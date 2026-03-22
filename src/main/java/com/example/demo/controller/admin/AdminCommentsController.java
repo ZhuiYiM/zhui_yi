@@ -14,7 +14,7 @@ import java.util.Map;
  * 评论管理控制器
  */
 @RestController
-@RequestMapping("/admin/comments")
+@RequestMapping("/api/admin/comments")
 @CrossOrigin
 public class AdminCommentsController {
 

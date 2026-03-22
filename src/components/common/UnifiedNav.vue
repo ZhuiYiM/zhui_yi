@@ -170,28 +170,25 @@ const navigateTo = (pageId) => {
     return
   }
   
-  // 已登录或不需要认证的页面，正常跳转
-  switch(pageId) {
-    case 'home':
-      router.push('/')
-      break
-    case 'map':
-      router.push('/map')
-      break
-    case 'mall':
-      router.push('/mall')
-      break
-    case 'message':
-      router.push('/message')
-      break
-    case 'topicwall':
-      router.push('/topicwall')
-      break
-    case 'personalcenter':
-      router.push('/personalcenter')
-      break
-    default:
-      router.push('/')
+  // 路由映射
+  const routeMap = {
+    'home': '/',
+    'map': '/map',
+    'mall': '/mall',
+    'message': '/message',
+    'topicwall': '/topicwall',
+    'personalcenter': '/personalcenter'
+  }
+  
+  const targetPath = routeMap[pageId] || '/'
+  const currentPath = window.location.pathname
+  
+  // 如果当前已经在目标页面，添加时间戳参数强制刷新
+  if (currentPath === targetPath) {
+    router.replace({ path: targetPath, query: { t: Date.now(), refresh: 'true' } })
+  } else {
+    // 直接跳转到目标页面
+    router.push(targetPath)
   }
 }
 </script>

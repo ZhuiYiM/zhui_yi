@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
 
@@ -107,7 +107,7 @@ const filteredLocations = computed(() => {
 // 计算属性：地图样式
 const mapStyle = computed(() => ({
   transform: `scale(${currentZoom.value})`,
-  transformOrigin: 'center center'
+  transformOrigin: 'top left'
 }));
 
 // 方法：获取热点样式
@@ -249,6 +249,31 @@ const resetZoom = () => {
 onMounted(() => {
   console.log('交互式地图组件已挂载');
   console.log('地点数据:', allLocations.value.length, '个');
+  
+  // 监听窗口尺寸变化，确保地标位置正确
+  const handleResize = () => {
+    // 触发布局重绘，确保百分比定位正确
+    if (mapWrapper.value) {
+      // 使用 requestAnimationFrame 确保在下一帧重绘
+      requestAnimationFrame(() => {
+        const mapContent = mapWrapper.value.querySelector('.map-content');
+        if (mapContent) {
+          // 强制重新计算样式
+          mapContent.style.willChange = 'auto';
+          setTimeout(() => {
+            mapContent.style.willChange = 'transform';
+          }, 0);
+        }
+      });
+    }
+  };
+  
+  window.addEventListener('resize', handleResize);
+  
+  // 组件卸载时移除监听器
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+  });
 });
 
 // 暴露给外部的方法
@@ -265,7 +290,7 @@ defineExpose({
   height: calc(100vh - 80px);  /* 增加 y 值，使用视口高度计算 */
   min-height: 600px;            /* 最小高度确保可见 */
   background: #f5f7fa;
-  overflow: hidden;  /* 外层容器保持 hidden */
+  overflow: visible;  /* 改为 visible，允许缩放控制按钮显示 */
 }
 
 /* 搜索栏样式 - 已移除 */
@@ -275,11 +300,14 @@ defineExpose({
 .map-wrapper {
   width: 100%;
   height: 100%;
-  overflow: scroll !important;  /* 强制显示滚动条 */
+  overflow: auto !important;  /* 改为 auto，需要时显示滚动条 */
   cursor: grab;
   user-select: none;
   position: relative;
-  display: block;
+  display: flex;  /* 使用 flex 布局 */
+  justify-content: center;  /* 水平居中 */
+  align-items: flex-start;  /* 顶部对齐 */
+  padding: 20px;  /* 添加内边距 */
 }
 
 .map-wrapper.is-dragging {
@@ -288,11 +316,11 @@ defineExpose({
 
 .map-content {
   position: relative;
-  display: block;
-  width: max-content !important;  /* 强制使用内容宽度 */
-  height: max-content !important; /* 强制使用内容高度 */
-  min-width: 100%;
-  min-height: 100%;
+  display: inline-block;  /* 改为 inline-block，包裹图片 */
+  width: auto !important;
+  height: auto !important;
+  min-width: 0;
+  min-height: 0;
   transition: transform 0.3s ease;
 }
 
@@ -422,10 +450,10 @@ defineExpose({
 
 /* 缩放控制样式 */
 .zoom-controls {
-  position: absolute;
-  bottom: 150px;  /* 从 100px 增加到 150px，再向上移动 */
-  right: 20px;
-  z-index: 1000;  /* 增加 z-index 确保在最上层 */
+  position: fixed;  /* 改为 fixed，固定在视口中 */
+  bottom: 120px;  /* 调整位置，确保在可视区域 */
+  right: 50px;
+  z-index: 10000;  /* 增加 z-index 确保在最上层 */
   display: flex;
   flex-direction: column;
   gap: 8px;

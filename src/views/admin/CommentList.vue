@@ -78,13 +78,13 @@
 
       <div class="pagination-container">
         <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.limit"
+          :current-page="pagination.page"
+          :page-size="pagination.limit"
           :page-sizes="[10, 20, 50, 100]"
           :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSearch"
-          @current-change="handleSearch"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
@@ -121,12 +121,16 @@ const loadCommentList = async () => {
     });
     
     console.log('📝 评论列表响应:', response);
-    if (response.code === 200 || response.list !== undefined) {
+    console.log('当前页码:', pagination.page, '每页数量:', pagination.limit);
+    
+    // response 已经是后端返回的 data 部分
+    if (response && (response.list !== undefined || Array.isArray(response))) {
       commentList.value = response.list || [];
       pagination.total = response.total || 0;
-      console.log('✅ 评论列表加载成功:', commentList.value.length, '条记录');
+      console.log('✅ 评论列表加载成功:', commentList.value.length, '条记录', '总记录:', pagination.total);
     } else {
-      ElMessage.error(response.message || '加载失败');
+      ElMessage.error('数据格式错误');
+      console.error('数据格式错误:', response);
     }
   } catch (error) {
     console.error('❌ 加载评论列表失败:', error);
@@ -138,6 +142,19 @@ const loadCommentList = async () => {
 
 // 搜索
 const handleSearch = () => {
+  pagination.page = 1;
+  loadCommentList();
+};
+
+// 处理页码变化
+const handleCurrentChange = (newPage) => {
+  pagination.page = newPage;
+  loadCommentList();
+};
+
+// 处理每页数量变化
+const handleSizeChange = (newSize) => {
+  pagination.limit = newSize;
   pagination.page = 1;
   loadCommentList();
 };

@@ -7,17 +7,17 @@
           <h2>管理后台</h2>
         </div>
         <el-menu
-          :default-active="activeMenu"
           background-color="#304156"
           text-color="#bfcbd9"
           active-text-color="#409EFF"
           router
+          :unique-opened="false"
         >
           <el-menu-item index="/admin/dashboard/home">
             <el-icon><DataAnalysis /></el-icon>
             <span>数据统计</span>
           </el-menu-item>
-          <el-sub-menu index="user">
+          <el-sub-menu index="/admin/dashboard/user">
             <template #title>
               <el-icon><User /></el-icon>
               <span>用户管理</span>
@@ -25,7 +25,7 @@
             <el-menu-item index="/admin/dashboard/users">用户列表</el-menu-item>
             <el-menu-item index="/admin/dashboard/verifications">认证审核</el-menu-item>
           </el-sub-menu>
-          <el-sub-menu index="content">
+          <el-sub-menu index="/admin/dashboard/content">
             <template #title>
               <el-icon><Document /></el-icon>
               <span>内容管理</span>
@@ -35,7 +35,7 @@
             <el-menu-item index="/admin/dashboard/locations">地点管理</el-menu-item>
             <el-menu-item index="/admin/dashboard/comments">评论管理</el-menu-item>
           </el-sub-menu>
-          <el-sub-menu index="report">
+          <el-sub-menu index="/admin/dashboard/report">
             <template #title>
               <el-icon><Warning /></el-icon>
               <span>举报管理</span>
@@ -111,7 +111,6 @@ import { adminAPI } from '@/api/admin';
 const route = useRoute();
 const router = useRouter();
 
-const activeMenu = computed(() => route.path);
 const currentRouteName = computed(() => route.name);
 
 // 获取页面标题

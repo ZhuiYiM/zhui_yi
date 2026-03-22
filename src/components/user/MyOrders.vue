@@ -108,6 +108,14 @@
                   确认收货
                 </el-button>
                 <el-button 
+                  v-if="order.orderStatus === 3" 
+                  type="primary" 
+                  size="small"
+                  @click="writeReview(order.id)"
+                >
+                  写评论
+                </el-button>
+                <el-button 
                   size="small"
                   @click="viewOrderDetail(order.id)"
                 >
@@ -133,6 +141,16 @@
           <el-button type="primary" @click="goToMall">去逛逛</el-button>
         </div>
       </div>
+      
+      <!-- 评价弹窗 -->
+      <WriteReviewModal
+        v-if="showReviewModal && currentReviewOrder"
+        :visible="showReviewModal"
+        :order-id="currentReviewOrder.id"
+        :product="reviewProductInfo"
+        @close="showReviewModal = false"
+        @success="handleReviewSuccess"
+      />
     </main>
   </div>
 </template>
@@ -144,6 +162,8 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { Refresh, ShoppingCart } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import { orderAPI } from '@/api/order';
+import { reviewAPI } from '@/api/review';
+import WriteReviewModal from '@/components/mall/WriteReviewModal.vue';
 
 const router = useRouter();
 
@@ -153,6 +173,9 @@ const isMobile = ref(window.innerWidth <= 768);
 const currentUser = ref(null);
 const orders = ref([]);
 const statusFilter = ref('all');
+const showReviewModal = ref(false);
+const currentReviewOrder = ref(null);
+const reviewProductInfo = ref(null);
 
 // 筛选后的订单列表
 const filteredOrders = computed(() => {
@@ -392,6 +415,40 @@ const deleteOrder = async (orderId) => {
       ElMessage.error(error.response?.data?.message || error.message || '删除订单失败');
     }
   }
+};
+
+// 写评论
+const writeReview = async (orderId) => {
+  try {
+    // 查找订单信息
+    const order = orders.value.find(o => o.id === orderId);
+    if (!order) {
+      ElMessage.error('订单不存在');
+      return;
+    }
+    
+    // 准备商品信息
+    reviewProductInfo.value = {
+      id: order.productId,
+      title: order.productTitle,
+      price: order.totalAmount,
+      image: order.productImage || 'https://placehold.co/100x100/e0e0e0/999999?text=商品'
+    };
+    
+    currentReviewOrder.value = order;
+    showReviewModal.value = true;
+  } catch (error) {
+    console.error('打开评价弹窗失败:', error);
+    ElMessage.error('打开评价窗口失败');
+  }
+};
+
+// 评价成功回调
+const handleReviewSuccess = () => {
+  showReviewModal.value = false;
+  currentReviewOrder.value = null;
+  ElMessage.success('评价成功');
+  loadOrders();
 };
 
 // 显示取消原因统计

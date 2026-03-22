@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/admin/reports")
+@RequestMapping("/api/admin/reports")
 @CrossOrigin
 public class AdminReportsController {
 

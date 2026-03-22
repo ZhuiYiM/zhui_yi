@@ -83,10 +83,11 @@ const loadSettings = async () => {
     const response = await adminAPI.getSystemSettings();
     
     console.log('⚙️ 系统设置响应:', response);
-    if (response.code === 200 && response.data) {
+    // response 已经是后端返回的 data 部分（数组）
+    if (response && Array.isArray(response)) {
       // 将数组转换为对象
       const settingsObj = {};
-      response.data.forEach(item => {
+      response.forEach(item => {
         settingsObj[item.settingKey] = item.settingValue;
       });
       
@@ -94,7 +95,8 @@ const loadSettings = async () => {
       Object.assign(settings, settingsObj);
       console.log('✅ 系统设置加载成功');
     } else {
-      ElMessage.error(response.message || '加载失败');
+      ElMessage.error('数据格式错误');
+      console.error('数据格式错误:', response);
     }
   } catch (error) {
     console.error('❌ 加载系统设置失败:', error);

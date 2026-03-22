@@ -15,7 +15,7 @@ const apiClient = axios.create({
 // 请求拦截器
 apiClient.interceptors.request.use(
     config => {
-        // 精确判断不需要token的接口 - 使用完整路径匹配
+        // 精确判断不需要 token 的接口 - 使用完整路径匹配
         const noAuthUrls = [
             '/user/login',
             '/user/register',
@@ -40,10 +40,21 @@ apiClient.interceptors.request.use(
         
         const requiresAuth = !isNoAuthEndpoint && !explicitNoAuth;
         const token = localStorage.getItem('token');
-                
-        // 只对需要认证的接口添加 token
-        if (token && requiresAuth) {
-            config.headers.Authorization = `Bearer ${token}`;
+        const adminToken = localStorage.getItem('admin_token');
+        
+        // 对需要认证的接口添加 token（优先使用 admin_token）
+        if (requiresAuth) {
+            // 如果是管理员路由，使用 admin_token
+            if (config.url.startsWith('/admin/')) {
+                if (adminToken) {
+                    config.headers.Authorization = `Bearer ${adminToken}`;
+                }
+            } else {
+                // 否则使用普通用户 token
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+            }
         }
                 
         // 添加时间戳防止缓存

@@ -16,7 +16,7 @@ import java.util.Map;
  * 操作日志控制器
  */
 @RestController
-@RequestMapping("/admin/logs")
+@RequestMapping("/api/admin/logs")
 @CrossOrigin
 public class AdminLogsController {
 

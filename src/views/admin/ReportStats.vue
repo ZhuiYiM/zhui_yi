@@ -218,18 +218,39 @@ const loadStats = async () => {
     const response = await request.get('/admin/reports/stats');
     
     console.log('📊 举报统计响应:', response);
-    if (response.code === 200 && response.data) {
-      const data = response.data;
+    console.log('response.data:', response.data);
+    console.log('response.code:', response.code);
+    
+    // response 已经是后端返回的 data 部分，不需要再访问 response.data
+    if (response && response.total !== undefined) {
+      const data = response;
       stats.total = data.total || 0;
       stats.pending = data.pending || 0;
       stats.processing = data.processing || 0;
       stats.processed = data.processed || 0;
-      stats.byType = data.byType || [];
-      stats.byStatus = data.byStatus || [];
+      
+      // 将对象转换为数组格式
+      stats.byType = Object.entries(data.byType || {}).map(([type, count]) => ({
+        type,
+        count
+      }));
+      
+      stats.byStatus = Object.entries(data.byStatus || {}).map(([status, count]) => ({
+        status: parseInt(status),
+        count
+      }));
+      
       recentReports.value = data.recent || [];
       console.log('✅ 举报统计加载成功');
+      console.log('转换后的 byType:', stats.byType);
+      console.log('转换后的 byStatus:', stats.byStatus);
+      console.log('stats.total:', stats.total);
+      console.log('stats.pending:', stats.pending);
+      console.log('stats.processing:', stats.processing);
+      console.log('stats.processed:', stats.processed);
     } else {
-      ElMessage.error(response.message || '加载失败');
+      ElMessage.error('数据格式错误');
+      console.error('数据格式错误:', response);
     }
   } catch (error) {
     console.error('❌ 加载举报统计失败:', error);

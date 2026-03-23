@@ -22,6 +22,10 @@
         
         <!-- 热点层 -->
         <div class="hotspot-layer">
+          <!-- 地点数量统计 -->
+          <div class="location-counter">
+            📍 共 {{ allLocations.length }} 个地点
+          </div>
           <div
             v-for="location in allLocations"
             :key="location.id"
@@ -90,6 +94,10 @@ const updateLocations = (locations) => {
   }
 };
 
+// 调试信息：输出所有地点数量
+console.log('🗺️ 手绘地图地点总数:', allLocations.value.length);
+console.log('📍 地点列表:', allLocations.value.map(l => ({ id: l.id, name: l.name, x: l.x, y: l.y, category: l.category })));
+
 // 计算属性：过滤后的地点
 const filteredLocations = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -120,8 +128,9 @@ const getHotspotStyle = (location) => ({
 
 // 方法：判断地点是否应该隐藏 (用于聚合)
 const isLocationHidden = (location) => {
+  // 暂时禁用宿舍楼聚合逻辑，确保所有地点都显示
   // 如果缩放级别小于 1.2 且地点是宿舍楼，则隐藏部分
-  if (currentZoom.value < 1.2 && location.category === 'dormitory') {
+  if (false && currentZoom.value < 1.2 && location.category === 'dormitory') {
     // 只显示每栋楼的第一个
     const firstDorm = allLocations.value.find(l => 
       l.category === 'dormitory' && 
@@ -341,6 +350,23 @@ defineExpose({
   width: 100%;
   height: 100%;
   pointer-events: none;
+  z-index: 10; /* 确保热点层在图片上方 */
+}
+
+/* 地点数量统计 */
+.location-counter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  z-index: 100;
+  pointer-events: auto;
 }
 
 .hotspot {
@@ -352,6 +378,7 @@ defineExpose({
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  z-index: 10; /* 确保每个热点都有足够的层级 */
 }
 
 .hotspot:hover {
@@ -370,8 +397,8 @@ defineExpose({
 
 /* 热点标记样式 */
 .hotspot-marker {
-  width: 32px;
-  height: 32px;
+  width: 36px; /* 增大标记尺寸 */
+  height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, #4A90E2 0%, #764ba2 100%);
   display: flex;
@@ -379,7 +406,17 @@ defineExpose({
   justify-content: center;
   box-shadow: 0 2px 8px rgba(74, 144, 226, 0.4);
   transition: all 0.3s ease;
-  font-size: 18px;
+  font-size: 20px; /* 增大图标 */
+  animation: markerPulse 2s infinite; /* 添加脉动动画 */
+}
+
+@keyframes markerPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .hotspot:hover .hotspot-marker {

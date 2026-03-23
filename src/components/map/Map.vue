@@ -109,6 +109,36 @@
         </div>
       </section>
 
+      <!-- 用户位置标记区域 -->
+      <section class="user-marks-section" v-if="userLocationMarks.length > 0">
+        <div class="section-header">
+          <h2>📍 用户标记位置</h2>
+          <el-button type="primary" size="small" @click="showMarkModal = true">
+            + 标记我的位置
+          </el-button>
+        </div>
+        
+        <div class="user-marks-grid">
+          <div
+            v-for="mark in userLocationMarks"
+            :key="mark.id"
+            class="user-mark-card"
+            @click="handleUserMarkClick(mark)"
+          >
+            <div class="mark-icon">{{ getMarkIcon(mark.markType) }}</div>
+            <div class="mark-info">
+              <div class="mark-name">{{ mark.locationName }}</div>
+              <div class="mark-type">{{ getMarkTypeName(mark.markType) }}</div>
+              <div class="mark-meta">
+                <span v-if="mark.verificationStatus === 'pending'" class="status-pending">审核中</span>
+                <span v-else-if="mark.visibility === 'private'" class="status-private">私密</span>
+                <span v-else class="status-public">公开</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 桌面端底部版权信息 -->
       <footer v-if="!isMobile" class="desktop-footer">
         <p>© 2023 校园信息平台 | 服务学生，连接校园</p>
@@ -132,6 +162,13 @@
         <button class="confirm-campus-btn" @click="confirmCampusSelection">确定</button>
       </div>
     </div>
+
+    <!-- 位置标记模态框 -->
+    <LocationMarkModal 
+      v-model="showMarkModal" 
+      :default-campus-id="selectedCampus"
+      @success="handleMarkSuccess"
+    />
   </div>
 </template>
 
@@ -143,7 +180,9 @@ import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 import InteractiveMap from '@/components/map/InteractiveMap.vue';
+import LocationMarkModal from '@/components/map/LocationMarkModal.vue';
 import { MAP_PROVIDERS, loadMapScript, formatLocationData } from '@/utils/mapHelper';
+import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
 
 const router = useRouter(); // 创建路由实例
 
@@ -179,6 +218,9 @@ onMounted(() => {
 
   // 检查用户校区信息
   checkUserCampusInfo();
+  
+  // 获取用户位置标记
+  fetchUserLocationMarks();
 });
 
 onUnmounted(() => {
@@ -208,6 +250,10 @@ const mapContainer = ref(null);
 const hoveredZoneId = ref(null);
 const handDrawnLocations = ref([]);
 const interactiveMapRef = ref(null);
+
+// 用户位置标记相关
+const userLocationMarks = ref([]);
+const showMarkModal = ref(false);
 
 // 获取当前地图服务商名称
 const currentMapProviderName = computed(() => {
@@ -363,6 +409,53 @@ const searchLocations = async () => {
   }
 };
 
+// 获取用户位置标记
+const fetchUserLocationMarks = async () => {
+  try {
+    // 获取当前校区的公开标记
+    const response = await campusAPI.getCampusLocationMarks(selectedCampus.value);
+    if (response && Array.isArray(response)) {
+      userLocationMarks.value = response.filter(mark => mark.verificationStatus === 'approved');
+    }
+  } catch (error) {
+    console.error('获取用户标记失败:', error);
+  }
+};
+
+// 处理用户标记点击
+const handleUserMarkClick = (mark) => {
+  console.log('点击用户标记:', mark);
+  // TODO: 显示标记详情或跳转到详情页
+  ElMessage.info(`查看：${mark.locationName}`);
+};
+
+// 获取标记类型图标
+const getMarkIcon = (markType) => {
+  const icons = {
+    meeting_point: '🤝',
+    merchant_shop: '🏪',
+    organization_activity: '👥'
+  };
+  return icons[markType] || '📍';
+};
+
+// 获取标记类型名称
+const getMarkTypeName = (markType) => {
+  const names = {
+    meeting_point: '约见地点',
+    merchant_shop: '店铺位置',
+    organization_activity: '活动地点'
+  };
+  return names[markType] || '位置标记';
+};
+
+// 处理标记成功
+const handleMarkSuccess = (data) => {
+  console.log('标记创建成功:', data);
+  // 重新加载用户标记
+  fetchUserLocationMarks();
+};
+
 // 页面初始化
 onMounted(() => {
   fetchCampuses();
@@ -469,16 +562,73 @@ const getCampusHotLocations = (campusId) => {
   }));
 };
 
-// 获取快速导航项目
+// 获取快速导航项目 - 显示具体建筑位置而不是分类
 const getQuickNavItems = () => {
-  return [
-    { id: 'dormitory', icon: '🏠', name: '宿舍区', type: 'nav', category: 'dormitory' },
-    { id: 'cafeteria', icon: '🍽️', name: '食堂', type: 'nav', category: 'cafeteria' },
-    { id: 'library', icon: '📚', name: '图书馆', type: 'nav', category: 'library' },
-    { id: 'teaching', icon: '🏫', name: '教学楼', type: 'nav', category: 'teaching' },
-    { id: 'sports', icon: '⚽', name: '体育设施', type: 'nav', category: 'sports' },
-    { id: 'admin', icon: '🏢', name: '行政楼', type: 'nav', category: 'admin' }
-  ];
+  // 优先从 handdrawn-map-locations.json 中选取代表性建筑
+  // 因为 JSON 中包含了所有在地图上标注的具体位置（如西寓 2、3、4、5 等）
+  const selectedBuildings = [];
+  const categories = new Set();
+  
+  // 按顺序选取不同类型的建筑（每个类型最多 1 个）
+  for (const loc of handdrawnMapLocations) {
+    const category = loc.category || '';
+    
+    // 跳过没有分类或已选过的分类
+    if (!category || categories.has(category)) {
+      continue;
+    }
+    
+    // 添加该分类的代表性建筑
+    categories.add(category);
+    selectedBuildings.push({
+      id: loc.id,
+      name: loc.name, // 使用具体建筑名称（如：西寓 2、图书馆等）
+      description: loc.description || '',
+      icon: loc.icon || '📍',
+      type: 'location', // 改为 location 类型，点击跳转到具体地点详情
+      category: category,
+      x: loc.x,
+      y: loc.y
+    });
+    
+    // 限制最多显示 6 个建筑
+    if (selectedBuildings.length >= 6) {
+      break;
+    }
+  }
+  
+  // 如果 JSON 数据不足 6 个，从数据库 locations 中补充
+  if (selectedBuildings.length < 6) {
+    const campusLocations = locations.value.filter(loc => {
+      return (loc.campus_id || loc.campusId) === selectedCampus.value;
+    });
+    
+    for (const loc of campusLocations) {
+      const category = loc.category || '';
+      
+      // 跳过已选过的分类
+      if (!category || categories.has(category)) {
+        continue;
+      }
+      
+      categories.add(category);
+      selectedBuildings.push({
+        id: loc.id,
+        name: loc.name,
+        description: loc.description || '',
+        icon: loc.icon || '📍',
+        type: 'location',
+        category: category
+      });
+      
+      // 达到 6 个后退出
+      if (selectedBuildings.length >= 6) {
+        break;
+      }
+    }
+  }
+  
+  return selectedBuildings;
 };
 
 // 选择校区
@@ -1241,5 +1391,121 @@ const goToPage = (page) => {
   border: 2px solid #e1e5f2;
   border-radius: 20px;
   font-size: 0.9rem;
+}
+
+/* 用户位置标记区域样式 */
+.user-marks-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.user-marks-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.user-marks-section h2 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.user-marks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.user-mark-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.user-mark-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+}
+
+.mark-icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.mark-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mark-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark-type {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 6px;
+}
+
+.mark-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.status-pending,
+.status-private,
+.status-public {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.status-pending {
+  background: rgba(255, 193, 7, 0.3);
+}
+
+.status-private {
+  background: rgba(158, 158, 158, 0.3);
+}
+
+.status-public {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .user-marks-section {
+    padding: 16px;
+    margin: 10px;
+  }
+  
+  .user-marks-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-marks-section .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
 }
 </style>

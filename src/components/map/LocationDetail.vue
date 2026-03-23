@@ -99,6 +99,33 @@
                 <div v-if="!miniMapLoaded" class="map-loading-mini">
                   正在加载地图...
                 </div>
+                <div v-else class="mini-map-content">
+                  <!-- 手绘地图底图 -->
+                  <img 
+                    src="@/assets/01.png" 
+                    alt="校园手绘地图" 
+                    class="mini-map-image"
+                    draggable="false"
+                  />
+                  <!-- 位置标记 -->
+                  <div 
+                    v-if="location.latitude && location.longitude" 
+                    class="location-marker"
+                    :style="markerStyle"
+                  >
+                    <span class="marker-icon">📍</span>
+                    <span class="marker-label">{{ location.name }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="map-actions">
+                <el-button 
+                  size="small" 
+                  @click="openFullMap"
+                  type="primary"
+                >
+                  🗺️ 查看完整地图
+                </el-button>
               </div>
             </div>
           </div>
@@ -153,6 +180,7 @@ import { ElMessage } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
 import { campusAPI } from '../../api/campus';
 import { getLocationCategory } from '../../utils/mapHelper';
+import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
 
 const route = useRoute();
 const router = useRouter();
@@ -192,6 +220,77 @@ const showImagePreview = ref(false);
 const miniMapLoaded = ref(false);
 const miniMapContainer = ref(null);
 
+// 计算标记位置样式
+const markerStyle = computed(() => {
+  if (!location.value) {
+    console.log('标记位置计算：缺少地点数据');
+    return {};
+  }
+  
+  // 优先从 handdrawn-map-locations.json 中查找精确坐标
+  const jsonLocation = handdrawnMapLocations.find(
+    loc => loc.name === location.value.name
+  );
+  
+  if (jsonLocation) {
+    console.log('标记位置计算 - 使用 JSON 精确坐标:', { 
+      name: jsonLocation.name, 
+      x: jsonLocation.x, 
+      y: jsonLocation.y 
+    });
+    
+    return {
+      left: jsonLocation.x + '%',
+      top: jsonLocation.y + '%'
+    };
+  }
+  
+  // 如果 JSON 中没有，使用经纬度计算（降级方案）
+  if (!location.value.latitude || !location.value.longitude) {
+    console.log('标记位置计算：缺少经纬度数据');
+    return {};
+  }
+  
+  const lat = parseFloat(location.value.latitude);
+  const lng = parseFloat(location.value.longitude);
+  
+  console.log('标记位置计算 - 使用经纬度估算:', { lat, lng });
+  
+  // 使用首页地图的中心点作为基准
+  // 根据 handdrawn-map-locations.json 估算的校园中心点
+  const centerLat = 35.307736;
+  const centerLng = 113.926765;
+  
+  // 计算相对于中心的偏移
+  // 1 度纬度 ≈ 111km，1 度经度 ≈ 111km * cos(纬度)
+  // 假设地图显示范围约为 0.01 度（约 1km）
+  const mapLatRange = 0.01; // 纬度范围
+  const mapLngRange = 0.01; // 经度范围
+  
+  // 计算偏移百分比
+  const latOffset = (lat - centerLat) / mapLatRange;
+  const lngOffset = (lng - centerLng) / mapLngRange;
+  
+  console.log('标记位置计算 - 归一化偏移:', { latOffset, lngOffset });
+  
+  // 转换为百分比位置（中心点为 50%）
+  // 纬度向上为正，所以 y = 50 - latOffset
+  // 经度向右为正，所以 x = 50 + lngOffset
+  const x = 50 + lngOffset * 100;
+  const y = 50 - latOffset * 100;
+  
+  console.log('标记位置计算 - 计算结果:', { x, y });
+  
+  const result = {
+    left: Math.max(5, Math.min(95, x)) + '%',
+    top: Math.max(5, Math.min(95, y)) + '%'
+  };
+  
+  console.log('标记位置计算 - 最终样式:', result);
+  
+  return result;
+});
+
 // 获取地点详情
 const fetchLocationDetail = async () => {
   loading.value = true;
@@ -200,6 +299,11 @@ const fetchLocationDetail = async () => {
   try {
     const response = await campusAPI.getLocationDetail(route.params.id);
     location.value = response;
+    
+    // 获取地点数据后，初始化迷你地图
+    setTimeout(() => {
+      initMiniMap();
+    }, 100);
     
     // 获取相关地点（附近的地点）
     if (location.value && location.value.campusId) {
@@ -296,23 +400,49 @@ const closeImagePreview = () => {
 
 // 初始化迷你地图
 const initMiniMap = () => {
-  if (!location.value || !miniMapContainer.value) return;
+  console.log('初始化迷你地图...', { 
+    hasLocation: !!location.value, 
+    hasContainer: !!miniMapContainer.value 
+  });
   
-  // 这里可以集成真实的地图 SDK
-  // 暂时显示一个占位图
-  miniMapLoaded.value = true;
+  if (!location.value || !miniMapContainer.value) {
+    console.warn('迷你地图初始化条件不满足');
+    return;
+  }
   
-  // TODO: 集成百度地图/高德地图 SDK
-  // 示例代码（需要配置 API Key）：
-  /*
-  const map = new BMap.Map(miniMapContainer.value);
-  const point = new BMap.Point(location.value.longitude, location.value.latitude);
-  map.centerAndZoom(point, 15);
-  map.addControl(new BMap.NavigationControl());
-  const marker = new BMap.Marker(point);
-  map.addOverlay(marker);
-  */
+  // 模拟加载延迟
+  setTimeout(() => {
+    miniMapLoaded.value = true;
+    console.log('迷你地图加载完成');
+  }, 500);
+  
+  // TODO: 后续可以集成真实地图 SDK
+  // 或者使用 handdrawn-map-locations.json 中的精确坐标
 };
+
+// 打开完整地图
+const openFullMap = () => {
+  if (!location.value) return;
+  
+  // 跳转到地图页面，并传递当前地点信息
+  router.push({ 
+    path: '/map',
+    query: { 
+      locationId: location.value.id,
+      highlight: location.value.id 
+    }
+  });
+};
+
+// 监听地点数据加载完成
+watch(location, (newVal) => {
+  if (newVal && newVal.id) {
+    // 确保地点数据完全加载后再初始化地图
+    setTimeout(() => {
+      initMiniMap();
+    }, 100);
+  }
+});
 
 watch(
   () => route.params.id,
@@ -331,6 +461,13 @@ onMounted(() => {
   updateDeviceDetection();
   fetchLocationDetail();
   window.addEventListener('resize', updateDeviceDetection);
+  
+  // 初始化地图（在组件挂载后）
+  setTimeout(() => {
+    if (location.value && location.value.id) {
+      initMiniMap();
+    }
+  }, 200);
 });
 
 onUnmounted(() => {
@@ -608,15 +745,76 @@ onUnmounted(() => {
   height: 250px;
   background: #e0e0e0;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden; /* 裁剪超出容器的部分 */
   position: relative;
 }
 
 .map-loading-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
   color: #666;
   font-size: 0.9rem;
+}
+
+.mini-map-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.mini-map-image {
+  /* 放大地图 2.5 倍 */
+  transform: scale(2.5);
+  transform-origin: 36% 7%; /* 以游泳馆位置为中心点 */
+  max-width: none; /* 允许图片超出容器 */
+  height: auto;
+  /* 调整位置让游泳馆位于容器中心 */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: calc(-36% * 2.5); /* 向左偏移游泳馆的 x 坐标 */
+  margin-top: calc(-7% * 2.5);  /* 向上偏移游泳馆的 y 坐标 */
+}
+
+.location-marker {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.marker-icon {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.marker-label {
+  background: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #333;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  white-space: nowrap;
+}
+
+.map-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
 }
 
 /* 相关地点 */

@@ -1,0 +1,208 @@
+// ============================================
+// 用户位置标记功能 - Postman 测试集合
+// ============================================
+
+{
+  "info": {
+    "name": "用户位置标记功能测试",
+    "description": "测试用户位置标记相关 API 接口",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 用户登录获取 Token",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"student1\",\n  \"password\": \"password123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/login",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.data && jsonData.data.token) {",
+              "    pm.collectionVariables.set('token', jsonData.data.token);",
+              "    console.log('Token saved:', jsonData.data.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 创建位置标记（约见地点）",
+      "request": {
+        "method": "POST",
+        "header": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{token}}"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"campusId\": 1,\n  \"locationName\": \"图书馆门口见面点\",\n  \"latitude\": 35.308123,\n  \"longitude\": 113.926234,\n  \"markType\": \"meeting_point\",\n  \"markCategory\": \"building\",\n  \"description\": \"经常在图书馆门口集合，方便找\",\n  \"visibility\": \"public\",\n  \"isPermanent\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks"]
+        }
+      }
+    },
+    {
+      "name": "3. 获取我的标记列表",
+      "request": {
+        "method": "GET",
+        "header": {
+          "Authorization": "Bearer {{token}}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/my?page=1&size=10",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "my"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "size",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "4. 获取校区的公开标记",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/campus/1",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "campus", "1"]
+        }
+      }
+    },
+    {
+      "name": "5. 获取标记详情",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/1",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "1"]
+        }
+      }
+    },
+    {
+      "name": "6. 更新标记",
+      "request": {
+        "method": "PUT",
+        "header": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{token}}"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"locationName\": \"图书馆正门集合点\",\n  \"description\": \"更新后的描述：这里是图书馆正门，很好找\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/1",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "1"]
+        }
+      }
+    },
+    {
+      "name": "7. 点赞标记",
+      "request": {
+        "method": "POST",
+        "header": {
+          "Authorization": "Bearer {{token}}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/1/like",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "1", "like"]
+        }
+      }
+    },
+    {
+      "name": "8. 审核标记（管理员）",
+      "request": {
+        "method": "PUT",
+        "header": {
+          "Authorization": "Bearer {{token}}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/1/verify?status=approved&comment=审核通过",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "1", "verify"],
+          "query": [
+            {
+              "key": "status",
+              "value": "approved"
+            },
+            {
+              "key": "comment",
+              "value": "审核通过"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "9. 删除标记",
+      "request": {
+        "method": "DELETE",
+        "header": {
+          "Authorization": "Bearer {{token}}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/user/location-marks/1",
+          "host": ["{{base_url}}"],
+          "path": ["api", "user", "location-marks", "1"]
+        }
+      }
+    }
+  ]
+}

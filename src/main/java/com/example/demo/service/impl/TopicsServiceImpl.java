@@ -1,6 +1,5 @@
 package com.example.demo.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.demo.common.ApiResult;
@@ -8,12 +7,19 @@ import com.example.demo.entity.*;
 import com.example.demo.entity.dto.TopicCreateDTO;
 import com.example.demo.entity.dto.TopicLikeDTO;
 import com.example.demo.entity.dto.TopicQueryDTO;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.demo.mapper.*;
 import com.example.demo.service.TopicsService;
+import com.example.demo.service.topic.TopicCreateService;
+import com.example.demo.service.topic.TopicQueryService;
+import com.example.demo.service.topic.TopicLikeService;
+import com.example.demo.service.topic.TopicCommentService;
+import com.example.demo.service.topic.TopicTagService;
+import com.example.demo.service.topic.TopicForwardService;
 import com.example.demo.utils.JwtUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,11 +30,31 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 话题服务实现类
+ * 话题服务实现类（协调器模式）
+ * 将原有功能拆分为 6 个子服务，本类作为协调器统一调度
  */
 @Service
 public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> implements TopicsService {
 
+    @Autowired
+    private TopicCreateService createService;
+    
+    @Autowired
+    private TopicQueryService queryService;
+    
+    @Autowired
+    private TopicLikeService likeService;
+    
+    @Autowired
+    private TopicCommentService commentService;
+    
+    @Autowired
+    private TopicTagService tagService;
+    
+    @Autowired
+    private TopicForwardService forwardService;
+    
+    // 保留原有的 Mapper 引用，用于向后兼容
     @Autowired
     private TopicsMapper topicsMapper;
     
@@ -37,9 +63,6 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
     
     @Autowired
     private TopicCommentsMapper topicCommentsMapper;
-    
-    // @Autowired
-    // private TagsMapper tagsMapper;  // 已删除，不再使用
     
     @Autowired
     private TopicTagsMapper topicTagsMapper;
@@ -56,119 +79,9 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    @Transactional
     public ApiResult createTopic(TopicCreateDTO topicDTO, HttpServletRequest request) {
-        try {
-            // 验证用户权限
-            Long userId = extractUserIdFromRequest(request);
-            if (userId == null) {
-                return ApiResult.error(401, "用户未登录");
-            }
-                
-            // 打印前端传来的数据
-            System.out.println("📥 收到话题创建请求:");
-            System.out.println("   isForwarded: " + topicDTO.getIsForwarded());
-            System.out.println("   forwardedFromTopicId: " + topicDTO.getForwardedFromTopicId());
-            System.out.println("   forwardedFromProductId: " + topicDTO.getForwardedFromProductId());
-            System.out.println("   content: " + topicDTO.getContent());
-                
-            // ✅ 获取用户并自动设置身份标签
-            User user = userMapper.selectById(userId);
-            if (user == null) {
-                return ApiResult.error(404, "用户不存在");
-            }
-                
-            // ✅ 根据用户类型自动确定一级标签代码
-            String level1TagCode = determineUserLevel1Tag(user);
-                
-            // 验证内容长度
-            if (topicDTO.getContent() == null || topicDTO.getContent().trim().isEmpty()) {
-                return ApiResult.error(400, "话题内容不能为空");
-            }
-                
-            if (topicDTO.getContent().length() > 1000) {
-                return ApiResult.error(400, "话题内容不能超过 1000 字符");
-            }
-                
-            // 验证图片数量
-            if (topicDTO.getImages() != null && topicDTO.getImages().size() > 9) {
-                return ApiResult.error(400, "图片数量不能超过 9 张");
-            }
-                
-            // 验证标签数量
-            if (topicDTO.getTags() != null && topicDTO.getTags().size() > 5) {
-                return ApiResult.error(400, "标签数量不能超过 5 个");
-            }
-                
-            // 创建话题
-            Topics topic = new Topics();
-            topic.setUserId(userId);
-            
-            // 自动提取标题（取内容的前 50 个字符）
-            String content = topicDTO.getContent().trim();
-            topic.setTitle(content.length() > 50 ? content.substring(0, 50) : content);
-            
-            topic.setContent(topicDTO.getContent());
-            
-            // 处理图片 URL
-            List<String> imageUrls = topicDTO.getImages();
-            System.out.println("📷 前端传来的图片 URLs: " + (imageUrls != null ? imageUrls.size() + "张" : "null"));
-            if (imageUrls != null && !imageUrls.isEmpty()) {
-                for (String url : imageUrls) {
-                    System.out.println("   - URL: " + url);
-                }
-            } else {
-                System.out.println("   ⚠️ 没有图片数据");
-            }
-            
-            topic.setImages(convertListToJson(imageUrls));
-            System.out.println("💾 保存到数据库的 images JSON: " + topic.getImages());
-            topic.setTags(convertListToJson(topicDTO.getTags()));
-                
-            // 设置自动识别的一级标签
-            topic.setLevel1TagCode(level1TagCode);
-            topic.setLevel2TagCodes(convertListToJson(topicDTO.getLevel2TagCodes()));
-            topic.setLevel3TagCodes(convertListToJson(topicDTO.getLevel3TagCodes()));
-            topic.setLevel4TagCodes(convertListToJson(topicDTO.getLevel4TagCodes()));
-            
-            // 处理转发逻辑
-            if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded()) {
-                topic.setIsForwarded(true);
-                
-                // 检查是商品转发还是话题转发
-                if (topicDTO.getForwardedFromProductId() != null) {
-                    topic.setForwardedFromProductId(topicDTO.getForwardedFromProductId());
-                    System.out.println("🛍️ 商品转发：forwardedFromProductId = " + topicDTO.getForwardedFromProductId());
-                } else if (topicDTO.getForwardedFromTopicId() != null) {
-                    topic.setForwardedFromTopicId(topicDTO.getForwardedFromTopicId());
-                    System.out.println("ℹ️ 话题转发：forwardedFromTopicId = " + topicDTO.getForwardedFromTopicId());
-                }
-            } else {
-                topic.setIsForwarded(false);
-            }
-                
-            topic.setLikesCount(0);
-            topic.setCommentsCount(0);
-            topic.setViewsCount(0);
-            topic.setIsEssence(0);
-            topic.setStatus(1);
-            topic.setCreatedAt(LocalDateTime.now());
-            topic.setUpdatedAt(LocalDateTime.now());
-                
-            boolean saveResult = this.save(topic);
-            if (!saveResult) {
-                return ApiResult.error(500, "话题发布失败");
-            }
-                
-            // 处理标签 - 已废弃，使用四级标签系统
-            // if (topicDTO.getTags() != null && !topicDTO.getTags().isEmpty()) {
-            //     handleTopicTags(topic.getId(), topicDTO.getTags());
-            // }
-                
-            return ApiResult.success("话题发布成功", topic);
-        } catch (Exception e) {
-            return ApiResult.error(500, "话题发布失败：" + e.getMessage());
-        }
+        // 委托给 TopicCreateService 处理
+        return createService.createTopic(topicDTO, request);
     }
 
     @Override

@@ -36,9 +36,6 @@ public class TopicCreateServiceImpl extends ServiceImpl<TopicsMapper, Topics> im
     @Autowired
     private JwtUtil jwtUtil;
     
-    @Autowired
-    private TopicsService topicsService; // 用于调用主服务的其他方法
-    
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     @Override

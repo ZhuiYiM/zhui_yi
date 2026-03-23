@@ -220,5 +220,28 @@ export const adminAPI = {
     },
     updateLevel4TagStatus(id, status) {
         return request.put(`/admin/tags/level-4/${id}/status`, { status });
+    },
+
+    // 五级标签（商业标签）
+    getLevel5Tags() {
+        return request.get('/admin/tags/level-5/all');
+    },
+    getLevel5TagsAdmin(params) {
+        return request.get('/admin/tags/level-5', { params });
+    },
+    createLevel5Tag(data) {
+        return request.post('/admin/tags/level-5', data);
+    },
+    updateLevel5Tag(id, data) {
+        return request.put(`/admin/tags/level-5/${id}`, data);
+    },
+    deleteLevel5Tag(id) {
+        return request.delete(`/admin/tags/level-5/${id}`);
+    },
+    batchDeleteLevel5Tags(ids) {
+        return request.delete('/admin/tags/level-5/batch', { params: { ids } });
+    },
+    updateLevel5TagStatus(id, isActive) {
+        return request.put(`/admin/tags/level-5/${id}/status`, { isActive });
     }
 };

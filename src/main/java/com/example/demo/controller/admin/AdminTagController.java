@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * 标签管理控制器（基于 tag_level_2 表）
  */
@@ -37,11 +39,14 @@ public class AdminTagController {
      */
     @PostMapping
     public ApiResult createLevel2Tag(
-            @RequestParam String code,
-            @RequestParam String name,
-            @RequestParam(required = false) String icon,
-            @RequestParam(required = false) String color,
-            @RequestParam(required = false) Integer sortOrder) {
+            @RequestBody Map<String, Object> params) {
+        
+        String code = (String) params.get("code");
+        String name = (String) params.get("name");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        
         log.info("管理员创建二级标签，code={}, name={}", code, name);
         return tagService.createLevel2Tag(code, name, icon, color, sortOrder);
     }
@@ -52,12 +57,16 @@ public class AdminTagController {
     @PutMapping("/{id}")
     public ApiResult updateLevel2Tag(
             @PathVariable Integer id,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String icon,
-            @RequestParam(required = false) String color,
-            @RequestParam(required = false) Integer sortOrder,
-            @RequestParam(required = false) Boolean isActive) {
-        log.info("管理员更新二级标签，id={}, name={}, isActive={}", id, name, isActive);
+            @RequestBody Map<String, Object> params) {
+        
+        String name = (String) params.get("name");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        Boolean isActive = (Boolean) params.get("isActive");
+        
+        log.info("管理员更新二级标签，id={}, name={}, icon={}, color={}, sortOrder={}, isActive={}", 
+                id, name, icon, color, sortOrder, isActive);
         return tagService.updateLevel2Tag(id, name, icon, color, sortOrder, isActive);
     }
 
@@ -85,7 +94,8 @@ public class AdminTagController {
     @PutMapping("/{id}/status")
     public ApiResult updateLevel2TagStatus(
             @PathVariable Integer id,
-            @RequestParam Boolean isActive) {
+            @RequestBody Map<String, Object> params) {
+        Boolean isActive = (Boolean) params.get("isActive");
         log.info("管理员更新二级标签状态，id={}, isActive={}", id, isActive);
         return tagService.updateLevel2TagStatus(id, isActive);
     }
@@ -112,15 +122,18 @@ public class AdminTagController {
      */
     @PostMapping("/level-3")
     public ApiResult createLevel3Tag(
-            @RequestParam String code,
-            @RequestParam String name,
-            @RequestParam(required = false) String locationType,
-            @RequestParam(required = false) String icon,
-            @RequestParam(required = false) String color,
-            @RequestParam(required = false) String address,
-            @RequestParam(required = false) Double latitude,
-            @RequestParam(required = false) Double longitude,
-            @RequestParam(required = false) Integer sortOrder) {
+            @RequestBody Map<String, Object> params) {
+        
+        String code = (String) params.get("code");
+        String name = (String) params.get("name");
+        String locationType = (String) params.get("locationType");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        String address = (String) params.get("address");
+        Double latitude = (Double) params.get("latitude");
+        Double longitude = (Double) params.get("longitude");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        
         log.info("管理员创建三级标签，code={}, name={}, locationType={}", code, name, locationType);
         return tagService.createLevel3Tag(code, name, locationType, icon, color, address, latitude, longitude, sortOrder);
     }
@@ -131,16 +144,20 @@ public class AdminTagController {
     @PutMapping("/level-3/{id}")
     public ApiResult updateLevel3Tag(
             @PathVariable Integer id,
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String locationType,
-            @RequestParam(required = false) String icon,
-            @RequestParam(required = false) String color,
-            @RequestParam(required = false) String address,
-            @RequestParam(required = false) Double latitude,
-            @RequestParam(required = false) Double longitude,
-            @RequestParam(required = false) Integer sortOrder,
-            @RequestParam(required = false) Boolean isActive) {
-        log.info("管理员更新三级标签，id={}, name={}, isActive={}", id, name, isActive);
+            @RequestBody Map<String, Object> params) {
+        
+        String name = (String) params.get("name");
+        String locationType = (String) params.get("locationType");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        String address = (String) params.get("address");
+        Double latitude = (Double) params.get("latitude");
+        Double longitude = (Double) params.get("longitude");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        Boolean isActive = (Boolean) params.get("isActive");
+        
+        log.info("管理员更新三级标签，id={}, name={}, locationType={}, isActive={}", 
+                id, name, locationType, isActive);
         return tagService.updateLevel3Tag(id, name, locationType, icon, color, address, latitude, longitude, sortOrder, isActive);
     }
     
@@ -168,7 +185,8 @@ public class AdminTagController {
     @PutMapping("/level-3/{id}/status")
     public ApiResult updateLevel3TagStatus(
             @PathVariable Integer id,
-            @RequestParam Boolean isActive) {
+            @RequestBody Map<String, Object> params) {
+        Boolean isActive = (Boolean) params.get("isActive");
         log.info("管理员更新三级标签状态，id={}, isActive={}", id, isActive);
         return tagService.updateLevel3TagStatus(id, isActive);
     }
@@ -191,12 +209,32 @@ public class AdminTagController {
     }
     
     /**
+     * 更新四级标签
+     */
+    @PutMapping("/level-4/{id}")
+    public ApiResult updateLevel4Tag(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> params) {
+        
+        String name = (String) params.get("name");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        String status = (String) params.get("status");
+        
+        log.info("管理员更新四级标签，id={}, name={}, icon={}, color={}, sortOrder={}, status={}", 
+                id, name, icon, color, sortOrder, status);
+        return tagService.updateLevel4Tag(id, name, icon, color, sortOrder, status);
+    }
+    
+    /**
      * 更新四级标签状态
      */
     @PutMapping("/level-4/{id}/status")
     public ApiResult updateLevel4TagStatus(
             @PathVariable Long id,
-            @RequestParam String status) {
+            @RequestBody Map<String, Object> params) {
+        String status = (String) params.get("status");
         log.info("管理员更新四级标签状态，id={}, status={}", id, status);
         return tagService.updateLevel4TagStatus(id, status);
     }
@@ -217,5 +255,109 @@ public class AdminTagController {
     public ApiResult batchDeleteLevel4Tags(@RequestParam String ids) {
         log.info("管理员批量删除四级标签，ids={}", ids);
         return tagService.batchDeleteLevel4Tags(ids);
+    }
+    
+    // ==================== 五级标签管理（商业标签） ====================
+    
+    /**
+     * 获取所有五级标签列表（前端使用）
+     */
+    @GetMapping("/level-5/all")
+    public ApiResult getLevel5Tags() {
+        log.info("获取所有五级标签列表");
+        return tagService.getLevel5Tags();
+    }
+    
+    /**
+     * 分页查询五级标签列表
+     */
+    @GetMapping("/level-5")
+    public ApiResult getLevel5TagsAdmin(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category) {
+        log.info("管理员查询五级标签列表，pageNum={}, pageSize={}, keyword={}, status={}, category={}", 
+                pageNum, pageSize, keyword, status, category);
+        return tagService.getLevel5TagsAdmin(pageNum, pageSize, keyword, status, category);
+    }
+    
+    /**
+     * 创建五级标签
+     */
+    @PostMapping("/level-5")
+    public ApiResult createLevel5Tag(
+            @RequestBody Map<String, Object> params) {
+        
+        String code = (String) params.get("code");
+        String name = (String) params.get("name");
+        String category = (String) params.get("category");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        
+        log.info("管理员创建五级标签，code={}, name={}, category={}", code, name, category);
+        return tagService.createLevel5Tag(code, name, category, icon, color, sortOrder);
+    }
+    
+    /**
+     * 更新五级标签
+     */
+    @PutMapping("/level-5/{id}")
+    public ApiResult updateLevel5Tag(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> params) {
+        
+        String name = (String) params.get("name");
+        String category = (String) params.get("category");
+        String icon = (String) params.get("icon");
+        String color = (String) params.get("color");
+        Integer sortOrder = (Integer) params.get("sortOrder");
+        Boolean isActive = (Boolean) params.get("isActive");
+        String status = (String) params.get("status");
+        
+        log.info("======= 管理员更新五级标签 =======");
+        log.info("ID: {}", id);
+        log.info("Name: {}", name);
+        log.info("Category: {}", category);
+        log.info("Icon: {}", icon);
+        log.info("Color: {}", color);
+        log.info("SortOrder: {}", sortOrder);
+        log.info("IsActive: {}", isActive);
+        log.info("Status: {}", status);
+        log.info("===================================");
+        return tagService.updateLevel5Tag(id, name, category, icon, color, sortOrder, isActive, status);
+    }
+    
+    /**
+     * 删除五级标签
+     */
+    @DeleteMapping("/level-5/{id}")
+    public ApiResult deleteLevel5Tag(@PathVariable Long id) {
+        log.info("管理员删除五级标签，id={}", id);
+        return tagService.deleteLevel5Tag(id);
+    }
+    
+    /**
+     * 批量删除五级标签
+     */
+    @DeleteMapping("/level-5/batch")
+    public ApiResult batchDeleteLevel5Tags(@RequestParam String ids) {
+        log.info("管理员批量删除五级标签，ids={}", ids);
+        return tagService.batchDeleteLevel5Tags(ids);
+    }
+    
+    /**
+     * 更新五级标签状态
+     */
+    @PutMapping("/level-5/{id}/status")
+    public ApiResult updateLevel5TagStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> params) {
+        Boolean isActive = (Boolean) params.get("isActive");
+        String status = (String) params.get("status");
+        log.info("管理员更新五级标签状态，id={}, isActive={}, status={}", id, isActive, status);
+        return tagService.updateLevel5TagStatus(id, isActive, status);
     }
 }

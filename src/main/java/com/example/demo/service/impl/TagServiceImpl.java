@@ -9,11 +9,14 @@ import com.example.demo.entity.TagLevel1;
 import com.example.demo.entity.TagLevel2;
 import com.example.demo.entity.TagLevel3;
 import com.example.demo.entity.TagLevel4;
+import com.example.demo.entity.TagLevel5;
 import com.example.demo.mapper.TagLevel1Mapper;
 import com.example.demo.mapper.TagLevel2Mapper;
 import com.example.demo.mapper.TagLevel3Mapper;
 import com.example.demo.mapper.TagLevel4Mapper;
+import com.example.demo.mapper.TagLevel5Mapper;
 import com.example.demo.service.TagService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +28,7 @@ import java.util.stream.Collectors;
 /**
  * 标签服务实现类
  */
+@Slf4j
 @Service
 public class TagServiceImpl extends ServiceImpl<TagLevel4Mapper, TagLevel4> implements TagService {
     
@@ -39,6 +43,9 @@ public class TagServiceImpl extends ServiceImpl<TagLevel4Mapper, TagLevel4> impl
     
     @Autowired
     private TagLevel4Mapper tagLevel4Mapper;
+    
+    @Autowired
+    private TagLevel5Mapper tagLevel5Mapper;
     
     @Override
     public ApiResult getLevel1Tags() {
@@ -639,6 +646,32 @@ public class TagServiceImpl extends ServiceImpl<TagLevel4Mapper, TagLevel4> impl
     
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public ApiResult updateLevel4Tag(Long id, String name, String icon, String color, Integer sortOrder, String status) {
+        try {
+            TagLevel4 existing = tagLevel4Mapper.selectById(id);
+            if (existing == null) {
+                return ApiResult.error("标签不存在");
+            }
+            
+            // 更新字段 - TagLevel4 只有 name 和 status 字段
+            if (name != null) {
+                existing.setName(name);
+            }
+            if (status != null) {
+                existing.setStatus(status);
+            }
+            existing.setUpdatedAt(LocalDateTime.now());
+            
+            tagLevel4Mapper.updateById(existing);
+            
+            return ApiResult.success(existing);
+        } catch (Exception e) {
+            return ApiResult.error("更新标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public ApiResult deleteLevel4Tag(Long id) {
         try {
             TagLevel4 existing = tagLevel4Mapper.selectById(id);
@@ -673,6 +706,206 @@ public class TagServiceImpl extends ServiceImpl<TagLevel4Mapper, TagLevel4> impl
             return ApiResult.success();
         } catch (Exception e) {
             return ApiResult.error("批量删除失败：" + e.getMessage());
+        }
+    }
+    
+    // ==================== 五级标签管理（商业标签）实现 ====================
+    
+    @Override
+    public ApiResult getLevel5Tags() {
+        try {
+            QueryWrapper<TagLevel5> wrapper = new QueryWrapper<>();
+            wrapper.eq("is_active", true)
+                   .eq("status", "active")
+                   .orderByAsc("sort_order");
+            List<TagLevel5> tags = tagLevel5Mapper.selectList(wrapper);
+            return ApiResult.success(tags);
+        } catch (Exception e) {
+            return ApiResult.error("获取商业标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    public ApiResult getLevel5TagsAdmin(Integer pageNum, Integer pageSize, String keyword, String status, String category) {
+        try {
+            Page<TagLevel5> page = new Page<>(pageNum, pageSize);
+            QueryWrapper<TagLevel5> wrapper = new QueryWrapper<>();
+            
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                wrapper.and(w -> w.like("name", keyword).or().like("code", keyword));
+            }
+            
+            if (status != null && !status.trim().isEmpty()) {
+                wrapper.eq("status", status);
+            }
+            
+            if (category != null && !category.trim().isEmpty()) {
+                wrapper.eq("category", category);
+            }
+            
+            wrapper.orderByDesc("sort_order").orderByDesc("id");
+            
+            Page<TagLevel5> result = tagLevel5Mapper.selectPage(page, wrapper);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("records", result.getRecords());
+            response.put("total", result.getTotal());
+            response.put("currentPage", pageNum);
+            response.put("pageSize", pageSize);
+            response.put("totalPages", (result.getTotal() + pageSize - 1) / pageSize);
+            
+            return ApiResult.success(response);
+        } catch (Exception e) {
+            return ApiResult.error("查询商业标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResult createLevel5Tag(String code, String name, String category, String icon, String color, Integer sortOrder) {
+        try {
+            // 检查代码是否已存在
+            QueryWrapper<TagLevel5> checkWrapper = new QueryWrapper<>();
+            checkWrapper.eq("code", code);
+            TagLevel5 existing = tagLevel5Mapper.selectOne(checkWrapper);
+            if (existing != null) {
+                return ApiResult.error("标签代码已存在：" + code);
+            }
+            
+            TagLevel5 tag = new TagLevel5();
+            tag.setCode(code);
+            tag.setName(name);
+            tag.setCategory(category);
+            tag.setIcon(icon);
+            tag.setColor(color);
+            tag.setSortOrder(sortOrder != null ? sortOrder : 0);
+            tag.setStatus("active");
+            tag.setIsActive(true);
+            tag.setUsageCount(0L);
+            tag.setTrendScore(java.math.BigDecimal.ZERO);
+            tag.setCreatedAt(LocalDateTime.now());
+            tag.setUpdatedAt(LocalDateTime.now());
+            
+            tagLevel5Mapper.insert(tag);
+            
+            return ApiResult.success(tag);
+        } catch (Exception e) {
+            return ApiResult.error("创建商业标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResult updateLevel5Tag(Long id, String name, String category, String icon, String color,
+                                     Integer sortOrder, Boolean isActive, String status) {
+        log.info("Service 层开始更新五级标签，id={}, name={}, category={}", id, name, category);
+        try {
+            TagLevel5 tag = tagLevel5Mapper.selectById(id);
+            if (tag == null) {
+                log.warn("标签不存在，id={}", id);
+                return ApiResult.error("标签不存在");
+            }
+            
+            log.info("更新前数据：name={}, category={}, isActive={}", tag.getName(), tag.getCategory(), tag.getIsActive());
+            
+            if (name != null) {
+                tag.setName(name);
+                log.info("更新 name: {}", name);
+            }
+            if (category != null) {
+                tag.setCategory(category);
+                log.info("更新 category: {}", category);
+            }
+            if (icon != null) {
+                tag.setIcon(icon);
+                log.info("更新 icon: {}", icon);
+            }
+            if (color != null) {
+                tag.setColor(color);
+                log.info("更新 color: {}", color);
+            }
+            if (sortOrder != null) {
+                tag.setSortOrder(sortOrder);
+                log.info("更新 sortOrder: {}", sortOrder);
+            }
+            if (isActive != null) {
+                tag.setIsActive(isActive);
+                log.info("更新 isActive: {}", isActive);
+            }
+            if (status != null) {
+                tag.setStatus(status);
+                log.info("更新 status: {}", status);
+            }
+            tag.setUpdatedAt(LocalDateTime.now());
+            
+            int rows = tagLevel5Mapper.updateById(tag);
+            log.info("MyBatis-Plus 更新行数：{}", rows);
+            log.info("更新后数据：name={}, category={}, isActive={}", tag.getName(), tag.getCategory(), tag.getIsActive());
+            
+            return ApiResult.success(tag);
+        } catch (Exception e) {
+            log.error("更新五级标签失败", e);
+            return ApiResult.error("更新商业标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResult deleteLevel5Tag(Long id) {
+        try {
+            TagLevel5 tag = tagLevel5Mapper.selectById(id);
+            if (tag == null) {
+                return ApiResult.error("标签不存在");
+            }
+            
+            tagLevel5Mapper.deleteById(id);
+            
+            return ApiResult.success();
+        } catch (Exception e) {
+            return ApiResult.error("删除商业标签失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResult batchDeleteLevel5Tags(String ids) {
+        try {
+            if (ids == null || ids.trim().isEmpty()) {
+                return ApiResult.error("请指定要删除的标签 ID");
+            }
+            
+            List<Long> idList = Arrays.stream(ids.split(","))
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+            
+            for (Long id : idList) {
+                tagLevel5Mapper.deleteById(id);
+            }
+            
+            return ApiResult.success();
+        } catch (Exception e) {
+            return ApiResult.error("批量删除失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResult updateLevel5TagStatus(Long id, Boolean isActive, String status) {
+        try {
+            TagLevel5 tag = tagLevel5Mapper.selectById(id);
+            if (tag == null) {
+                return ApiResult.error("标签不存在");
+            }
+            
+            if (isActive != null) tag.setIsActive(isActive);
+            if (status != null) tag.setStatus(status);
+            tag.setUpdatedAt(LocalDateTime.now());
+            
+            tagLevel5Mapper.updateById(tag);
+            
+            return ApiResult.success();
+        } catch (Exception e) {
+            return ApiResult.error("更新标签状态失败：" + e.getMessage());
         }
     }
 }

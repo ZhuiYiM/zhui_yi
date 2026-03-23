@@ -9,6 +9,7 @@
                             <el-option label="二级标签 - 分类" value="level2" />
                             <el-option label="三级标签 - 地点" value="level3" />
                             <el-option label="四级标签 - 自定义" value="level4" />
+                            <el-option label="五级标签 - 商业" value="level5" />
                         </el-select>
                     </div>
                     <el-button type="primary" @click="handleCreate">新增标签</el-button>
@@ -64,7 +65,12 @@
                 <el-table-column prop="sortOrder" label="排序" width="80" />
                 <el-table-column prop="isActive" label="状态" width="80">
                     <template #default="{ row }">
-                        <el-tag :type="row.isActive ? 'success' : 'danger'">
+                        <!-- 四级标签使用 status 字段：active/banned -->
+                        <el-tag v-if="currentLevel === 'level4'" :type="row.status === 'active' ? 'success' : 'danger'">
+                            {{ row.status === 'active' ? '启用' : '禁用' }}
+                        </el-tag>
+                        <!-- 其他级别使用 isActive 字段 -->
+                        <el-tag v-else :type="row.isActive ? 'success' : 'danger'">
                             {{ row.isActive ? '启用' : '禁用' }}
                         </el-tag>
                     </template>
@@ -72,7 +78,17 @@
                 <el-table-column label="操作" width="300" fixed="right">
                     <template #default="{ row }">
                         <el-button size="small" @click="handleEdit(row)">编辑</el-button>
+                        <!-- 四级标签使用 status 字段判断 -->
                         <el-button 
+                            v-if="currentLevel === 'level4'"
+                            size="small" 
+                            :type="row.status === 'active' ? 'warning' : 'success'"
+                            @click="handleToggleStatus(row)">
+                            {{ row.status === 'active' ? '禁用' : '启用' }}
+                        </el-button>
+                        <!-- 其他级别使用 isActive 字段判断 -->
+                        <el-button 
+                            v-else
                             size="small" 
                             :type="row.isActive ? 'warning' : 'success'"
                             @click="handleToggleStatus(row)">
@@ -121,6 +137,12 @@
                 </el-form-item>
                 <el-form-item label="排序顺序" prop="sortOrder">
                     <el-input-number v-model="formData.sortOrder" :min="0" :max="999" />
+                </el-form-item>
+                <el-form-item label="状态" prop="isActive">
+                    <el-switch v-model="formData.isActive" active-text="启用" inactive-text="禁用" />
+                </el-form-item>
+                <el-form-item label="分类" prop="category" v-if="currentLevel === 'level5'">
+                    <el-input v-model="formData.category" placeholder="请输入分类（如：Service）" />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -174,7 +196,10 @@ const formData = reactive({
     name: '',
     icon: '',
     color: '#409EFF',
-    sortOrder: 0
+    sortOrder: 0,
+    isActive: true,
+    status: 'active',
+    category: ''
 })
 
 // 表单验证规则
@@ -209,6 +234,9 @@ const loadData = async () => {
         } else if (currentLevel.value === 'level4') {
             res = await tagAPI.getLevel4Tags(params)
             console.log('🏷️ 四级标签响应:', res)
+        } else if (currentLevel.value === 'level5') {
+            res = await tagAPI.getLevel5TagsAdmin(params)
+            console.log('🏷️ 五级标签响应:', res)
         }
         
         // 响应拦截器已经返回了 data 部分，直接解析
@@ -257,15 +285,25 @@ const handleEdit = (row) => {
         name: row.name,
         icon: row.icon,
         color: row.color,
-        sortOrder: row.sortOrder
+        sortOrder: row.sortOrder,
+        isActive: row.isActive,
+        status: row.status || 'active',
+        category: row.category || ''
     })
     dialogVisible.value = true
 }
 
 // 切换状态
 const handleToggleStatus = async (row) => {
-    const newStatus = !row.isActive
-    const action = newStatus ? '启用' : '禁用'
+    // 四级标签使用 status 字段，其他级别使用 isActive
+    const isLevel4 = currentLevel.value === 'level4'
+    const newStatus = isLevel4 
+        ? (row.status === 'active' ? 'banned' : 'active')  // 四级标签：active <-> banned
+        : !row.isActive  // 其他级别：true <-> false
+    
+    const action = isLevel4 
+        ? (newStatus === 'active' ? '启用' : '禁用')  // 四级标签
+        : (newStatus ? '启用' : '禁用')  // 其他级别
     
     try {
         await ElMessageBox.confirm(`确定要${action}该标签吗？`, '提示', {
@@ -274,16 +312,29 @@ const handleToggleStatus = async (row) => {
             type: 'warning'
         })
         
-        const res = await tagAPI.updateLevel2TagStatus(row.id, newStatus)
-        if (res.success || res.code === 200) {
-            ElMessage.success(`${action}成功`)
-            loadData()
-        } else {
-            ElMessage.error(res.message || `${action}失败`)
+        let res
+        if (currentLevel.value === 'level2') {
+            res = await tagAPI.updateLevel2TagStatus(row.id, newStatus)
+        } else if (currentLevel.value === 'level3') {
+            res = await tagAPI.updateLevel3TagStatus(row.id, newStatus)
+        } else if (currentLevel.value === 'level4') {
+            // 四级标签使用 'active'/'banned' 字符串
+            res = await tagAPI.updateLevel4TagStatus(row.id, newStatus)
+        } else if (currentLevel.value === 'level5') {
+            res = await tagAPI.updateLevel5TagStatus(row.id, newStatus)
         }
+        
+        // 只要不抛出异常就说明操作成功
+        ElMessage.success(`${action}成功`)
+        loadData()
     } catch (error) {
         if (error !== 'cancel') {
             console.error('操作失败:', error)
+            if (error.response?.data?.message) {
+                ElMessage.error(error.response.data.message)
+            } else {
+                ElMessage.error(`${action}失败`)
+            }
         }
     }
 }
@@ -296,16 +347,28 @@ const handleDelete = (row) => {
         type: 'warning'
     }).then(async () => {
         try {
-            const res = await tagAPI.deleteLevel2Tag(row.id)
-            if (res.success || res.code === 200) {
-                ElMessage.success('删除成功')
-                loadData()
-            } else {
-                ElMessage.error(res.message || '删除失败')
+            let res
+            if (currentLevel.value === 'level2') {
+                res = await tagAPI.deleteLevel2Tag(row.id)
+            } else if (currentLevel.value === 'level3') {
+                res = await tagAPI.deleteLevel3Tag(row.id)
+            } else if (currentLevel.value === 'level4') {
+                res = await tagAPI.deleteLevel4Tag(row.id)
+            } else if (currentLevel.value === 'level5') {
+                res = await tagAPI.deleteLevel5Tag(row.id)
             }
+            
+            // 删除操作成功时，后端会返回 code=200，直接判断是否抛出异常即可
+            ElMessage.success('删除成功')
+            loadData()
         } catch (error) {
             console.error('删除失败:', error)
-            ElMessage.error('删除失败')
+            // 只有在抛出异常时才显示失败
+            if (error.response?.data?.message) {
+                ElMessage.error(error.response.data.message)
+            } else {
+                ElMessage.error('删除失败')
+            }
         }
     }).catch(() => {})
 }
@@ -321,20 +384,37 @@ const handleSubmit = async () => {
         try {
             let res
             if (isEdit.value) {
-                res = await tagAPI.updateLevel2Tag(formData.id, formData)
+                if (currentLevel.value === 'level2') {
+                    res = await tagAPI.updateLevel2Tag(formData.id, formData)
+                } else if (currentLevel.value === 'level3') {
+                    res = await tagAPI.updateLevel3Tag(formData.id, formData)
+                } else if (currentLevel.value === 'level4') {
+                    res = await tagAPI.updateLevel4Tag(formData.id, formData)
+                } else if (currentLevel.value === 'level5') {
+                    res = await tagAPI.updateLevel5Tag(formData.id, formData)
+                }
             } else {
-                res = await tagAPI.createLevel2Tag(formData)
+                if (currentLevel.value === 'level2') {
+                    res = await tagAPI.createLevel2Tag(formData)
+                } else if (currentLevel.value === 'level3') {
+                    res = await tagAPI.createLevel3Tag(formData)
+                } else if (currentLevel.value === 'level4') {
+                    res = await tagAPI.createLevel4Tag(formData)
+                } else if (currentLevel.value === 'level5') {
+                    res = await tagAPI.createLevel5Tag(formData)
+                }
             }
             
-            if (res.success || res.code === 200) {
+            // 响应拦截器已返回 data 部分，直接判断是否有数据
+            if (res) {
                 ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
                 dialogVisible.value = false
                 loadData()
             } else {
-                ElMessage.error(res.message || (isEdit.value ? '更新失败' : '创建失败'))
+                ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
             }
         } catch (error) {
-            console.error('提交失败:', error)
+            console.error('❌ 提交失败:', error)
             ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
         } finally {
             submitLoading.value = false
@@ -356,6 +436,9 @@ const resetForm = () => {
     formData.icon = ''
     formData.color = '#409EFF'
     formData.sortOrder = 0
+    formData.isActive = true
+    formData.status = 'active'
+    formData.category = ''
 }
 
 onMounted(() => {

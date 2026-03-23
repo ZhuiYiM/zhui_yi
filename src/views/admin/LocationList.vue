@@ -382,13 +382,10 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      const response = await request.delete(`/admin/locations/${row.id}`);
-      if (response.code === 200) {
-        ElMessage.success('删除成功');
-        loadLocations();
-      } else {
-        ElMessage.error(response.message || '删除失败');
-      }
+      await request.delete(`/admin/locations/${row.id}`);
+      // 响应拦截器已经处理了错误情况，能到达这里说明删除成功
+      ElMessage.success('删除成功');
+      loadLocations();
     } catch (error) {
       console.error('删除失败:', error);
       ElMessage.error('删除失败，请稍后重试');
@@ -404,15 +401,12 @@ const handleBatchDelete = () => {
     type: 'warning'
   }).then(async () => {
     try {
-      const response = await request.delete('/admin/locations/batch', {
+      await request.delete('/admin/locations/batch', {
         data: { ids: selectedIds.value }
       });
-      if (response.code === 200) {
-        ElMessage.success('批量删除成功');
-        loadLocations();
-      } else {
-        ElMessage.error(response.message || '删除失败');
-      }
+      // 响应拦截器已经处理了错误情况，能到达这里说明删除成功
+      ElMessage.success('批量删除成功');
+      loadLocations();
     } catch (error) {
       console.error('批量删除失败:', error);
       ElMessage.error('批量删除失败，请稍后重试');
@@ -433,22 +427,37 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true;
       try {
+        // 处理 facilities 字段：空字符串转为 null，避免 MySQL JSON 字段错误
+        const submitData = { ...locationForm };
+        if (submitData.facilities === '' || submitData.facilities === null || submitData.facilities === undefined) {
+          submitData.facilities = null;
+        } else if (typeof submitData.facilities === 'string') {
+          // 如果是字符串，尝试解析为 JSON 数组
+          try {
+            submitData.facilities = JSON.parse(submitData.facilities);
+          } catch (e) {
+            console.error('facilities JSON 解析失败:', e);
+            ElMessage.error('设施标签格式错误，请输入有效的 JSON 数组');
+            submitting.value = false;
+            return;
+          }
+        }
+        
         let response;
         if (locationForm.id) {
           // 更新
-          response = await request.put(`/admin/locations/${locationForm.id}`, locationForm);
+          response = await request.put(`/admin/locations/${locationForm.id}`, submitData);
         } else {
           // 添加
-          response = await request.post('/admin/locations', locationForm);
+          response = await request.post('/admin/locations', submitData);
         }
         
-        if (response.code === 200) {
-          ElMessage.success(locationForm.id ? '更新成功' : '添加成功');
-          dialogVisible.value = false;
-          loadLocations();
-        } else {
-          ElMessage.error(response.message || '操作失败');
-        }
+        console.log('📍 提交响应:', response);
+        // 响应拦截器已经返回了 data 部分，直接判断是否成功
+        // 如果能到达这里，说明请求成功（响应拦截器已经处理了 code !== 200 的情况）
+        ElMessage.success(locationForm.id ? '更新成功' : '添加成功');
+        dialogVisible.value = false;
+        loadLocations();
       } catch (error) {
         console.error('操作失败:', error);
         ElMessage.error('操作失败，请稍后重试');

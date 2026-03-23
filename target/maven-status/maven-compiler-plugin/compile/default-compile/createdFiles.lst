@@ -27,6 +27,7 @@ com\example\demo\service\impl\LocationServiceImpl.class
 com\example\demo\service\admin\OperationLogService.class
 com\example\demo\entity\Report.class
 com\example\demo\service\admin\impl\SystemSettingServiceImpl.class
+com\example\demo\entity\TagLevel5.class
 com\example\demo\mapper\admin\AdminRoleMapper.class
 com\example\demo\controller\UserController.class
 com\example\demo\entity\dto\RegisterDTO.class
@@ -118,6 +119,7 @@ com\example\demo\service\impl\ReportServiceImpl.class
 com\example\demo\mapper\DefaultPrivacyLevelMapper.class
 com\example\demo\mapper\TopicMapper.class
 com\example\demo\entity\Message.class
+com\example\demo\mapper\TagLevel5Mapper.class
 com\example\demo\mapper\ProductFavoriteMapper.class
 com\example\demo\service\impl\TopicCommentsServiceImpl.class
 com\example\demo\entity\dto\ProductDetailResponseDTO$SpecificationGroupDTO$SpecValueDTO.class
@@ -159,6 +161,7 @@ com\example\demo\service\OrderReviewService.class
 com\example\demo\service\CommentsService.class
 com\example\demo\entity\Product.class
 com\example\demo\entity\dto\UserProfileDTO.class
+com\example\demo\controller\AdvertisementController.class
 com\example\demo\entity\dto\CommentCreateDTO.class
 com\example\demo\service\OrderCancelReasonService.class
 com\example\demo\service\UserService.class

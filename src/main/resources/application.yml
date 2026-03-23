@@ -28,7 +28,7 @@ logging:
     com.zaxxer.hikari: WARN
     com.baomidou.mybatisplus: WARN
     org.mybatis: WARN
-    com.example.demo: INFO  # ??????????
+    com.example.demo: INFO
 
 jwt:
   secret: myVeryLongSecretKey123456789012345678901234567890123456789012345678901234567890  # 至少64字符的密钥

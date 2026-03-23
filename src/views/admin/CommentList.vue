@@ -174,13 +174,10 @@ const handleDelete = (id) => {
     type: 'warning'
   }).then(async () => {
     try {
-      const response = await adminAPI.deleteComment(id);
-      if (response.code === 200) {
-        ElMessage.success('删除成功');
-        loadCommentList();
-      } else {
-        ElMessage.error(response.message || '删除失败');
-      }
+      await adminAPI.deleteComment(id);
+      // 响应拦截器已经处理了错误情况，能到达这里说明成功
+      ElMessage.success('删除成功');
+      loadCommentList();
     } catch (error) {
       console.error('❌ 删除评论失败:', error);
       ElMessage.error('删除失败，请稍后重试');

@@ -114,20 +114,17 @@ const loadProfile = async () => {
 const handleEdit = async () => {
   saving.value = true;
   try {
-    const response = await adminAPI.updateProfile({
+    await adminAPI.updateProfile({
       realName: profile.realName,
       nickname: profile.nickname,
       avatar: profile.avatar
     });
     
-    console.log('✏️ 更新个人信息响应:', response);
-    if (response.code === 200 || response.message === '更新成功') {
-      ElMessage.success('保存成功');
-      // 重新加载最新信息
-      loadProfile();
-    } else {
-      ElMessage.error(response.message || '保存失败');
-    }
+    console.log('✏️ 更新个人信息成功');
+    // 响应拦截器已经处理了错误情况，能到达这里说明成功
+    ElMessage.success('保存成功');
+    // 重新加载最新信息
+    loadProfile();
   } catch (error) {
     console.error('❌ 保存失败:', error);
     ElMessage.error('保存失败，请稍后重试');

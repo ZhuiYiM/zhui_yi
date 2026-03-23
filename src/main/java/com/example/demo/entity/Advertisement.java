@@ -3,6 +3,7 @@ package com.example.demo.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -58,12 +59,29 @@ public class Advertisement {
     /**
      * 开始时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
 
     /**
      * 结束时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
+
+    /**
+     * 广告类型：activity-活动标签筛选，merchant-商家页面，product-商品广告
+     */
+    private String adType;
+
+    /**
+     * 关联 ID：商品 ID、商家 ID 等，根据广告类型而定
+     */
+    private Long relatedId;
+
+    /**
+     * 筛选标签：JSON 格式存储，用于活动类型广告的标签筛选
+     */
+    private String filterTags;
 
     /**
      * 点击次数
@@ -88,10 +106,12 @@ public class Advertisement {
     /**
      * 创建时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     /**
      * 更新时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
 }

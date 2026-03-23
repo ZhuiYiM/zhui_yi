@@ -115,6 +115,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\Or
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\UserBlock.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\FileUploadService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\admin\AdminSettingsController.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\TagLevel5.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\LoginDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\IndexController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TagLevel4Mapper.java
@@ -162,6 +163,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\Ord
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\TopicLikeDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\OrderCancelReason.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\ProductService.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TagLevel5Mapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\dto\ProductDetailResponseDTO.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\ReportService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\LikeMapper.java
@@ -188,6 +190,7 @@ F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\entity\enu
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\FileUploadController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\mapper\TopicLikesMapper.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\MailServiceImpl.java
+F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\controller\AdvertisementController.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\ProductSpecificationService.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\TopicsServiceImpl.java
 F:\code\CampusInformationPlatform\demo\src\main\java\com\example\demo\service\impl\ReportServiceImpl.java

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.TagLevel5Mapper">
+
+    <resultMap id="TagLevel5Result" type="com.example.demo.entity.TagLevel5">
+        <id property="id" column="id"/>
+        <result property="code" column="code"/>
+        <result property="name" column="name"/>
+        <result property="category" column="category"/>
+        <result property="icon" column="icon"/>
+        <result property="color" column="color"/>
+        <result property="usageCount" column="usage_count"/>
+        <result property="trendScore" column="trend_score"/>
+        <result property="lastUsedAt" column="last_used_at"/>
+        <result property="status" column="status"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="isActive" column="is_active"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 根据代码列表查询标签 -->
+    <select id="selectByCodes" resultMap="TagLevel5Result">
+        SELECT * FROM tag_level_5
+        WHERE code IN
+        <foreach collection="codes" item="code" open="(" separator="," close=")">
+            #{code}
+        </foreach>
+        AND is_active = 1
+        AND status = 'active'
+    </select>
+
+    <!-- 根据名称列表查询标签 -->
+    <select id="selectByNames" resultMap="TagLevel5Result">
+        SELECT * FROM tag_level_5
+        WHERE name IN
+        <foreach collection="names" item="name" open="(" separator="," close=")">
+            #{name}
+        </foreach>
+        AND is_active = 1
+        AND status = 'active'
+    </select>
+
+</mapper>

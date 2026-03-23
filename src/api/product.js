@@ -63,3 +63,18 @@ export const productAPI = {
         return request.get('/products/my', { params });
     }
 };
+
+/**
+ * 广告 API（交易中心使用）
+ */
+export const mallAdAPI = {
+    // 获取交易中心广告列表
+    getMallAds() {
+        return request.get('/advertisements/mall');
+    },
+
+    // 增加广告点击次数
+    incrementClickCount(id) {
+        return request.post(`/advertisements/${id}/click`);
+    }
+};

@@ -1,5 +1,6 @@
 package com.example.demo.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.time.LocalDateTime;
 
@@ -52,10 +53,27 @@ public class AdvertisementDTO {
     /**
      * 开始时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
 
     /**
      * 结束时间
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
+
+    /**
+     * 广告类型：activity-活动标签筛选，merchant-商家页面，product-商品广告
+     */
+    private String adType;
+
+    /**
+     * 关联 ID：商品 ID、商家 ID 等
+     */
+    private Long relatedId;
+
+    /**
+     * 筛选标签：JSON 格式
+     */
+    private String filterTags;
 }

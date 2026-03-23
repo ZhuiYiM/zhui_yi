@@ -34,6 +34,7 @@
       <!-- 广告栏 -->
       <AdBanner 
         :is-mobile="isMobile" 
+        :custom-ads="mallAds"
         @ad-click="handleAdClick"
       />
 
@@ -156,16 +157,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 import AdBanner from '../mall/AdBanner.vue';
 import ProductList from '../mall/ProductList.vue';
-import { productAPI } from '@/api/product';
+import { productAPI, mallAdAPI } from '@/api/product';
 
 const router = useRouter();
+const route = useRoute();
 
 // 用户信息
 const currentUser = ref(null);
@@ -192,8 +194,127 @@ const getUserInfo = () => {
   }
 };
 
-// 搜索相关
+// 广告数据
+const mallAds = ref([]);
+
+// 搜索查询（用于 UnifiedSearch 组件）
 const searchQuery = ref('');
+
+// 获取广告列表
+const fetchMallAds = async () => {
+  try {
+    const response = await mallAdAPI.getMallAds();
+    console.log('📢 广告响应:', response);
+    
+    // 后端直接返回数组，或者包含 records 属性的对象
+    let adList = [];
+    if (Array.isArray(response)) {
+      adList = response;
+    } else if (response && response.records) {
+      adList = response.records;
+    } else if (response && response.data) {
+      // 如果嵌套在 data 中
+      adList = Array.isArray(response.data) ? response.data : response.data.records || [];
+    }
+    
+    if (adList && adList.length > 0) {
+      // 转换广告数据格式以适配 AdBanner 组件
+      mallAds.value = adList.map(ad => {
+        // 优先使用生成的链接，如果没有 adType 则使用数据库中的 linkUrl
+        const link = ad.adType ? generateAdLink(ad) : (ad.linkUrl || '/mall');
+        console.log(' 广告链接生成:', {
+          id: ad.id,
+          title: ad.title,
+          adType: ad.adType,
+          relatedId: ad.relatedId,
+          linkUrl: ad.linkUrl,
+          generatedLink: link
+        });
+        return {
+          id: ad.id,
+          title: ad.title,
+          description: ad.content || '',
+          image: ad.imageUrl || 'https://placehold.co/800x300/CCCCCC/FFFFFF?text=广告',
+          actionText: '查看详情',
+          link: link,
+          adType: ad.adType || 'product',
+          relatedId: ad.relatedId,
+          filterTags: ad.filterTags ? JSON.parse(ad.filterTags) : null
+        };
+      });
+      console.log('✅ 加载广告数据:', mallAds.value.length, '个');
+    } else {
+      console.log('⚠️ 广告数据为空，使用默认广告');
+    }
+  } catch (error) {
+    console.error('❌ 获取广告数据失败:', error);
+    // 失败时使用默认广告（AdBanner 组件会自动处理）
+  }
+};
+
+// 处理 URL 中的 tags 参数
+const handleUrlTags = () => {
+  const tagsParam = route.query.tags || route.query.tag;
+  
+  if (tagsParam) {
+    const tagArray = tagsParam.split(',');
+    
+    // 清空其他筛选条件
+    filters.categoryId = null;
+    filters.level1Tag = '';
+    filters.sort = 'newest';
+    
+    // 标签代码映射（英文 -> 中文关键词）
+    const tagMapping = {
+      'secondhand': '二手',
+      'service': '服务',
+      'parttime': '兼职',
+      'food': '美食',
+      'digital': '数码',
+      'books': '教材',
+      'daily': '生活',
+      'electronics': '电子',
+      'sports': '体育'
+    };
+    
+    // 将标签代码转换为中文关键词，用空格连接
+    const chineseKeywords = tagArray.map(tag => {
+      return tagMapping[tag.toLowerCase()] || tag;
+    }).join(' ');
+    
+    filters.keyword = chineseKeywords;
+    
+    // 刷新商品列表
+    fetchProducts();
+    
+    ElMessage.success(`已筛选标签：${tagsParam}`);
+  }
+};
+
+// 根据广告类型生成跳转链接
+const generateAdLink = (ad) => {
+  if (!ad.adType || ad.adType === 'product') {
+    return `/product/${ad.relatedId}`;
+  } else if (ad.adType === 'merchant') {
+    // 商家广告跳转到用户主页
+    return `/user/profile/${ad.relatedId}`;
+  } else if (ad.adType === 'activity' && ad.filterTags) {
+    const tags = JSON.parse(ad.filterTags);
+    const tagParam = tags.tags ? tags.tags.join(',') : '';
+    return `/mall?tags=${tagParam}`;
+  }
+  return '/mall';
+};
+
+// 处理广告点击
+const handleAdClick = (ad) => {
+  // 增加点击次数
+  if (ad.id) {
+    mallAdAPI.incrementClickCount(ad.id).catch(err => {
+      console.error('增加点击次数失败:', err);
+    });
+  }
+};
 
 // 商品标签（用于搜索筛选）
 const productTags = computed(() => {
@@ -212,7 +333,6 @@ const productTags = computed(() => {
 
 // 处理搜索
 const handleSearch = (searchData) => {
-  console.log('执行搜索:', searchData);
   // 统一搜索组件会自动跳转到搜索结果页
 };
 
@@ -266,31 +386,22 @@ const fetchProducts = async () => {
       ...filters
     };
     
-    console.log('🔍 获取商品列表参数:', params); // 调试日志
-    
     const response = await productAPI.getProducts(params);
-    console.log('📦 商品列表响应:', response); // 调试日志
     
     if (response && response.records && response.records.length > 0) {
-      // 后端有数据，使用后端数据
       allProducts.value = response.records.map(item => ({
         ...item,
-        isHot: item.viewCount > 100, // 浏览量超过 100 标记为热门
+        isHot: item.viewCount > 100,
         isFavorite: false
       }));
       displayProducts.value = allProducts.value;
       currentPage.value = 1;
       hasMore.value = response.records.length === pageSize;
-      console.log('✅ 使用后端数据:', response.records.length, '个');
     } else {
-      // 后端返回空数据，使用模拟数据
-      console.log('⚠️ 后端数据为空，加载预设测试数据');
       loadMockProducts();
     }
   } catch (error) {
-    console.error('❌ 获取商品列表失败:', error);
     ElMessage.error('获取商品列表失败，已切换至测试模式');
-    // 请求失败，使用模拟数据
     loadMockProducts();
   } finally {
     productsLoading.value = false;
@@ -615,11 +726,6 @@ const goToProduct = (product) => {
   router.push(targetPath);
 };
 
-// 处理广告点击
-const handleAdClick = (ad) => {
-  console.log('广告点击:', ad);
-};
-
 // 处理收藏变化
 const handleFavoriteChange = (data) => {
   console.log('收藏变化:', data);
@@ -660,16 +766,22 @@ const goToPage = (page) => {
 onMounted(() => {
   updateDeviceDetection();
   getUserInfo();
-  console.log('🏪 交易中心页面已加载');
-  console.log('💡 提示：如果后端无数据，将自动显示预设测试数据');
-  console.log('📦 测试数据包含：16 个商品，覆盖 5 个大类');
+  fetchMallAds();
   fetchProducts();
+  handleUrlTags();
   window.addEventListener('resize', updateDeviceDetection);
 });
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateDeviceDetection);
 });
+
+// 监听路由参数变化（处理活动广告跳转后的筛选）
+watch(() => route.query.tags, (newTags, oldTags) => {
+  if (newTags && newTags !== oldTags) {
+    handleUrlTags();
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>

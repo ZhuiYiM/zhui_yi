@@ -1,12 +1,16 @@
 package com.example.demo.controller.admin;
 
 import com.example.demo.common.ApiResult;
-import com.example.demo.entity.TagLevel2;
+import com.example.demo.entity.admin.OperationLog;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.TagService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -19,6 +23,32 @@ import java.util.Map;
 public class AdminTagController {
 
     private final TagService tagService;
+
+    @Autowired
+    private OperationLogService operationLogService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    /**
+     * 记录操作日志
+     */
+    private void logOperation(String operation, String module, Long targetId, String detail) {
+        try {
+            OperationLog log = new OperationLog();
+            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
+            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setOperation(operation);
+            log.setModule(module);
+            log.setTargetId(targetId);
+            log.setDetail(detail);
+            log.setIpAddress(request.getRemoteAddr());
+            log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
+        } catch (Exception e) {
+            log.error("记录操作日志失败：{}", e.getMessage());
+        }
+    }
 
     /**
      * 分页查询二级标签列表
@@ -48,7 +78,15 @@ public class AdminTagController {
         Integer sortOrder = (Integer) params.get("sortOrder");
         
         log.info("管理员创建二级标签，code={}, name={}", code, name);
-        return tagService.createLevel2Tag(code, name, icon, color, sortOrder);
+        ApiResult result = tagService.createLevel2Tag(code, name, icon, color, sortOrder);
+        
+        // 记录操作日志
+        if (result.getCode() == 200 && result.getData() instanceof Map) {
+            Long id = ((Map<String, Object>) result.getData()).get("id") != null ? 
+                      Long.valueOf(((Map<String, Object>) result.getData()).get("id").toString()) : null;
+            logOperation("create", "tag-level2", id, "创建二级标签：" + name);
+        }
+        return result;
     }
 
     /**
@@ -67,7 +105,13 @@ public class AdminTagController {
         
         log.info("管理员更新二级标签，id={}, name={}, icon={}, color={}, sortOrder={}, isActive={}", 
                 id, name, icon, color, sortOrder, isActive);
-        return tagService.updateLevel2Tag(id, name, icon, color, sortOrder, isActive);
+        ApiResult result = tagService.updateLevel2Tag(id, name, icon, color, sortOrder, isActive);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level2", Long.valueOf(id), "更新二级标签：" + name);
+        }
+        return result;
     }
 
     /**
@@ -76,7 +120,13 @@ public class AdminTagController {
     @DeleteMapping("/{id}")
     public ApiResult deleteLevel2Tag(@PathVariable Integer id) {
         log.info("管理员删除二级标签，id={}", id);
-        return tagService.deleteLevel2Tag(id);
+        ApiResult result = tagService.deleteLevel2Tag(id);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("delete", "tag-level2", Long.valueOf(id), "删除二级标签，ID: " + id);
+        }
+        return result;
     }
 
     /**
@@ -97,7 +147,13 @@ public class AdminTagController {
             @RequestBody Map<String, Object> params) {
         Boolean isActive = (Boolean) params.get("isActive");
         log.info("管理员更新二级标签状态，id={}, isActive={}", id, isActive);
-        return tagService.updateLevel2TagStatus(id, isActive);
+        ApiResult result = tagService.updateLevel2TagStatus(id, isActive);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level2", Long.valueOf(id), "更新二级标签状态：" + (isActive ? "启用" : "禁用"));
+        }
+        return result;
     }
     
     // ==================== 三级标签管理 ====================
@@ -135,7 +191,14 @@ public class AdminTagController {
         Integer sortOrder = (Integer) params.get("sortOrder");
         
         log.info("管理员创建三级标签，code={}, name={}, locationType={}", code, name, locationType);
-        return tagService.createLevel3Tag(code, name, locationType, icon, color, address, latitude, longitude, sortOrder);
+        ApiResult result = tagService.createLevel3Tag(code, name, locationType, icon, color, address, latitude, longitude, sortOrder);
+        
+        // 记录操作日志
+        if (result.getCode() == 200 && result.getData() instanceof Map) {
+            Integer id = (Integer)((Map<String, Object>) result.getData()).get("id");
+            logOperation("create", "tag-level3", Long.valueOf(id), "创建三级标签：" + name);
+        }
+        return result;
     }
     
     /**
@@ -158,7 +221,13 @@ public class AdminTagController {
         
         log.info("管理员更新三级标签，id={}, name={}, locationType={}, isActive={}", 
                 id, name, locationType, isActive);
-        return tagService.updateLevel3Tag(id, name, locationType, icon, color, address, latitude, longitude, sortOrder, isActive);
+        ApiResult result = tagService.updateLevel3Tag(id, name, locationType, icon, color, address, latitude, longitude, sortOrder, isActive);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level3", Long.valueOf(id), "更新三级标签：" + name);
+        }
+        return result;
     }
     
     /**
@@ -167,7 +236,13 @@ public class AdminTagController {
     @DeleteMapping("/level-3/{id}")
     public ApiResult deleteLevel3Tag(@PathVariable Integer id) {
         log.info("管理员删除三级标签，id={}", id);
-        return tagService.deleteLevel3Tag(id);
+        ApiResult result = tagService.deleteLevel3Tag(id);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("delete", "tag-level3", Long.valueOf(id), "删除三级标签，ID: " + id);
+        }
+        return result;
     }
     
     /**
@@ -188,7 +263,13 @@ public class AdminTagController {
             @RequestBody Map<String, Object> params) {
         Boolean isActive = (Boolean) params.get("isActive");
         log.info("管理员更新三级标签状态，id={}, isActive={}", id, isActive);
-        return tagService.updateLevel3TagStatus(id, isActive);
+        ApiResult result = tagService.updateLevel3TagStatus(id, isActive);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level3", Long.valueOf(id), "更新三级标签状态：" + (isActive ? "启用" : "禁用"));
+        }
+        return result;
     }
     
     // ==================== 四级标签管理 ====================
@@ -224,7 +305,13 @@ public class AdminTagController {
         
         log.info("管理员更新四级标签，id={}, name={}, icon={}, color={}, sortOrder={}, status={}", 
                 id, name, icon, color, sortOrder, status);
-        return tagService.updateLevel4Tag(id, name, icon, color, sortOrder, status);
+        ApiResult result = tagService.updateLevel4Tag(id, name, icon, color, sortOrder, status);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level4", id, "更新四级标签：" + name);
+        }
+        return result;
     }
     
     /**
@@ -236,7 +323,13 @@ public class AdminTagController {
             @RequestBody Map<String, Object> params) {
         String status = (String) params.get("status");
         log.info("管理员更新四级标签状态，id={}, status={}", id, status);
-        return tagService.updateLevel4TagStatus(id, status);
+        ApiResult result = tagService.updateLevel4TagStatus(id, status);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level4", id, "更新四级标签状态：" + status);
+        }
+        return result;
     }
     
     /**
@@ -245,7 +338,13 @@ public class AdminTagController {
     @DeleteMapping("/level-4/{id}")
     public ApiResult deleteLevel4Tag(@PathVariable Long id) {
         log.info("管理员删除四级标签，id={}", id);
-        return tagService.deleteLevel4Tag(id);
+        ApiResult result = tagService.deleteLevel4Tag(id);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("delete", "tag-level4", id, "删除四级标签，ID: " + id);
+        }
+        return result;
     }
     
     /**
@@ -298,7 +397,15 @@ public class AdminTagController {
         Integer sortOrder = (Integer) params.get("sortOrder");
         
         log.info("管理员创建五级标签，code={}, name={}, category={}", code, name, category);
-        return tagService.createLevel5Tag(code, name, category, icon, color, sortOrder);
+        ApiResult result = tagService.createLevel5Tag(code, name, category, icon, color, sortOrder);
+        
+        // 记录操作日志
+        if (result.getCode() == 200 && result.getData() instanceof Map) {
+            Long id = ((Map<String, Object>) result.getData()).get("id") != null ? 
+                      Long.valueOf(((Map<String, Object>) result.getData()).get("id").toString()) : null;
+            logOperation("create", "tag-level5", id, "创建五级标签：" + name);
+        }
+        return result;
     }
     
     /**
@@ -327,7 +434,13 @@ public class AdminTagController {
         log.info("IsActive: {}", isActive);
         log.info("Status: {}", status);
         log.info("===================================");
-        return tagService.updateLevel5Tag(id, name, category, icon, color, sortOrder, isActive, status);
+        ApiResult result = tagService.updateLevel5Tag(id, name, category, icon, color, sortOrder, isActive, status);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level5", id, "更新五级标签：" + name);
+        }
+        return result;
     }
     
     /**
@@ -336,7 +449,13 @@ public class AdminTagController {
     @DeleteMapping("/level-5/{id}")
     public ApiResult deleteLevel5Tag(@PathVariable Long id) {
         log.info("管理员删除五级标签，id={}", id);
-        return tagService.deleteLevel5Tag(id);
+        ApiResult result = tagService.deleteLevel5Tag(id);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("delete", "tag-level5", id, "删除五级标签，ID: " + id);
+        }
+        return result;
     }
     
     /**
@@ -358,6 +477,12 @@ public class AdminTagController {
         Boolean isActive = (Boolean) params.get("isActive");
         String status = (String) params.get("status");
         log.info("管理员更新五级标签状态，id={}, isActive={}, status={}", id, isActive, status);
-        return tagService.updateLevel5TagStatus(id, isActive, status);
+        ApiResult result = tagService.updateLevel5TagStatus(id, isActive, status);
+        
+        // 记录操作日志
+        if (result.getCode() == 200) {
+            logOperation("update", "tag-level5", id, "更新五级标签状态：" + (isActive ? "启用" : "禁用"));
+        }
+        return result;
     }
 }

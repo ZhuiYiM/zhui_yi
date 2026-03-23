@@ -4,12 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.demo.common.Result;
 import com.example.demo.entity.Report;
+import com.example.demo.entity.admin.OperationLog;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.ReportService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin/reports")
 @CrossOrigin
@@ -17,6 +23,32 @@ public class AdminReportsController {
 
     @Autowired
     private ReportService reportService;
+
+    @Autowired
+    private OperationLogService operationLogService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    /**
+     * 记录操作日志
+     */
+    private void logOperation(String operation, String module, Long targetId, String detail) {
+        try {
+            OperationLog log = new OperationLog();
+            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
+            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setOperation(operation);
+            log.setModule(module);
+            log.setTargetId(targetId);
+            log.setDetail(detail);
+            log.setIpAddress(request.getRemoteAddr());
+            log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
+        } catch (Exception e) {
+            log.error("记录操作日志失败：{}", e.getMessage());
+        }
+    }
 
     /**
      * 分页查询举报列表
@@ -82,6 +114,15 @@ public class AdminReportsController {
             
             boolean success = reportService.updateById(report);
             if (success) {
+                // 记录操作日志
+                String statusDesc = switch (status) {
+                    case 0 -> "待处理";
+                    case 1 -> "处理中";
+                    case 2 -> "已处理";
+                    case 3 -> "已忽略";
+                    default -> "未知状态";
+                };
+                logOperation("update", "report", Long.valueOf(id), "处理举报：" + statusDesc + (processNote != null ? ", 备注：" + processNote : ""));
                 return Result.success("处理成功", report);
             } else {
                 return Result.error("处理失败");
@@ -100,6 +141,8 @@ public class AdminReportsController {
         try {
             boolean success = reportService.removeById(id);
             if (success) {
+                // 记录操作日志
+                logOperation("delete", "report", Long.valueOf(id), "删除举报，ID: " + id);
                 return Result.success("删除成功");
             } else {
                 return Result.error("删除失败");

@@ -6,8 +6,10 @@ import com.example.demo.common.ApiResult;
 import com.example.demo.dto.AdvertisementDTO;
 import com.example.demo.dto.AdvertisementQueryDTO;
 import com.example.demo.entity.Advertisement;
+import com.example.demo.entity.admin.OperationLog;
 import com.example.demo.mapper.AdvertisementMapper;
 import com.example.demo.service.AdvertisementService;
+import com.example.demo.service.admin.OperationLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +31,28 @@ import java.util.List;
 public class AdvertisementServiceImpl implements AdvertisementService {
 
     private final AdvertisementMapper advertisementMapper;
+    private final OperationLogService operationLogService;
+    private final HttpServletRequest request;
+
+    /**
+     * 记录操作日志
+     */
+    private void logOperation(String operation, String module, Long targetId, String detail) {
+        try {
+            OperationLog log = new OperationLog();
+            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
+            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setOperation(operation);
+            log.setModule(module);
+            log.setTargetId(targetId);
+            log.setDetail(detail);
+            log.setIpAddress(request.getRemoteAddr());
+            log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
+        } catch (Exception e) {
+            log.error("记录操作日志失败：{}", e.getMessage());
+        }
+    }
 
     @Override
     public ApiResult getAdvertisements(AdvertisementQueryDTO queryDTO) {
@@ -106,6 +131,9 @@ public class AdvertisementServiceImpl implements AdvertisementService {
             // 插入数据库
             advertisementMapper.insert(advertisement);
             
+            // 记录操作日志
+            logOperation("create", "advertisement", advertisement.getId(), "创建广告：" + advertisementDTO.getTitle());
+            
             log.info("创建广告成功，title={}", advertisementDTO.getTitle());
             return ApiResult.success(advertisement);
         } catch (Exception e) {
@@ -132,6 +160,9 @@ public class AdvertisementServiceImpl implements AdvertisementService {
             // 更新数据库
             advertisementMapper.updateById(existing);
             
+            // 记录操作日志
+            logOperation("update", "advertisement", id, "更新广告：" + advertisementDTO.getTitle());
+            
             log.info("更新广告成功，id={}", id);
             return ApiResult.success(existing);
         } catch (Exception e) {
@@ -152,6 +183,9 @@ public class AdvertisementServiceImpl implements AdvertisementService {
             
             // 删除广告
             advertisementMapper.deleteById(id);
+            
+            // 记录操作日志
+            logOperation("delete", "advertisement", id, "删除广告，ID: " + id);
             
             log.info("删除广告成功，id={}", id);
             return ApiResult.success();
@@ -179,6 +213,9 @@ public class AdvertisementServiceImpl implements AdvertisementService {
                 advertisementMapper.deleteById(id);
             }
             
+            // 记录操作日志
+            logOperation("delete", "advertisement-batch", null, "批量删除广告，IDs: " + ids);
+            
             log.info("批量删除广告成功，ids={}", ids);
             return ApiResult.success();
         } catch (Exception e) {
@@ -203,6 +240,9 @@ public class AdvertisementServiceImpl implements AdvertisementService {
             
             // 更新数据库
             advertisementMapper.updateById(existing);
+            
+            // 记录操作日志
+            logOperation("update", "advertisement", id, "更新广告状态：" + (isActive == 1 ? "启用" : "禁用"));
             
             log.info("更新广告状态成功，id={}", id);
             return ApiResult.success(existing);

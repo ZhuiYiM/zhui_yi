@@ -49,6 +49,7 @@
                             v-if="row.imageUrl"
                             :src="row.imageUrl" 
                             :preview-src-list="[row.imageUrl]"
+                            preview-teleported
                             style="width: 100px; height: 60px; object-fit: cover;"
                             fit="cover" />
                         <span v-else>无图片</span>
@@ -60,6 +61,14 @@
                         <el-tag v-else-if="row.position === 'topicwall'" type="success">话题墙</el-tag>
                         <el-tag v-else-if="row.position === 'mall'" type="warning">交易中心</el-tag>
                         <el-tag v-else-if="row.position === 'map'" type="info">地图</el-tag>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="adType" label="广告类型" width="120">
+                    <template #default="{ row }">
+                        <el-tag v-if="row.adType === 'activity'" type="danger">活动标签</el-tag>
+                        <el-tag v-else-if="row.adType === 'merchant'" type="primary">商家页面</el-tag>
+                        <el-tag v-else-if="row.adType === 'product'" type="success">商品广告</el-tag>
+                        <el-tag v-else>未知类型</el-tag>
                     </template>
                 </el-table-column>
                 <el-table-column prop="sortOrder" label="排序" width="80" />
@@ -118,11 +127,40 @@
                     <el-image 
                         v-if="formData.imageUrl"
                         :src="formData.imageUrl"
+                        :preview-src-list="[formData.imageUrl]"
+                        preview-teleported
                         style="width: 200px; height: 100px; margin-top: 10px; object-fit: cover;"
                         fit="cover" />
                 </el-form-item>
                 <el-form-item label="跳转链接" prop="linkUrl">
                     <el-input v-model="formData.linkUrl" placeholder="请输入跳转链接" />
+                </el-form-item>
+                <el-form-item label="广告类型" prop="adType">
+                    <el-select v-model="formData.adType" placeholder="请选择广告类型" style="width: 100%;" @change="handleAdTypeChange">
+                        <el-option label="商品广告" value="product" />
+                        <el-option label="商家页面" value="merchant" />
+                        <el-option label="活动标签筛选" value="activity" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="关联 ID" prop="relatedId" v-if="formData.adType && formData.adType !== 'activity'">
+                    <el-input-number 
+                        v-model="formData.relatedId" 
+                        :min="1" 
+                        :placeholder="formData.adType === 'merchant' ? '请输入商家 ID' : '请输入商品 ID'" 
+                        style="width: 100%;" 
+                    />
+                </el-form-item>
+                <el-form-item label="筛选标签" prop="filterTags" v-if="formData.adType === 'activity'">
+                    <!-- TODO: 改为多标签按键选择组件，替代当前的 JSON 文本输入方式 -->
+                    <!-- TODO: 实现标签选择器，支持从标签库中选择多个标签 -->
+                    <!-- TODO: 参考标签管理功能的标签选择器实现 -->
+                    <el-input 
+                        v-model="formData.filterTags" 
+                        type="textarea" 
+                        :rows="3"
+                        placeholder='请输入 JSON 格式的筛选标签，如：{"tags": ["secondhand", "books"]}' 
+                        maxlength="500" 
+                    />
                 </el-form-item>
                 <el-form-item label="广告内容" prop="content">
                     <el-input 
@@ -213,7 +251,10 @@ const formData = reactive({
     sortOrder: 0,
     isActive: 1,
     startTime: null,
-    endTime: null
+    endTime: null,
+    adType: 'product', // 默认商品广告
+    relatedId: null,
+    filterTags: ''
 })
 
 // 表单验证规则
@@ -225,6 +266,8 @@ const formRules = {
     position: [
         { required: true, message: '请选择广告位置', trigger: 'change' }
     ]
+    // TODO: filterTags 字段验证规则：当 adType 为 'activity' 时，需要验证 JSON 格式
+    // TODO: 改为多标签选择后，验证选中的标签数组不为空
 }
 
 // 加载数据
@@ -262,6 +305,18 @@ const handleReset = () => {
     loadData()
 }
 
+// 处理广告类型变化
+const handleAdTypeChange = (type) => {
+    // 清空关联 ID 和筛选标签
+    if (type === 'activity') {
+        formData.relatedId = null
+    } else {
+        formData.filterTags = ''
+    }
+    // TODO: 当 adType 为 'activity' 时，应该打开标签选择器对话框
+    // TODO: 标签选择器应支持搜索、多选、已选标签展示等功能
+}
+
 // 新增广告
 const handleCreate = () => {
     isEdit.value = false
@@ -282,7 +337,10 @@ const handleEdit = (row) => {
         sortOrder: row.sortOrder,
         isActive: row.isActive,
         startTime: row.startTime,
-        endTime: row.endTime
+        endTime: row.endTime,
+        adType: row.adType || 'product',
+        relatedId: row.relatedId,
+        filterTags: row.filterTags
     })
     dialogVisible.value = true
 }
@@ -299,40 +357,39 @@ const handleToggleStatus = async (row) => {
             type: 'warning'
         })
         
-        const res = await advertisementAPI.updateAdvertisementStatus(row.id, newStatus)
-        if (res.code === 200 || res.success) {
-            ElMessage.success(`${action}成功`)
-            loadData()
-        } else {
-            ElMessage.error(res.message || `${action}失败`)
-        }
+        await advertisementAPI.updateAdvertisementStatus(row.id, newStatus)
+        // 状态切换成功，不抛出异常就是成功
+        ElMessage.success(`${action}成功`)
+        loadData()
     } catch (error) {
-        if (error !== 'cancel') {
+        // 业务错误已经全局显示了，不需要重复提示
+        if (error.message !== 'cancel') {
             console.error('操作失败:', error)
         }
     }
 }
 
 // 删除广告
-const handleDelete = (row) => {
-    ElMessageBox.confirm('确定要删除该广告吗？', '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-    }).then(async () => {
-        try {
-            const res = await advertisementAPI.deleteAdvertisement(row.id)
-            if (res.code === 200 || res.success) {
-                ElMessage.success('删除成功')
-                loadData()
-            } else {
-                ElMessage.error(res.message || '删除失败')
-            }
-        } catch (error) {
+const handleDelete = async (row) => {
+    try {
+        await ElMessageBox.confirm('确定要删除该广告吗？', '警告', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+        })
+        
+        await advertisementAPI.deleteAdvertisement(row.id)
+        // 删除成功，不抛出异常就是成功
+        ElMessage.success('删除成功')
+        loadData()
+    } catch (error) {
+        // 如果错误消息是"广告不存在"，说明是业务错误，已经全局显示了
+        // 如果是取消操作，不显示错误
+        if (error.message !== '广告不存在' && error.message !== 'cancel') {
             console.error('删除失败:', error)
             ElMessage.error('删除失败')
         }
-    }).catch(() => {})
+    }
 }
 
 // 提交表单
@@ -351,14 +408,16 @@ const handleSubmit = async () => {
                 res = await advertisementAPI.createAdvertisement(formData)
             }
             
-            if (res.code === 200 || res.success) {
+            // 响应拦截器已经返回了 data 部分，直接判断是否为空
+            if (res !== undefined && res !== null) {
                 ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
                 dialogVisible.value = false
                 loadData()
             } else {
-                ElMessage.error(res.message || (isEdit.value ? '更新失败' : '创建失败'))
+                ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
             }
         } catch (error) {
+            // 业务错误已经全局显示了，不需要重复提示
             console.error('提交失败:', error)
             ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
         } finally {
@@ -385,6 +444,10 @@ const resetForm = () => {
     formData.isActive = 1
     formData.startTime = null
     formData.endTime = null
+    formData.adType = 'product'
+    formData.relatedId = null
+    formData.filterTags = ''
+    // TODO: 重置表单时，如果需要清空标签选择器的选中状态
 }
 
 onMounted(() => {

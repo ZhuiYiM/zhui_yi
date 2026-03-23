@@ -4,12 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.demo.common.Result;
 import com.example.demo.entity.Product;
+import com.example.demo.entity.admin.OperationLog;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.ProductService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin/products")
 @CrossOrigin
@@ -17,6 +23,32 @@ public class AdminProductsController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private OperationLogService operationLogService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    /**
+     * 记录操作日志
+     */
+    private void logOperation(String operation, String module, Long targetId, String detail) {
+        try {
+            OperationLog log = new OperationLog();
+            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
+            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setOperation(operation);
+            log.setModule(module);
+            log.setTargetId(targetId);
+            log.setDetail(detail);
+            log.setIpAddress(request.getRemoteAddr());
+            log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
+        } catch (Exception e) {
+            log.error("记录操作日志失败：{}", e.getMessage());
+        }
+    }
 
     /**
      * 分页查询商品列表
@@ -71,6 +103,8 @@ public class AdminProductsController {
             product.setStatus(0);
             boolean success = productService.updateById(product);
             if (success) {
+                // 记录操作日志
+                logOperation("update", "product", Long.valueOf(id), "下架商品，ID: " + id);
                 return Result.success("下架成功", product);
             } else {
                 return Result.error("下架失败");
@@ -100,6 +134,8 @@ public class AdminProductsController {
             product.setStatus(status);
             boolean success = productService.updateById(product);
             if (success) {
+                // 记录操作日志
+                logOperation("update", "product", Long.valueOf(id), "更新商品状态为：" + status);
                 return Result.success("状态更新成功", product);
             } else {
                 return Result.error("状态更新失败");
@@ -118,6 +154,8 @@ public class AdminProductsController {
         try {
             boolean success = productService.removeById(id);
             if (success) {
+                // 记录操作日志
+                logOperation("delete", "product", Long.valueOf(id), "删除商品，ID: " + id);
                 return Result.success("删除成功");
             } else {
                 return Result.error("删除失败");

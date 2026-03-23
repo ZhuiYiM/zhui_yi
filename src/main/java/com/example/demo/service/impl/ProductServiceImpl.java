@@ -128,17 +128,25 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
         int size = params.get("size") != null ? Integer.parseInt(params.get("size").toString()) : 10;
         String keyword = params.get("keyword") != null ? params.get("keyword").toString() : "";
         Integer categoryId = params.get("categoryId") != null ? Integer.parseInt(params.get("categoryId").toString()) : null;
-        Integer status = params.get("status") != null ? Integer.parseInt(params.get("status").toString()) : 1; // 默认只显示上架商品
-        String level1Tag = params.get("level1Tag") != null ? params.get("level1Tag").toString() : null; // 身份标签筛选
-        Integer sellerId = params.get("sellerId") != null ? Integer.parseInt(params.get("sellerId").toString()) : null; // 卖家 ID 筛选
+        Integer status = params.get("status") != null ? Integer.parseInt(params.get("status").toString()) : 1;
+        String level1Tag = params.get("level1Tag") != null ? params.get("level1Tag").toString() : null;
+        Integer sellerId = params.get("sellerId") != null ? Integer.parseInt(params.get("sellerId").toString()) : null;
         String sort = params.get("sort") != null ? params.get("sort").toString() : "newest";
+        String tags = params.get("tags") != null ? params.get("tags").toString() : null;
 
         Page<Product> productPage = new Page<>(page, size);
         QueryWrapper<Product> wrapper = new QueryWrapper<>();
 
         // 关键词搜索
         if (keyword != null && !keyword.isEmpty()) {
-            wrapper.and(w -> w.like("title", keyword).or().like("description", keyword));
+            String[] keywords = keyword.split("\\s+");
+            wrapper.and(w -> {
+                for (String kw : keywords) {
+                    if (kw != null && !kw.trim().isEmpty()) {
+                        w.or().like("title", kw).or().like("description", kw);
+                    }
+                }
+            });
         }
 
         // 分类筛选
@@ -151,9 +159,21 @@ public class ProductServiceImpl extends ServiceImpl<ProductMapper, Product> impl
             wrapper.eq("seller_id", sellerId);
         }
 
-        // 状态筛选（不筛选已删除的）
+        // 状态筛选
         wrapper.eq("status", status);
         wrapper.isNull("deleted_at");
+        
+        // 标签筛选
+        if (tags != null && !tags.isEmpty()) {
+            String[] tagArray = tags.split(",");
+            wrapper.and(w -> {
+                for (String tagCode : tagArray) {
+                    if (tagCode != null && !tagCode.trim().isEmpty()) {
+                        w.or().like("tags", tagCode);
+                    }
+                }
+            });
+        }
 
         // 排序
         switch (sort) {

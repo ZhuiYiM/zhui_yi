@@ -211,31 +211,21 @@ const loadUserList = async () => {
       ...searchForm
     };
     const res = await adminAPI.getUserList(params);
-    console.log('用户列表响应:', res);
+    console.log(' 用户列表响应:', res);
     
     // 响应拦截器已经返回了 data，所以直接使用 res
-    const data = res;
-    console.log('解析后的数据:', data);
-    console.log('records:', data?.records);
-    console.log('total:', data?.total);
+    // 处理不同的数据结构
+    const records = res?.records || res?.list || res || [];
+    userList.value = Array.isArray(records) ? records : [];
+    pagination.total = res?.total ?? userList.value.length ?? 0;
     
-    if (res.code === 200 || data) {
-      // 处理不同的数据结构
-      const records = data?.records || data?.list || data || [];
-      console.log('最终使用的数据:', records);
-      console.log('是否为数组:', Array.isArray(records));
-      userList.value = Array.isArray(records) ? records : [];
-      pagination.total = data?.total ?? userList.value.length ?? 0;
-      console.log('用户列表数据:', userList.value);
-      console.log('分页总数:', pagination.total);
-      if (userList.value.length === 0) {
-        console.warn('数据为空！完整响应:', res);
-      }
-    } else {
-      ElMessage.error(res.message || '加载用户列表失败');
+    console.log('✅ 用户列表数据:', userList.value.length, '条');
+    console.log('📊 分页总数:', pagination.total);
+    if (userList.value.length === 0) {
+      console.warn('⚠️ 数据为空！完整响应:', res);
     }
   } catch (error) {
-    console.error('加载用户列表失败:', error);
+    console.error('❌ 加载用户列表失败:', error);
     ElMessage.error('加载失败');
   } finally {
     loading.value = false;
@@ -273,13 +263,10 @@ const handleToggleStatus = async (row) => {
       type: 'warning'
     });
     
-    const res = await adminAPI.updateUserStatus(row.id, row.status === 1 ? 0 : 1);
-    if (res.code === 200) {
-      ElMessage.success(`${action}成功`);
-      row.status = row.status === 1 ? 0 : 1;
-    } else {
-      ElMessage.error(res.message || `${action}失败`);
-    }
+    await adminAPI.updateUserStatus(row.id, row.status === 1 ? 0 : 1);
+    // 响应拦截器已经处理了错误情况，能到达这里说明成功
+    ElMessage.success(`${action}成功`);
+    row.status = row.status === 1 ? 0 : 1;
   } catch (error) {
     if (error !== 'cancel') {
       console.error(`${action}失败:`, error);
@@ -296,13 +283,10 @@ const handleDelete = async (row) => {
       type: 'warning'
     });
     
-    const res = await adminAPI.deleteUser(row.id);
-    if (res.code === 200) {
-      ElMessage.success('删除成功');
-      loadUserList();
-    } else {
-      ElMessage.error(res.message || '删除失败');
-    }
+    await adminAPI.deleteUser(row.id);
+    // 响应拦截器已经处理了错误情况，能到达这里说明成功
+    ElMessage.success('删除成功');
+    loadUserList();
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除失败:', error);

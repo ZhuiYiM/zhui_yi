@@ -4,12 +4,18 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.demo.common.Result;
 import com.example.demo.entity.User;
+import com.example.demo.entity.admin.OperationLog;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/admin/users")
 @CrossOrigin
@@ -17,6 +23,32 @@ public class AdminUsersController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private OperationLogService operationLogService;
+
+    @Autowired
+    private HttpServletRequest request;
+
+    /**
+     * 记录操作日志
+     */
+    private void logOperation(String operation, String module, Long targetId, String detail) {
+        try {
+            OperationLog log = new OperationLog();
+            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
+            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setOperation(operation);
+            log.setModule(module);
+            log.setTargetId(targetId);
+            log.setDetail(detail);
+            log.setIpAddress(request.getRemoteAddr());
+            log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
+        } catch (Exception e) {
+            log.error("记录操作日志失败：{}", e.getMessage());
+        }
+    }
 
     /**
      * 分页查询用户列表
@@ -107,6 +139,8 @@ public class AdminUsersController {
             user.setStatus(status);
             boolean success = userService.updateById(user);
             if (success) {
+                // 记录操作日志
+                logOperation("update", "user", Long.valueOf(id), "更新用户状态：" + (status == 1 ? "启用" : "禁用"));
                 return Result.success("更新成功", user);
             } else {
                 return Result.error("更新失败");
@@ -130,6 +164,8 @@ public class AdminUsersController {
             
             boolean success = userService.removeById(id);
             if (success) {
+                // 记录操作日志
+                logOperation("delete", "user", Long.valueOf(id), "删除用户，ID: " + id);
                 return Result.success("删除成功", null);
             } else {
                 return Result.error("删除失败");
@@ -162,6 +198,8 @@ public class AdminUsersController {
             
             boolean success = userService.updateById(user);
             if (success) {
+                // 记录操作日志
+                logOperation("audit", "verification", Long.valueOf(id), "审核用户身份证认证：" + (pass ? "通过" : "拒绝") + (reason != null ? ", 原因：" + reason : ""));
                 return Result.success("审核成功", user);
             } else {
                 return Result.error("审核失败");
@@ -194,6 +232,8 @@ public class AdminUsersController {
             
             boolean success = userService.updateById(user);
             if (success) {
+                // 记录操作日志
+                logOperation("audit", "verification", Long.valueOf(id), "审核用户实名认证：" + (pass ? "通过" : "拒绝") + (reason != null ? ", 原因：" + reason : ""));
                 return Result.success("审核成功", user);
             } else {
                 return Result.error("审核失败");

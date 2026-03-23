@@ -56,7 +56,7 @@
 
       <el-table :data="logList" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="admin_name" label="操作人" width="120" />
+        <el-table-column prop="adminName" label="操作人" width="120" />
         <el-table-column prop="operation" label="操作类型" width="120">
           <template #default="{ row }">
             <el-tag :type="getOperationTag(row.operation)" size="small">
@@ -65,7 +65,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="module" label="操作模块" width="150" />
-        <el-table-column prop="target_id" label="目标 ID" width="100" />
+        <el-table-column prop="targetId" label="目标 ID" width="100" />
         <el-table-column prop="detail" label="操作详情" min-width="300" show-overflow-tooltip />
         <el-table-column prop="ip_address" label="IP 地址" width="140" />
         <el-table-column prop="created_at" label="操作时间" width="180">
@@ -83,7 +83,7 @@
           :total="pagination.total"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSearch"
-          @current-change="handleSearch"
+          @current-change="handlePageChange"
         />
       </div>
     </el-card>
@@ -121,12 +121,13 @@ const loadLogList = async () => {
     });
     
     console.log('📝 操作日志响应:', response);
-    if (response.code === 200 || response.list !== undefined) {
+    // 响应拦截器已经返回了 data 部分，直接使用
+    if (response && response.list !== undefined) {
       logList.value = response.list || [];
       pagination.total = response.total || 0;
       console.log('✅ 操作日志加载成功:', logList.value.length, '条记录');
     } else {
-      ElMessage.error(response.message || '加载失败');
+      ElMessage.error('加载失败');
     }
   } catch (error) {
     console.error('❌ 加载操作日志失败:', error);
@@ -136,9 +137,15 @@ const loadLogList = async () => {
   }
 };
 
-// 搜索
+// 搜索（搜索条件改变时调用，重置到第一页）
 const handleSearch = () => {
-  pagination.page = 1;
+  pagination.page = 1; // 搜索条件改变时重置为第一页
+  loadLogList();
+};
+
+// 分页改变（仅改变页码，不重置搜索条件）
+const handlePageChange = (page) => {
+  pagination.page = page;
   loadLogList();
 };
 
@@ -147,7 +154,8 @@ const handleReset = () => {
   searchForm.module = '';
   searchForm.operation = '';
   searchForm.operatorId = null;
-  handleSearch();
+  pagination.page = 1; // 重置搜索条件时需要重置页码
+  loadLogList();
 };
 
 // 获取操作类型标签

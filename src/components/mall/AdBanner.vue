@@ -116,6 +116,7 @@ const stopAutoPlay = () => {
 
 const nextAd = () => {
   currentAdIndex.value = (currentAdIndex.value + 1) % ads.value.length;
+  incrementViewCount(); // 切换广告时记录新的展示次数
 };
 
 const prevAd = () => {
@@ -134,8 +135,22 @@ const handleAdClick = (ad) => {
   }
 };
 
+// 增加展示次数的函数（使用防抖）
+let viewCountTimer = null;
+const incrementViewCount = () => {
+  if (viewCountTimer) {
+    clearTimeout(viewCountTimer);
+  }
+  
+  viewCountTimer = setTimeout(() => {
+    // TODO: 调用后端接口增加展示次数
+    console.log('👁️ 广告展示次数 +1');
+  }, 3000); // 3 秒后才计为有效展示
+};
+
 onMounted(() => {
   startAutoPlay();
+  incrementViewCount(); // 首次加载时记录展示次数
 });
 
 onUnmounted(() => {

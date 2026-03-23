@@ -36,62 +36,6 @@ public class AdminUserController {
     public Result logout() {
         return adminUserService.logout();
     }
-
-    /**
-     * 获取管理员信息
-     */
-    @GetMapping("/info")
-    public Result getUserInfo(@RequestHeader("Authorization") String token) {
-        try {
-            // 从 Token 中提取 adminId
-            Integer adminId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
-            if (adminId == null) {
-                return Result.error("无效的Token");
-            }
-            return adminUserService.getUserInfo(adminId);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("获取信息失败：" + e.getMessage());
-        }
-    }
-
-    /**
-     * 更新管理员信息
-     */
-    @PutMapping("/profile")
-    public Result updateProfile(@RequestBody AdminUser adminUser,
-                                 @RequestHeader("Authorization") String token) {
-        try {
-            Integer adminId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
-            if (adminId == null) {
-                return Result.error("无效的Token");
-            }
-            return adminUserService.updateProfile(adminId, adminUser);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("更新失败：" + e.getMessage());
-        }
-    }
-
-    /**
-     * 修改密码
-     */
-    @PutMapping("/change-password")
-    public Result changePassword(@RequestBody Map<String, String> params,
-                                  @RequestHeader("Authorization") String token) {
-        try {
-            Integer adminId = jwtUtil.getUserIdFromToken(token.replace("Bearer ", ""));
-            if (adminId == null) {
-                return Result.error("无效的Token");
-            }
-            String oldPassword = params.get("oldPassword");
-            String newPassword = params.get("newPassword");
-            return adminUserService.changePassword(adminId, oldPassword, newPassword);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("修改失败：" + e.getMessage());
-        }
-    }
     
     /**
      * 检查普通用户是否是管理员（用于自动识别）

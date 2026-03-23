@@ -47,10 +47,10 @@
 
       <el-table :data="commentList" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="user_id" label="用户 ID" width="100" />
-        <el-table-column prop="topic_id" label="话题 ID" width="100" />
+        <el-table-column prop="userId" label="用户 ID" width="100" />
+        <el-table-column prop="topicId" label="话题 ID" width="100" />
         <el-table-column prop="content" label="评论内容" min-width="300" show-overflow-tooltip />
-        <el-table-column prop="like_count" label="点赞数" width="80" />
+        <el-table-column prop="likeCount" label="点赞数" width="80" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)" size="small">
@@ -58,9 +58,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="发布时间" width="180">
+        <el-table-column prop="createdAt" label="发布时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.created_at) }}
+            {{ formatDateTime(row.createdAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">

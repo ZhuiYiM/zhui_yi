@@ -24,4 +24,9 @@ public interface ReportService extends IService<Report> {
      * 处理举报（管理员）
      */
     ApiResult processReport(Long reportId, Integer status, String result, Long processorId);
+    
+    /**
+     * 统计待处理举报数量
+     */
+    Long countPendingReports();
 }

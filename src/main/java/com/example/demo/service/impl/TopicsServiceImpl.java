@@ -38,8 +38,8 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
     @Autowired
     private TopicCommentsMapper topicCommentsMapper;
     
-    @Autowired
-    private TagsMapper tagsMapper;
+    // @Autowired
+    // private TagsMapper tagsMapper;  // 已删除，不再使用
     
     @Autowired
     private TopicTagsMapper topicTagsMapper;
@@ -160,10 +160,10 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
                 return ApiResult.error(500, "话题发布失败");
             }
                 
-            // 处理标签
-            if (topicDTO.getTags() != null && !topicDTO.getTags().isEmpty()) {
-                handleTopicTags(topic.getId(), topicDTO.getTags());
-            }
+            // 处理标签 - 已废弃，使用四级标签系统
+            // if (topicDTO.getTags() != null && !topicDTO.getTags().isEmpty()) {
+            //     handleTopicTags(topic.getId(), topicDTO.getTags());
+            // }
                 
             return ApiResult.success("话题发布成功", topic);
         } catch (Exception e) {
@@ -571,42 +571,54 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         }
     }
 
+    // @Override
+    // public ApiResult getPopularTags() {
+    //     try {
+    //         QueryWrapper<Tags> wrapper = new QueryWrapper<>();
+    //         wrapper.orderByDesc("usage_count").last("LIMIT 10");
+    //         List<Tags> tags = tagsMapper.selectList(wrapper);
+    //         
+    //         List<String> tagNames = tags.stream()
+    //                 .map(Tags::getName)
+    //                 .collect(Collectors.toList());
+    //                 
+    //         return ApiResult.success(tagNames);
+    //     } catch (Exception e) {
+    //         return ApiResult.error(500, "获取热门标签失败：" + e.getMessage());
+    //     }
+    // }
+    
     @Override
     public ApiResult getPopularTags() {
-        try {
-            QueryWrapper<Tags> wrapper = new QueryWrapper<>();
-            wrapper.orderByDesc("usage_count").last("LIMIT 10");
-            List<Tags> tags = tagsMapper.selectList(wrapper);
-            
-            List<String> tagNames = tags.stream()
-                    .map(Tags::getName)
-                    .collect(Collectors.toList());
-                    
-            return ApiResult.success(tagNames);
-        } catch (Exception e) {
-            return ApiResult.error(500, "获取热门标签失败: " + e.getMessage());
-        }
+        // 已废弃，使用四级标签系统
+        return ApiResult.success();
     }
-
+    
+    // @Override
+    // public ApiResult searchTags(String keyword) {
+    //     try {
+    //         if (keyword == null || keyword.trim().isEmpty()) {
+    //             return ApiResult.error(400, "搜索关键词不能为空");
+    //         }
+    //         
+    //         QueryWrapper<Tags> wrapper = new QueryWrapper<>();
+    //         wrapper.like("name", keyword).orderByDesc("usage_count").last("LIMIT 20");
+    //         List<Tags> tags = tagsMapper.selectList(wrapper);
+    //         
+    //         List<String> tagNames = tags.stream()
+    //                 .map(Tags::getName)
+    //                 .collect(Collectors.toList());
+    //                 
+    //         return ApiResult.success(tagNames);
+    //     } catch (Exception e) {
+    //         return ApiResult.error(500, "搜索标签失败：" + e.getMessage());
+    //     }
+    // }
+    
     @Override
     public ApiResult searchTags(String keyword) {
-        try {
-            if (keyword == null || keyword.trim().isEmpty()) {
-                return ApiResult.error(400, "搜索关键词不能为空");
-            }
-            
-            QueryWrapper<Tags> wrapper = new QueryWrapper<>();
-            wrapper.like("name", keyword).orderByDesc("usage_count").last("LIMIT 20");
-            List<Tags> tags = tagsMapper.selectList(wrapper);
-            
-            List<String> tagNames = tags.stream()
-                    .map(Tags::getName)
-                    .collect(Collectors.toList());
-                    
-            return ApiResult.success(tagNames);
-        } catch (Exception e) {
-            return ApiResult.error(500, "搜索标签失败: " + e.getMessage());
-        }
+        // 已废弃，使用四级标签系统
+        return ApiResult.success();
     }
 
     @Override
@@ -685,35 +697,6 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             System.err.println("❌ 解析 JSON 失败：" + json);
             e.printStackTrace();
             return new ArrayList<>();
-        }
-    }
-    
-    private void handleTopicTags(Long topicId, List<String> tagNames) {
-        for (String tagName : tagNames) {
-            // 查找或创建标签
-            QueryWrapper<Tags> tagWrapper = new QueryWrapper<>();
-            tagWrapper.eq("name", tagName);
-            Tags tag = tagsMapper.selectOne(tagWrapper);
-            
-            if (tag == null) {
-                // 创建新标签
-                tag = new Tags();
-                tag.setName(tagName);
-                tag.setUsageCount(1);
-                tag.setCreatedAt(LocalDateTime.now());
-                tagsMapper.insert(tag);
-            } else {
-                // 更新使用次数
-                tag.setUsageCount(tag.getUsageCount() + 1);
-                tagsMapper.updateById(tag);
-            }
-            
-            // 创建话题标签关联
-            TopicTags topicTag = new TopicTags();
-            topicTag.setTopicId(topicId);
-            topicTag.setTagId(tag.getId());
-            topicTag.setCreatedAt(LocalDateTime.now());
-            topicTagsMapper.insert(topicTag);
         }
     }
     

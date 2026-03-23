@@ -1,12 +1,12 @@
 package com.example.demo.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.example.demo.entity.Tags;
+import com.example.demo.entity.Advertisement;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 标签Mapper接口
+ * 广告 Mapper 接口
  */
 @Mapper
-public interface TagsMapper extends BaseMapper<Tags> {
+public interface AdvertisementMapper extends BaseMapper<Advertisement> {
 }

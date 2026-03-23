@@ -34,6 +34,8 @@
             <el-menu-item index="/admin/dashboard/products">商品管理</el-menu-item>
             <el-menu-item index="/admin/dashboard/locations">地点管理</el-menu-item>
             <el-menu-item index="/admin/dashboard/comments">评论管理</el-menu-item>
+            <el-menu-item index="/admin/dashboard/advertisements">广告管理</el-menu-item>
+            <el-menu-item index="/admin/dashboard/tags">标签管理</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="/admin/dashboard/report">
             <template #title>
@@ -123,6 +125,8 @@ const getPageTitle = () => {
     'AdminProducts': '商品管理',
     'AdminLocations': '地点管理',
     'AdminComments': '评论管理',
+    'AdminAdvertisements': '广告管理',
+    'AdminTags': '标签管理',
     'AdminReports': '举报管理',
     'AdminReportStats': '举报统计',
     'AdminLogs': '操作日志',
@@ -150,10 +154,10 @@ onMounted(async () => {
 const handleCommand = async (command) => {
   switch (command) {
     case 'profile':
-      router.push('/admin/profile');
+      router.push('/admin/dashboard/profile');
       break;
     case 'password':
-      router.push('/admin/change-password');
+      router.push('/admin/dashboard/change-password');
       break;
     case 'logout':
       await handleLogout();

@@ -49,4 +49,92 @@ public interface TagService extends IService<TagLevel4> {
      * 获取热门标签组合
      */
     ApiResult getHotTagsCombo();
+    
+    // ==================== 管理员功能 ====================
+    
+    /**
+     * 分页查询二级标签
+     */
+    ApiResult getLevel2TagsAdmin(Integer pageNum, Integer pageSize, String keyword, Boolean isActive);
+    
+    /**
+     * 创建二级标签
+     */
+    ApiResult createLevel2Tag(String code, String name, String icon, String color, Integer sortOrder);
+    
+    /**
+     * 更新二级标签
+     */
+    ApiResult updateLevel2Tag(Integer id, String name, String icon, String color, Integer sortOrder, Boolean isActive);
+    
+    /**
+     * 删除二级标签
+     */
+    ApiResult deleteLevel2Tag(Integer id);
+    
+    /**
+     * 批量删除二级标签
+     */
+    ApiResult batchDeleteLevel2Tags(String ids);
+    
+    /**
+     * 更新二级标签状态
+     */
+    ApiResult updateLevel2TagStatus(Integer id, Boolean isActive);
+    
+    // ==================== 三级标签管理 ====================
+    
+    /**
+     * 分页查询三级标签
+     */
+    ApiResult getLevel3TagsAdmin(Integer pageNum, Integer pageSize, String keyword, Boolean isActive, String locationType);
+    
+    /**
+     * 创建三级标签
+     */
+    ApiResult createLevel3Tag(String code, String name, String locationType, String icon, String color, 
+                              String address, Double latitude, Double longitude, Integer sortOrder);
+    
+    /**
+     * 更新三级标签
+     */
+    ApiResult updateLevel3Tag(Integer id, String name, String locationType, String icon, String color,
+                              String address, Double latitude, Double longitude, Integer sortOrder, Boolean isActive);
+    
+    /**
+     * 删除三级标签
+     */
+    ApiResult deleteLevel3Tag(Integer id);
+    
+    /**
+     * 批量删除三级标签
+     */
+    ApiResult batchDeleteLevel3Tags(String ids);
+    
+    /**
+     * 更新三级标签状态
+     */
+    ApiResult updateLevel3TagStatus(Integer id, Boolean isActive);
+    
+    // ==================== 四级标签管理 ====================
+    
+    /**
+     * 分页查询四级标签
+     */
+    ApiResult getLevel4TagsAdmin(Integer pageNum, Integer pageSize, String keyword, String status, String category);
+    
+    /**
+     * 更新四级标签状态
+     */
+    ApiResult updateLevel4TagStatus(Long id, String status);
+    
+    /**
+     * 删除四级标签
+     */
+    ApiResult deleteLevel4Tag(Long id);
+    
+    /**
+     * 批量删除四级标签
+     */
+    ApiResult batchDeleteLevel4Tags(String ids);
 }

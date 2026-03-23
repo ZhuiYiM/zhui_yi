@@ -90,4 +90,16 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             return ApiResult.error(500, "处理失败：" + e.getMessage());
         }
     }
+    
+    @Override
+    public Long countPendingReports() {
+        try {
+            QueryWrapper<Report> wrapper = new QueryWrapper<>();
+            wrapper.eq("status", 0); // 0 表示待处理
+            return this.count(wrapper);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        }
+    }
 }

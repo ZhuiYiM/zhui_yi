@@ -26,6 +26,11 @@ export const adminAPI = {
         return request.put('/admin/change-password', data);
     },
 
+    // 获取首页统计数据
+    getDashboardStats() {
+        return request.get('/admin/dashboard/stats');
+    },
+
     // ========== 用户管理 ==========
     // 获取用户列表
     getUserList(params) {
@@ -157,5 +162,63 @@ export const adminAPI = {
     // 更新系统设置
     updateSystemSettings(data) {
         return request.put('/admin/settings', data);
+    },
+
+    // ========== 标签管理 ==========
+    // 二级标签
+    getLevel2Tags(params) {
+        return request.get('/admin/tags', { params });
+    },
+    createLevel2Tag(data) {
+        return request.post('/admin/tags', data);
+    },
+    updateLevel2Tag(id, data) {
+        return request.put(`/admin/tags/${id}`, data);
+    },
+    deleteLevel2Tag(id) {
+        return request.delete(`/admin/tags/${id}`);
+    },
+    batchDeleteLevel2Tags(ids) {
+        return request.delete('/admin/tags/batch', { params: { ids } });
+    },
+    updateLevel2TagStatus(id, isActive) {
+        return request.put(`/admin/tags/${id}/status`, { isActive });
+    },
+
+    // 三级标签
+    getLevel3Tags(params) {
+        return request.get('/admin/tags/level-3', { params });
+    },
+    createLevel3Tag(data) {
+        return request.post('/admin/tags/level-3', data);
+    },
+    updateLevel3Tag(id, data) {
+        return request.put(`/admin/tags/level-3/${id}`, data);
+    },
+    deleteLevel3Tag(id) {
+        return request.delete(`/admin/tags/level-3/${id}`);
+    },
+    batchDeleteLevel3Tags(ids) {
+        return request.delete('/admin/tags/level-3/batch', { params: { ids } });
+    },
+    updateLevel3TagStatus(id, isActive) {
+        return request.put(`/admin/tags/level-3/${id}/status`, { isActive });
+    },
+
+    // 四级标签
+    getLevel4Tags(params) {
+        return request.get('/admin/tags/level-4', { params });
+    },
+    updateLevel4Tag(id, data) {
+        return request.put(`/admin/tags/level-4/${id}`, data);
+    },
+    deleteLevel4Tag(id) {
+        return request.delete(`/admin/tags/level-4/${id}`);
+    },
+    batchDeleteLevel4Tags(ids) {
+        return request.delete('/admin/tags/level-4/batch', { params: { ids } });
+    },
+    updateLevel4TagStatus(id, status) {
+        return request.put(`/admin/tags/level-4/${id}/status`, { status });
     }
 };

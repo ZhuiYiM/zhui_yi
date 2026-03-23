@@ -212,6 +212,26 @@ const routes = [
                 component: () => import('../views/admin/CommentList.vue')
             },
             {
+                path: 'advertisements',
+                name: 'AdminAdvertisements',
+                component: () => import('../views/admin/AdvertisementManagement.vue')
+            },
+            {
+                path: 'tags',
+                name: 'AdminTags',
+                component: () => import('../views/admin/TagManagement.vue')
+            },
+            {
+                path: 'tags-level3',
+                name: 'AdminTagsLevel3',
+                component: () => import('../views/admin/Tag3Management.vue')
+            },
+            {
+                path: 'tags-level4',
+                name: 'AdminTagsLevel4',
+                component: () => import('../views/admin/Tag4Management.vue')
+            },
+            {
                 path: 'logs',
                 name: 'AdminLogs',
                 component: () => import('../views/admin/OperationLogs.vue')

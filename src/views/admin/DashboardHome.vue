@@ -88,6 +88,20 @@
           </div>
         </el-card>
       </el-col>
+      
+      <el-col :xs="24" :sm="12" :lg="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-item">
+            <div class="stat-icon comment-icon">
+              <el-icon><Comment /></el-icon>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats.commentCount }}</div>
+              <div class="stat-label">评论总数</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- 快捷入口 -->
@@ -103,7 +117,7 @@
       <el-row :gutter="20">
         <el-col :xs="24" :sm="8">
           <div class="quick-btn-wrapper">
-            <el-button type="primary" @click="$router.push('/admin/dashboard/users')" class="quick-btn">
+            <el-button type="primary" @click="$router.push('/admin/dashboard/users')" class="quick-btn user-btn">
               <el-icon><User /></el-icon>
               <span>用户管理</span>
             </el-button>
@@ -111,7 +125,7 @@
         </el-col>
         <el-col :xs="24" :sm="8">
           <div class="quick-btn-wrapper">
-            <el-button type="success" @click="$router.push('/admin/dashboard/verifications')" class="quick-btn">
+            <el-button type="success" @click="$router.push('/admin/dashboard/verifications')" class="quick-btn verify-btn">
               <el-icon><DocumentChecked /></el-icon>
               <span>认证审核</span>
             </el-button>
@@ -119,7 +133,7 @@
         </el-col>
         <el-col :xs="24" :sm="8">
           <div class="quick-btn-wrapper">
-            <el-button type="warning" @click="$router.push('/admin/dashboard/reports')" class="quick-btn">
+            <el-button type="warning" @click="$router.push('/admin/dashboard/reports')" class="quick-btn report-btn">
               <el-icon><Warning /></el-icon>
               <span>举报处理</span>
             </el-button>
@@ -127,9 +141,49 @@
         </el-col>
         <el-col :xs="24" :sm="8">
           <div class="quick-btn-wrapper">
-            <el-button type="info" @click="$router.push('/admin/dashboard/locations')" class="quick-btn">
+            <el-button type="info" @click="$router.push('/admin/dashboard/topics')" class="quick-btn topic-btn">
+              <el-icon><ChatDotRound /></el-icon>
+              <span>话题管理</span>
+            </el-button>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/products')" class="quick-btn product-btn">
+              <el-icon><Shop /></el-icon>
+              <span>商品管理</span>
+            </el-button>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/advertisements')" class="quick-btn ad-btn">
+              <el-icon><Picture /></el-icon>
+              <span>广告管理</span>
+            </el-button>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/tags')" class="quick-btn tag-btn">
+              <el-icon><Collection /></el-icon>
+              <span>标签管理</span>
+            </el-button>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/locations')" class="quick-btn location-btn">
               <el-icon><Location /></el-icon>
               <span>地点管理</span>
+            </el-button>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="8">
+          <div class="quick-btn-wrapper">
+            <el-button type="info" @click="$router.push('/admin/dashboard/comments')" class="quick-btn comment-mgmt-btn">
+              <el-icon><Comment /></el-icon>
+              <span>评论管理</span>
             </el-button>
           </div>
         </el-col>
@@ -140,24 +194,42 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { User, ChatDotRound, Shop, Warning, Document, DataAnalysis, Grid, DocumentChecked, Location } from '@element-plus/icons-vue';
+import { User, ChatDotRound, Shop, Warning, Document, DataAnalysis, Grid, DocumentChecked, Location, Picture, Collection, Comment } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { adminAPI } from '@/api/admin';
 
 const stats = reactive({
   userCount: 0,
   topicCount: 0,
   productCount: 0,
   locationCount: 0,
-  reportCount: 0
+  reportCount: 0,
+  commentCount: 0
 });
 
-// TODO: 从后端获取真实数据
+// 加载统计数据
+const loadStats = async () => {
+  try {
+    const response = await adminAPI.getDashboardStats();
+    console.log('📊 统计数据响应:', response);
+    
+    const data = response.data || response.result || response;
+    stats.userCount = data.userCount || 0;
+    stats.topicCount = data.topicCount || 0;
+    stats.productCount = data.productCount || 0;
+    stats.locationCount = data.locationCount || 0;
+    stats.reportCount = data.pendingReportCount || 0;
+    stats.commentCount = data.commentCount || 0;
+    
+    console.log('✅ 统计数据加载成功');
+  } catch (error) {
+    console.error('❌ 加载统计数据失败:', error);
+    ElMessage.error('加载统计数据失败');
+  }
+};
+
 onMounted(() => {
-  // 模拟数据
-  stats.userCount = 1234;
-  stats.topicCount = 5678;
-  stats.productCount = 901;
-  stats.locationCount = 345;
-  stats.reportCount = 23;
+  loadStats();
 });
 </script>
 
@@ -280,6 +352,10 @@ onMounted(() => {
   background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
 }
 
+.comment-icon {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
 .report-icon {
   background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
 }
@@ -354,6 +430,51 @@ onMounted(() => {
 .quick-btn .el-icon {
   font-size: 20px;
   margin-right: 8px;
+}
+
+/* 用户管理 - 蓝色渐变 */
+.user-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* 认证审核 - 绿色渐变 */
+.verify-btn {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+/* 举报处理 - 橙色渐变 */
+.report-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* 话题管理 - 紫色渐变 */
+.topic-btn {
+  background: linear-gradient(135deg, #da22ff 0%, #9733ee 100%);
+}
+
+/* 商品管理 - 青色渐变 */
+.product-btn {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* 广告管理 - 粉红渐变 */
+.ad-btn {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* 标签管理 - 蓝绿渐变 */
+.tag-btn {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+/* 地点管理 - 深蓝渐变 */
+.location-btn {
+  background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%);
+}
+
+/* 评论管理 - 青绿渐变 */
+.comment-mgmt-btn {
+  background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
 }
 
 /* 响应式调整 */

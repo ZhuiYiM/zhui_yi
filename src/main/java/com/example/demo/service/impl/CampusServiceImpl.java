@@ -139,4 +139,48 @@ public class CampusServiceImpl extends ServiceImpl<CampusMapper, Campus> impleme
             return Result.error("获取地图配置失败：" + e.getMessage());
         }
     }
+
+    @Override
+    public Result createCustomLocation(String name, String description, String category, Integer campusId) {
+        try {
+            // 参数验证
+            if (name == null || name.trim().isEmpty()) {
+                return Result.error("地点名称不能为空");
+            }
+            if (description == null || description.trim().isEmpty()) {
+                return Result.error("地点描述不能为空");
+            }
+            if (campusId == null) {
+                return Result.error("请选择校区");
+            }
+
+            // 创建新的地点对象
+            Location location = new Location();
+            location.setName(name.trim());
+            location.setDescription(description.trim());
+            location.setCategory(category != null ? category : "other");
+            location.setCampusId(campusId);
+            
+            // 设置默认值
+            location.setIsPopular(false);
+            location.setSortOrder(0);
+            location.setViewCount(0);
+            
+            // 保存到数据库
+            int result = locationMapper.insert(location);
+            
+            if (result > 0) {
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("id", location.getId());
+                responseData.put("name", location.getName());
+                responseData.put("message", "地点提交成功，请等待审核");
+                return Result.success(responseData);
+            } else {
+                return Result.error("保存失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("创建自定义地点失败：" + e.getMessage());
+        }
+    }
 }

@@ -14,8 +14,8 @@
         <div class="author-details">
           <span class="author-name">{{ author.username || '匿名用户' }}</span>
           <!-- 显示身份标签 -->
-          <span v-if="author.level1Tag" class="identity-tag" :class="author.level1Tag">
-            {{ getIdentityTagName(author.level1Tag) }}
+          <span v-if="author.identityTag" class="identity-tag" :class="author.identityTag">
+            {{ getIdentityTagName(author.identityTag) }}
           </span>
           <span class="post-time">{{ formatDate(createdAt) }}</span>
         </div>
@@ -81,37 +81,25 @@
 
       <!-- 标签展示 -->
       <div v-if="hasTags" class="content-tags">
-        <!-- 二级标签 -->
-        <template v-if="tags.level2 && tags.level2.length > 0">
+        <!-- 话题标签 -->
+        <template v-if="tags.topicTags && tags.topicTags.length > 0">
           <span
-              v-for="tag in tags.level2"
-              :key="'l2-' + (tag.code || tag.name || tag)"
-              class="hashtag level2"
-              :style="getTagStyle(tag)"
+              v-for="(tag, index) in tags.topicTags"
+              :key="'topic-' + index"
+              class="hashtag topic"
           >
-            {{ tag.name || tag }}
+            {{ typeof tag === 'string' ? tag : (tag.name || tag.code || '') }}
           </span>
         </template>
         
-        <!-- 三级标签 -->
-        <template v-if="tags.level3 && tags.level3.length > 0">
+        <!-- 地点标签 -->
+        <template v-if="tags.locationTags && tags.locationTags.length > 0">
           <span
-              v-for="tag in tags.level3"
-              :key="'l3-' + (tag.code || tag.name || tag)"
-              class="hashtag level3"
+              v-for="(tag, index) in tags.locationTags"
+              :key="'location-' + index"
+              class="hashtag location"
           >
-            📍{{ tag.name || tag }}
-          </span>
-        </template>
-        
-        <!-- 四级标签 -->
-        <template v-if="tags.level4 && tags.level4.length > 0">
-          <span
-              v-for="tag in tags.level4"
-              :key="'l4-' + (tag.code || tag.name || tag)"
-              class="hashtag level4"
-          >
-            #{{ tag.name || tag }}
+            📍{{ typeof tag === 'string' ? tag : (tag.name || tag.code || '') }}
           </span>
         </template>
         
@@ -122,7 +110,7 @@
               :key="'tag-' + index"
               class="hashtag simple"
           >
-            #{{ tag.name || tag }}
+            #{{ typeof tag === 'string' ? tag : (tag.name || tag) }}
           </span>
         </template>
       </div>
@@ -178,7 +166,7 @@ const props = defineProps({
       id: null,
       username: '',
       avatarUrl: '',
-      level1Tag: ''
+      identityTag: ''
     })
   },
   statistics: {
@@ -231,9 +219,8 @@ const hasTags = computed(() => {
   
   const tags = props.tags;
   return (
-    (tags.level2 && tags.level2.length > 0) ||
-    (tags.level3 && tags.level3.length > 0) ||
-    (tags.level4 && tags.level4.length > 0) ||
+    (tags.topicTags && tags.topicTags.length > 0) ||
+    (tags.locationTags && tags.locationTags.length > 0) ||
     (Array.isArray(tags) && tags.length > 0)
   );
 });

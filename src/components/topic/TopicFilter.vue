@@ -37,6 +37,13 @@
         ✕ 清除所有筛选
       </button>
     </div>
+    
+    <!-- 自定义话题标签按钮 -->
+    <div class="custom-tag-action">
+      <el-button type="primary" size="small" @click="$emit('show-custom-tag-modal')">
+        🏷️ 自定义话题标签
+      </el-button>
+    </div>
   </section>
 </template>
 
@@ -68,7 +75,7 @@ const props = defineProps({
 });
 
 // Emits
-const emit = defineEmits(['toggle-level2', 'toggle-level3', 'clear-all']);
+const emit = defineEmits(['toggle-level2', 'toggle-level3', 'clear-all', 'show-custom-tag-modal']);
 
 // 判断二级标签是否被选中
 const isSelectedLevel2 = (tag) => {
@@ -185,6 +192,14 @@ const handleClearAll = () => {
   color: #409eff;
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+/* 自定义标签按钮 */
+.custom-tag-action {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e4e7ed;
+  text-align: right;
 }
 
 /* 移动端适配 */

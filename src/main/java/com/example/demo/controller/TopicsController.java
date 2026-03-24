@@ -7,6 +7,7 @@ import com.example.demo.entity.dto.TopicLikeDTO;
 import com.example.demo.entity.dto.TopicQueryDTO;
 import com.example.demo.service.TopicCommentsService;
 import com.example.demo.service.TopicsService;
+import com.example.demo.service.topic.TopicForwardService;
 import com.example.demo.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 话题墙控制器
- * 提供话题相关的RESTful API接口
+ * 提供话题相关的 RESTful API 接口
  */
 @RestController
 @RequestMapping("/api/topics")
@@ -31,6 +35,9 @@ public class TopicsController {
     
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private TopicForwardService topicForwardService;
 
     /**
      * 获取话题列表
@@ -305,6 +312,37 @@ public class TopicsController {
                                         @RequestParam(defaultValue = "1") Integer page,
                                         @RequestParam(defaultValue = "10") Integer size) {
    return topicsService.getUserLikedTopics(userId, page, size);
+    }
+    
+    /**
+     * 转发话题
+     * POST /api/topics/{topicId}/forward
+     */
+    @PostMapping("/{topicId}/forward")
+    public ApiResult forwardTopic(@PathVariable Integer topicId,
+                                  @RequestBody(required = false) Map<String, Object> body,
+                                  HttpServletRequest request) {
+        try {
+            String content = body != null ? (String) body.get("content") : null;
+            
+            // 正确转换 images 数组
+            List<String> images = null;
+            if (body != null && body.get("images") != null) {
+                Object imagesObj = body.get("images");
+                if (imagesObj instanceof List) {
+                    images = new java.util.ArrayList<>();
+                    for (Object img : (List<?>) imagesObj) {
+                        if (img != null) {
+                            images.add(img.toString());
+                        }
+                    }
+                }
+            }
+            
+            return topicForwardService.forwardTopic(topicId, content, images, request);
+        } catch (Exception e) {
+            return ApiResult.error(500, "转发失败：" + e.getMessage());
+        }
     }
     
     /**

@@ -91,11 +91,27 @@ public class TopicCreateServiceImpl extends ServiceImpl<TopicsMapper, Topics> im
             topic.setImages(convertListToJson(imageUrls));
             topic.setTags(convertListToJson(topicDTO.getTags()));
             
-            // 设置自动识别的一级标签
+            // 设置自动识别的一级标签（身份标签）
             topic.setLevel1TagCode(level1TagCode);
-            topic.setLevel2TagCodes(convertListToJson(topicDTO.getLevel2TagCodes()));
-            topic.setLevel3TagCodes(convertListToJson(topicDTO.getLevel3TagCodes()));
-            topic.setLevel4TagCodes(convertListToJson(topicDTO.getLevel4TagCodes()));
+            
+            // 处理话题标签
+            List<String> topicTagCodes = topicDTO.getTopicTagCodes();
+            
+            // 如果是商品转发，自动添加“商品分享”标签
+            if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded() 
+                && topicDTO.getForwardedFromProductId() != null) {
+                if (topicTagCodes == null) {
+                    topicTagCodes = new java.util.ArrayList<>();
+                }
+                if (!topicTagCodes.contains("product_share")) {
+                    topicTagCodes.add("product_share");
+                }
+            }
+            
+            // 设置话题标签、商品标签、地点标签
+            topic.setTopicTagCodes(convertListToJson(topicTagCodes));
+            topic.setProductTagCodes(convertListToJson(topicDTO.getProductTagCodes()));
+            topic.setLocationTagCodes(convertListToJson(topicDTO.getLocationTagCodes()));
             
             // 处理转发逻辑
             if (topicDTO.getIsForwarded() != null && topicDTO.getIsForwarded()) {

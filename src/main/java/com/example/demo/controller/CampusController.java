@@ -5,6 +5,8 @@ import com.example.demo.service.CampusService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/campuses")
 @CrossOrigin
@@ -56,5 +58,28 @@ public class CampusController {
             @RequestParam Integer campusId,
             @RequestParam(required = false) String mapType) {
         return campusService.getMapConfig(campusId, mapType);
+    }
+
+    // ========== 自定义地点相关接口 ==========
+    
+    // 创建自定义地点
+    @PostMapping("/locations/custom")
+    public Result createCustomLocation(@RequestBody Map<String, Object> body,
+                                        @RequestParam(required = false) Integer campusId) {
+        try {
+            String name = (String) body.get("name");
+            String description = (String) body.get("description");
+            String category = (String) body.get("category");
+            
+            // 如果参数中没有 campusId，尝试从 body 中获取
+            if (campusId == null && body.containsKey("campusId")) {
+                campusId = ((Number) body.get("campusId")).intValue();
+            }
+            
+            return campusService.createCustomLocation(name, description, category, campusId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("创建自定义地点失败：" + e.getMessage());
+        }
     }
 }

@@ -14,4 +14,7 @@ public interface CampusService extends IService<Campus> {
     Result searchLocations(String keyword, Integer campusId);
     Result getPopularLocationsByCampusId(Integer campusId);
     Result getMapConfig(Integer campusId, String mapType);
+    
+    // 创建自定义地点
+    Result createCustomLocation(String name, String description, String category, Integer campusId);
 }

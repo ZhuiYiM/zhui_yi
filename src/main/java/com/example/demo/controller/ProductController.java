@@ -37,18 +37,23 @@ public class ProductController {
     // 获取商品详情
     @GetMapping("/{id}")
     public Result getProductDetail(@PathVariable Integer id, HttpServletRequest request) {
+        // 处理 id 为 null 的情况
+        if (id == null) {
+            return Result.error(400, "商品 ID 不能为空");
+        }
+            
         String token = request.getHeader("Authorization");
         Integer userId = null;
-
+    
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7);
-
-            // 安全地提取用户ID
+    
+            // 安全地提取用户 ID
             if (!token.trim().isEmpty()) {
                 userId = jwtUtil.getUserIdFromToken(token);
             }
         }
-
+    
         return productService.getProductById(id, userId);
     }
 

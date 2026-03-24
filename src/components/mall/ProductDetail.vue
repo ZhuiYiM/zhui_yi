@@ -216,8 +216,12 @@ const fetchProductDetail = async () => {
     loading.value = true;
     const productId = route.params.id;
     
-    if (!productId) {
-      throw new Error('商品 ID 参数缺失');
+    // 验证 productId 有效性
+    if (!productId || productId === 'null' || productId === 'undefined') {
+      ElMessage.error('商品 ID 参数无效');
+      product.value = null;
+      loading.value = false;
+      return;
     }
     
     const response = await productAPI.getProductDetail(productId);
@@ -604,7 +608,15 @@ onMounted(() => {
 watch(
   () => route.params.id,
   (newId, oldId) => {
-    if (newId && newId !== oldId) {
+    // 验证 ID 有效性
+    if (!newId || newId === 'null' || newId === 'undefined') {
+      ElMessage.error('商品 ID 无效');
+      product.value = null;
+      loading.value = false;
+      return;
+    }
+    
+    if (newId !== oldId) {
       product.value = null;
       isFavorite.value = false;
       recommendedProducts.value = [];

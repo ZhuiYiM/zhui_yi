@@ -47,16 +47,23 @@
           @touchend="handleTouchEnd"
           ref="topicsContainer"
         >
-          <!-- 标签筛选栏 -->
-          <TopicFilter
+          <!-- 标签筛选栏和排序 -->
+          <TopicFilterHeader
+            :display-level1-tags="displayLevel1Tags"
             :display-level2-tags="displayLevel2Tags"
             :display-level3-tags="displayLevel3Tags"
+            :selected-level1="selectedLevel1"
             :selected-level2="selectedLevel2"
             :selected-level3="selectedLevel3"
             :has-active-filters="hasActiveFilters"
+            :current-sort="currentSort"
+            :sort-options="sortOptions"
+            @toggle-level1="selectLevel1Tag"
             @toggle-level2="toggleLevel2Tag"
             @toggle-level3="toggleLevel3Tag"
             @clear-all="clearAllFilters"
+            @change-sort="changeSort"
+            @show-custom-tag-modal="handleShowCustomTagModal"
           />
 
           <!-- 话题列表 -->
@@ -68,40 +75,6 @@
               </button>
             </div>
             
-            <!-- 一级标签和排序 -->
-            <div class="section-header">
-              <div class="level1-tags-container">
-                <span
-                  @click="selectLevel1Tag(null)"
-                  class="level1-tag-item"
-                  :class="{ active: !selectedLevel1 }"
-                >
-                  全部
-                </span>
-                <span
-                  v-for="tag in displayLevel1Tags"
-                  :key="tag.code"
-                  @click="selectLevel1Tag(tag.code)"
-                  class="level1-tag-item"
-                  :class="{ active: selectedLevel1 === tag.code }"
-                >
-                  {{ tag.icon }} {{ tag.name }}
-                </span>
-              </div>
-              
-              <div class="sort-options">
-                <button
-                  v-for="option in sortOptions"
-                  :key="option.value"
-                  @click="changeSort(option.value)"
-                  class="sort-btn"
-                  :class="{ active: currentSort === option.value }"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-            </div>
-
             <!-- 加载状态 -->
             <div v-if="loading" class="loading-state">
               <div class="spinner"></div>
@@ -188,6 +161,12 @@
         <img :src="previewImageUrl" alt="预览图片" class="preview-large-image">
       </div>
     </div>
+    
+    <!-- 自定义标签弹窗 -->
+    <CustomTagModal
+      v-model:visible="showCustomTagModal"
+      @submitted="handleCustomTagSubmitted"
+    />
   </div>
 </template>
 
@@ -198,8 +177,9 @@ import { ElMessage } from 'element-plus';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UserPopoverCard from '@/components/user/UserPopoverCard.vue';
 import PublishTopicModal from '@/components/topic/PublishTopicModal.vue';
+import CustomTagModal from '@/components/topic/CustomTagModal.vue';
 import TopicCard from '@/components/topic/TopicCard.vue';
-import TopicFilter from '@/components/topic/TopicFilter.vue';
+import TopicFilterHeader from '@/components/topic/TopicFilterHeader.vue';
 import { topicAPI, tagAPI } from '@/api/topic';
 import { isMobile as isMobileDevice } from '@/utils/device';
 import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
@@ -211,6 +191,7 @@ const loading = ref(false);
 const showPublishModal = ref(false);
 const showImagePreview = ref(false);
 const previewImageUrl = ref('');
+const showCustomTagModal = ref(false); // 自定义标签弹窗
 
 // 分享相关
 const shareInfo = ref(null);
@@ -347,11 +328,104 @@ const fetchTopicsWithFilters = async () => {
      const topicsData = response.data || response;
      const rawTopics = topicsData.topics || [];
       
-      posts.value = rawTopics.map(topic => ({
+      posts.value = rawTopics.map(topic => {
+        // 解析 images 字段（可能是 JSON 字符串或数组）
+        let parsedImages = [];
+        if (topic.images) {
+          if (typeof topic.images === 'string') {
+            try {
+              const images = JSON.parse(topic.images);
+              // 后端返回的是相对路径 /images/xxx.jpg，直接使用，不要拼接 /api
+              parsedImages = images;
+            } catch (e) {
+              console.error('❌ 解析 images 失败:', topic.images, e);
+              parsedImages = [];
+            }
+          } else if (Array.isArray(topic.images)) {
+            // 直接使用，不要拼接 /api
+            parsedImages = topic.images;
+          }
+        }
+        
+        // 解析 topicTags 字段（从 topicTagCodes）
+        let parsedTopicTags = [];
+        if (topic.topicTags && Array.isArray(topic.topicTags)) {
+          // 已经是对象数组
+          parsedTopicTags = topic.topicTags;
+        } else if (topic.topicTagCodes) {
+          if (typeof topic.topicTagCodes === 'string') {
+            try {
+              const codes = JSON.parse(topic.topicTagCodes);
+              // 转换为对象数组，并根据 code 显示对应的 name
+              parsedTopicTags = Array.isArray(codes) ? codes.map(code => {
+                if (typeof code === 'string') {
+                  // 根据 code 映射为友好的显示名称
+                  const tagNames = {
+                    'topic_forward': '话题转发',
+                    'product_share': '商品分享',
+                    'location_share': '地点转发'
+                  };
+                  return { code, name: tagNames[code] || code };
+                }
+                return code;
+              }) : [];
+            } catch (e) {
+              parsedTopicTags = [];
+            }
+          } else if (Array.isArray(topic.topicTagCodes)) {
+            parsedTopicTags = topic.topicTagCodes.map(code => {
+              if (typeof code === 'string') {
+                const tagNames = {
+                  'topic_forward': '话题转发',
+                  'product_share': '商品分享',
+                  'location_share': '地点转发'
+                };
+                return { code, name: tagNames[code] || code };
+              }
+              return code;
+            });
+          }
+        }
+        
+        // 解析 locationTags 字段（从 locationTagCodes）
+        let parsedLocationTags = [];
+        if (topic.locationTags && Array.isArray(topic.locationTags)) {
+          // 已经是对象数组
+          parsedLocationTags = topic.locationTags;
+        } else if (topic.locationTagCodes) {
+          if (typeof topic.locationTagCodes === 'string') {
+            try {
+              const codes = JSON.parse(topic.locationTagCodes);
+              // 转换为对象数组
+              parsedLocationTags = Array.isArray(codes) ? codes.map(code => typeof code === 'string' ? { code, name: code } : code) : [];
+            } catch (e) {
+              parsedLocationTags = [];
+            }
+          } else if (Array.isArray(topic.locationTagCodes)) {
+            parsedLocationTags = topic.locationTagCodes.map(code => typeof code === 'string' ? { code, name: code } : code);
+          }
+        }
+        
+        // 解析 tags 字段（兼容后端返回的 JSON 字符串）
+        let parsedTags = [];
+        if (topic.tags) {
+          if (typeof topic.tags === 'string') {
+            try {
+              parsedTags = JSON.parse(topic.tags);
+            } catch (e) {
+              console.error('❌ 解析 tags 失败:', topic.tags, e);
+              parsedTags = [];
+            }
+          } else if (Array.isArray(topic.tags)) {
+            parsedTags = topic.tags;
+          }
+        }
+        
+        return {
         id: topic.id,
        content: topic.content,
-        images: topic.images || [],
-       tags: topic.tags || [],
+        images: parsedImages,
+       tags: parsedTags,
         likes: topic.likesCount || 0,
        comments: topic.commentsCount || 0,
         shares: topic.viewsCount || 0,
@@ -368,13 +442,13 @@ const fetchTopicsWithFilters = async () => {
           username: topic.author?.username || '',
           studentId: topic.author?.studentId || '',
           avatar: topic.author?.avatarUrl || '',
-          level1Tag: topic.author?.level1Tag || topic.author?.identity?.level1Tag || null
+          identityTag: topic.author?.identityTag || topic.author?.identity?.identityTag || null
         },
-        level1Tag: topic.level1Tag || null,
-        level2Tags: topic.level2Tags || [],
-        level3Tags: topic.level3Tags || [],
-        level4Tags: topic.level4Tags || []
-      }));
+        identityTag: topic.identityTag || null,
+        topicTags: parsedTopicTags,
+        locationTags: parsedLocationTags
+      };
+    });
       
       // 调试：打印转发相关字段
       if (posts.value.length > 0) {
@@ -481,6 +555,17 @@ const changeSort = async (sortType) => {
   await fetchTopicsWithFilters();
 };
 
+// 处理显示自定义标签弹窗
+const handleShowCustomTagModal = () => {
+  showCustomTagModal.value = true;
+};
+
+// 处理自定义标签提交成功
+const handleCustomTagSubmitted = (data) => {
+  console.log('✅ 自定义标签提交成功:', data);
+  // 可以在这里做一些后续处理，比如刷新标签列表等
+};
+
 const changePage = async (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
@@ -573,7 +658,14 @@ const handlePublished = async () => {
 };
 
 const handleModalClosed = () => {
-  // 模态框关闭后的清理
+  console.log('🧹 弹窗已关闭，清理分享数据');
+  // 清理 URL 参数
+  router.replace({ query: {} });
+  // 清理 sessionStorage
+  sessionStorage.removeItem('shareData');
+  // 重置 shareInfo
+  shareInfo.value = null;
+  console.log('✅ 分享数据已清理');
 };
 
 // ========== 用户悬浮卡片 ==========
@@ -701,38 +793,46 @@ const loadMoreTopics = async () => {
 // 处理分享参数
 const handleShareFromQuery = async () => {
   const routeParams = router.currentRoute.value.query;
+  console.log('🔍 检查分享参数:', routeParams);
+  
   if (routeParams.from === 'share' && routeParams.sourceId) {
+    console.log('✅ 检测到分享跳转，准备读取分享数据...');
+    
     // 从 sessionStorage 获取分享数据
     const shareData = sessionStorage.getItem('shareData');
+    console.log('📦 读取 sessionStorage shareData:', shareData);
+    
     if (shareData) {
       try {
         const parsedData = JSON.parse(shareData);
-        // 确保 sourceType 正确设置
+        // 确保 sourceType 正确设置（默认为 topic）
         shareInfo.value = {
           ...parsedData,
-          sourceType: routeParams.sourceType || 'product',
+          sourceType: routeParams.sourceType || 'topic',
           sourceId: routeParams.sourceId
         };
         
         console.log('🔗 设置分享信息:', shareInfo.value);
+        console.log('🎯 准备打开发布弹窗，showPublishModal 当前值:', showPublishModal.value);
         
-        // 打开分享弹窗
-        setTimeout(() => {
-          showPublishModal.value = true;
-          // 清理 URL 参数
-          router.replace({ query: {} });
-        }, 500);
+        // 直接打开分享弹窗，不使用 setTimeout
+        showPublishModal.value = true;
+        console.log('✅ 发布弹窗已打开，showPublishModal 新值:', showPublishModal.value);
+        
+        // 不要在打开弹窗时立即清理 URL 参数，避免触发路由变化导致弹窗关闭
+        // 改为在弹窗关闭时由 handleModalClosed 清理
+        console.log(' URL 参数将在弹窗关闭时清理');
+        
+        return true; // 表示已处理分享
       } catch (error) {
         console.error('解析分享数据失败:', error);
-        // 不显示错误提示，静默处理
       }
     } else {
-      // 如果没有分享数据，也静默处理，不显示错误
-      console.log('未找到分享数据，可能已被清除');
+      console.warn('⚠️ 未找到分享数据，可能已被清除');
     }
-    // 清理 URL 参数，避免刷新时重复处理
-    router.replace({ query: {} });
   }
+  
+  return false; // 表示未处理分享
 };
 
 // 处理搜索标签应用
@@ -749,21 +849,45 @@ const handleClearSearchTags = () => {
 
 // ========== 生命周期 ==========
 onMounted(async () => {
+  console.log('🎬 Topicwall onMounted 开始执行');
+  console.log('📊 showPublishModal 初始值:', showPublishModal.value);
+  console.log('📊 shareInfo 初始值:', shareInfo.value);
+  
   updateDeviceDetection();
   getUserInfo();
   window.addEventListener('resize', updateDeviceDetection);
   
   // 先检查是否从分享跳转而来（在获取话题列表之前）
-  await handleShareFromQuery();
+  console.log('🔍 准备检查分享参数...');
+  const shareHandled = await handleShareFromQuery();
+  console.log('✅ 分享处理完成，shareHandled:', shareHandled);
+  console.log('📊 分享处理后 showPublishModal:', showPublishModal.value);
+  console.log('📊 分享处理后 shareInfo:', shareInfo.value);
   
   // 再获取话题列表和标签
-  await Promise.all([
-    fetchTopicsWithFilters(),
-    loadTags()
-  ]);
+  console.log('📥 开始获取话题列表和标签...');
+  console.log('📊 获取前 showPublishModal:', showPublishModal.value);
+  
+  try {
+    await Promise.all([
+      fetchTopicsWithFilters(),
+      loadTags()
+    ]);
+    
+    console.log('✅ 话题列表和标签获取完成');
+    console.log('📊 获取后 showPublishModal:', showPublishModal.value);
+    console.log('📊 获取后 shareInfo:', shareInfo.value);
+    console.log('📊 获取后 posts 数量:', posts.value.length);
+  } catch (error) {
+    console.error('❌ 获取话题列表失败:', error);
+    console.log('📊 失败时 showPublishModal:', showPublishModal.value);
+  }
 });
 
 onUnmounted(() => {
+  console.log('💀 Topicwall 组件被销毁！');
+  console.log('📊 销毁时 showPublishModal:', showPublishModal.value);
+  console.log('📊 销毁时 shareInfo:', shareInfo.value);
   window.removeEventListener('resize', updateDeviceDetection);
 });
 </script>

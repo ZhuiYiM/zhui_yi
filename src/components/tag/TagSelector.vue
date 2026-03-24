@@ -211,8 +211,7 @@ const emit = defineEmits(['update:modelValue', 'change']);
 const selectedTags = ref({
   level1: null,
   level2: [],
-  level3: [],
-  level4: []
+  level3: []
 });
 
 const level1Tags = ref([]);
@@ -278,23 +277,21 @@ const loadAllTags = async () => {
 const loadLevel1Tags = async () => {
   try {
     const response = await tagAPI.getLevel1Tags();
-    console.log('📥 TagSelector - Level1 原始响应:', response);
     
-    // 确保 response 是数组
+    // 确保 response 是数组，并添加 code 字段（使用 name 或 id 作为 code）
     level1Tags.value = (Array.isArray(response) ? response : []).map(tag => ({
       ...tag,
+      code: tag.code || tag.name || String(tag.id), // 使用 name 或 id 作为 code
       enabled: tag.isActive !== undefined ? tag.isActive : true,
-      icon: getIconEmoji(tag.code) || tag.icon || '👤'
+      icon: getIconEmoji(tag.code || tag.name) || tag.icon || '👤'
     }));
-    
-    console.log('✅ TagSelector - Level1 标签已加载:', level1Tags.value);
     
     // 如果标签加载成功且需要自动选择，则触发自动选择
     if (props.autoSelectLevel1 && props.userId && level1Tags.value.length > 0) {
       await autoSelectIdentity();
     }
   } catch (error) {
-    console.error('❌ 加载一级标签失败:', error);
+    console.error('加载一级标签失败:', error);
     ElMessage.error('加载身份标签失败');
   }
 };
@@ -313,37 +310,67 @@ const getIconEmoji = (code) => {
 
 const loadLevel2Tags = async () => {
   const response = await tagAPI.getLevel2Tags();
-  console.log('📥 TagSelector - Level2 原始响应:', response);
   
-  level2Tags.value = (Array.isArray(response) ? response : []).map(tag => ({
-    ...tag,
-    enabled: tag.isActive !== undefined ? tag.isActive : true
-  }));
+  // 去重处理：使用 Map 按 code 去重
+  const tagMap = new Map();
+  (Array.isArray(response) ? response : []).forEach(tag => {
+    const code = tag.code || tag.name || String(tag.id);
+    if (!tagMap.has(code)) {
+      tagMap.set(code, {
+        ...tag,
+        code: code,
+        enabled: tag.isActive !== undefined ? tag.isActive : true
+      });
+    }
+  });
   
-  console.log('✅ TagSelector - Level2 标签已加载:', level2Tags.value);
+  level2Tags.value = Array.from(tagMap.values());
 };
 
 const loadLevel3Tags = async () => {
   const response = await tagAPI.getLevel3Tags();
-  console.log('📥 TagSelector - Level3 原始响应:', response);
   
-  level3Tags.value = (Array.isArray(response) ? response : []).map(tag => ({
-    ...tag,
-    enabled: tag.isActive !== undefined ? tag.isActive : true
-  }));
+  // 去重处理：使用 Map 按 code 去重
+  const tagMap = new Map();
+  (Array.isArray(response) ? response : []).forEach(tag => {
+    const code = tag.code || tag.name || String(tag.id);
+    if (!tagMap.has(code)) {
+      tagMap.set(code, {
+        ...tag,
+        code: code,
+        enabled: tag.isActive !== undefined ? tag.isActive : true
+      });
+    }
+  });
   
-  console.log('✅ TagSelector - Level3 标签已加载:', level3Tags.value);
+  level3Tags.value = Array.from(tagMap.values());
 };
 
 const loadLevel4Tags = async () => {
   const response = await tagAPI.getLevel4Tags({ recommendedOnly: true });
-  if (response.data) {
-    const data = response.data.tags || response.data;
-    recommendedTags.value = data.filter(tag => tag.isRecommended);
-    allLevel4Tags.value = data;
-    // 标签加载完成后，同步预设的选中状态
-    syncSelectedTagsWithLoadedTags();
-  }
+  
+  // 处理响应数据并去重
+  const data = Array.isArray(response) ? response : (response?.tags || response?.data || []);
+  
+  // 去重处理：使用 Map 按 code 去重
+  const tagMap = new Map();
+  data.forEach(tag => {
+    const code = tag.code || tag.name || String(tag.id);
+    if (!tagMap.has(code)) {
+      tagMap.set(code, {
+        ...tag,
+        code: code,
+        enabled: tag.isActive !== undefined ? tag.isActive : true
+      });
+    }
+  });
+  
+  const allTags = Array.from(tagMap.values());
+  recommendedTags.value = allTags.filter(tag => tag.isRecommended);
+  allLevel4Tags.value = allTags;
+  
+  // 标签加载完成后，同步预设的选中状态
+  syncSelectedTagsWithLoadedTags();
 };
 
 // 同步选中的标签（将 code 转换为完整标签对象）
@@ -375,26 +402,15 @@ const syncSelectedTagsWithLoadedTags = () => {
       return code;
     }).filter(Boolean);
   }
-  
-  // 同步四级标签
-  if (selectedTags.value.level4 && Array.isArray(selectedTags.value.level4)) {
-    selectedTags.value.level4 = selectedTags.value.level4.map(code => {
-      if (typeof code === 'string') {
-        return allLevel4Tags.value.find(t => t.code === code) || { code };
-      }
-      return code;
-    }).filter(Boolean);
-  }
 };
 
 // 自动选择身份标签
 const autoSelectIdentity = async () => {
-  console.log('🔍 开始自动选择身份标签，userId:', props.userId);
-  
-  // 等待一级标签加载完成
-  if (level1Tags.value.length === 0) {
-    console.warn('⚠️ 一级标签还未加载，等待中...');
+  // 等待一级标签加载完成（最多等待 5 秒）
+  let waitCount = 0;
+  while (level1Tags.value.length === 0 && waitCount < 10) {
     await new Promise(resolve => setTimeout(resolve, 500));
+    waitCount++;
   }
   
   if (level1Tags.value.length > 0) {
@@ -402,56 +418,52 @@ const autoSelectIdentity = async () => {
     
     // 从 localStorage 获取用户信息
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('👤 当前用户信息:', user);
     
     // 1. 检查是否为管理员（需要在数据库中手动设置）
     if (user.role === 'admin' || user.isAdmin) {
       selectedTag = level1Tags.value.find(t => t.code === 'admin');
-      console.log('✅ 识别为：管理员');
     }
     
     // 2. 检查是否为学生认证（学号不为空）
     if (!selectedTag && user.studentId) {
       selectedTag = level1Tags.value.find(t => t.code === 'student');
-      console.log('✅ 识别为：学生（学号：' + user.studentId + '）');
     }
     
     // 3. 检查是否为认证商家（待实现）
     if (!selectedTag && user.isMerchant) {
       selectedTag = level1Tags.value.find(t => t.code === 'merchant');
-      console.log('✅ 识别为：商户');
     }
     
     // 4. 检查是否为认证团体（待实现）
     if (!selectedTag && user.isOrganization) {
       selectedTag = level1Tags.value.find(t => t.code === 'organization');
-      console.log('✅ 识别为：团体');
     }
     
     // 5. 默认为社会用户
     if (!selectedTag) {
-      // 优先显示"社会"标签，如果没有则选第一个
+      // 优先显示“社会”标签，如果没有则选第一个
       selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
-      console.log('✅ 默认为：社会用户');
     }
     
     if (selectedTag && selectedTag.enabled) {
       selectLevel1(selectedTag);
-      console.log('✅ 已自动选择身份标签:', selectedTag.name);
     } else {
-      console.warn('⚠️ 未找到可用的默认身份标签');
+      console.warn('未找到可用的默认身份标签');
     }
   } else {
-    console.error('❌ 一级标签加载失败');
+    console.error('身份标签加载失败，等待超时');
     ElMessage.error('身份标签加载失败，请刷新重试');
   }
 };
 
 // 选择一级标签
 const selectLevel1 = (tag) => {
-  if (!tag.enabled) return;
+  if (!tag.enabled) {
+    return;
+  }
   
   selectedTags.value.level1 = tag;
+  console.log('✅ 一级标签已设置:', selectedTags.value.level1);
   emitChange();
 };
 
@@ -616,8 +628,7 @@ const emitChange = () => {
   const tagsData = {
     level1: selectedTags.value.level1?.code || null,
     level2: selectedTags.value.level2.map(t => t.code),
-    level3: selectedTags.value.level3.map(t => t.code),
-    level4: selectedTags.value.level4.map(t => t.code)
+    level3: selectedTags.value.level3.map(t => t.code)
   };
   
   emit('update:modelValue', selectedTags.value);

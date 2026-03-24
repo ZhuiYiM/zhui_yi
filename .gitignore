@@ -79,3 +79,11 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 buildNumber.propertie
+
+# Uploads (用户上传的文件)
+uploads/
+*.gif
+*.jpg
+*.jpeg
+*.png
+*.webp

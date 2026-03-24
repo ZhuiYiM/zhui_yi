@@ -68,7 +68,6 @@ apiClient.interceptors.request.use(
         return config;
     },
     error => {
-        console.error('❌ 请求配置错误:', error);
         return Promise.reject(error);
     }
 );
@@ -101,8 +100,6 @@ apiClient.interceptors.response.use(
         return responseData;
     },
     error => {
-        console.error('❌ 响应错误:', error.response?.status, error.response?.data);
-        
         // 统一处理错误响应
         const { response } = error;
         const noGlobalError = error.config?.noGlobalError === true;

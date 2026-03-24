@@ -35,6 +35,13 @@ public class TokenInterceptor implements HandlerInterceptor {
             return true; // 直接放行
         }
 
+        // 放行话题公开的 GET 请求（获取列表、详情）
+        if (uri.startsWith("/api/topics") && "GET".equalsIgnoreCase(request.getMethod())) {
+            // 放行 /api/topics 和 /api/topics/{id}，但不放行 /api/topics/{id}/forward 等操作
+            if (!uri.matches(".*/topics/\\d+/(forward|like|collect|top|essence).*$")) {
+                return true;
+            }
+        }
 
         String token = request.getHeader("Authorization");
 
@@ -52,16 +59,21 @@ public class TokenInterceptor implements HandlerInterceptor {
         }
 
         try {
-            // 验证token有效性
+            // 验证 token 有效性
             if (jwtUtil.validateTokenWithIdOrUsername(token)) {
-                // Token有效，继续处理请求
+                // Token 有效，提取 userId 并设置到 request attribute 中
+                Integer userId = jwtUtil.getUserIdFromToken(token);
+                if (userId != null) {
+                    request.setAttribute("userId", userId.longValue());
+                }
+                // 继续处理请求
                 return true;
             } else {
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.setContentType("application/json;charset=UTF-8");
-
+        
                 PrintWriter out = response.getWriter();
-                out.print(Result.error("Token无效"));
+                out.print(Result.error("Token 无效"));
                 out.flush();
                 out.close();
                 return false;
@@ -69,9 +81,9 @@ public class TokenInterceptor implements HandlerInterceptor {
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json;charset=UTF-8");
-
+        
             PrintWriter out = response.getWriter();
-            out.print(Result.error("Token验证失败"));
+            out.print(Result.error("Token 验证失败"));
             out.flush();
             out.close();
             return false;

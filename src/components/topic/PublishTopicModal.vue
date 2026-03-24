@@ -22,13 +22,12 @@
             v-model="localImages"
             :multiple="true"
             :limit="9"
-            hint="最多可上传 9 张图片"
+            :hint="isShareMode ? '转发时可添加新图片（不继承原话题图片）' : '最多可上传 9 张图片'"
             :auto-upload="false"
-            :disabled="isShareMode"
             @change="handleImageChange"
           />
 
-          <!-- 四级标签选择器 -->
+          <!-- 话题分类和地点标签选择器 -->
           <TagSelector
            ref="tagSelectorRef"
             v-model="selectedTags"
@@ -36,6 +35,7 @@
             :read-only-level1="true"
             :is-share-mode="isShareMode"
             :userId="userId"
+            :show-level4="false"
             @change="handleTagChange"
           />
         </div>
@@ -46,7 +46,9 @@
           <div class="info-content">
             <p class="info-title">{{ shareInfo.sourceType === 'product' ? '商品信息预览' : '分享内容预览' }}</p>
             <p class="info-text">来自用户：<strong>@{{ shareInfo.author }}</strong></p>
-            <p class="info-hint">{{ shareInfo.sourceType === 'product' ? '转发时会自动添加"分享"标签' : '转发时会自动添加“转发”标签，无需手动选择' }}</p>
+            <p v-if="shareInfo.sourceType === 'topic'" class="info-hint">转发时可以添加新图片，不会继承原话题的图片</p>
+            <p v-else-if="shareInfo.sourceType === 'product'" class="info-hint">转发时会自动添加"商品分享"标签，无需手动选择</p>
+            <p v-else class="info-hint">{{ shareInfo.sourceType === 'product' ? '转发时会自动添加"商品分享"标签，无需手动选择' : '转发时会自动添加"话题转发"标签，无需手动选择' }}</p>
           </div>
         </div>
       </div>
@@ -112,8 +114,7 @@ const uploadedImageUrls = ref([]); // 存储已上传的 URL
 const selectedTags = ref({
   level1: null,
   level2: [],
-  level3: [],
-  level4: []
+  level3: []
 });
 const publishing = ref(false);
 const canPublish = ref(true);
@@ -135,25 +136,20 @@ watch(() => props.visible, (newVal) => {
 
 // 处理标签变化
 const handleTagChange = (tagsData) => {
-  console.log('标签已选择:', tagsData);
   // 验证是否可以发布
   canPublish.value = !!(tagsData.level1 && tagsData.level2?.length > 0);
 };
 
 // 处理图片变化（从 ImageUploader）
 const handleImageChange = (data) => {
-  console.log('🖼️ 图片变化:', data);
-  
   if (data && typeof data === 'object' && data.files) {
     // 保存文件对象用于后续上传
     localImages.value = data.files;
     // 不要保存 urls，因为我们还没上传，urls 是空的或者是 blob URL
     uploadedImageUrls.value = [];
-    console.log('💾 保存文件对象:', localImages.value.length, '个，准备发布时上传');
   } else if (Array.isArray(data)) {
     // 如果只是 URLs 数组（可能是 blob URL）
     uploadedImageUrls.value = [];
-    console.log('🔗 忽略 blob URLs，等待发布时上传');
   }
 };
 
@@ -174,8 +170,6 @@ const handleImageChange = (data) => {
 
 // 关闭弹窗
 const handleClose = () => {
-  console.log('🚪 关闭弹窗');
-  
   // 先重置表单（清理 blob URL）
   resetForm();
   
@@ -186,14 +180,11 @@ const handleClose = () => {
 
 // 重置表单
 const resetForm = () => {
-  console.log('🔄 重置表单');
-  
   // 清理本地图片的 blob URL
   if (localImages.value && Array.isArray(localImages.value)) {
     localImages.value.forEach(file => {
       if (file && file.url && typeof file.url === 'string' && file.url.startsWith('blob:')) {
         try {
-          console.log('🔓 释放 blob URL:', file.url);
           URL.revokeObjectURL(file.url);
         } catch (e) {
           console.warn('释放 blob URL 失败:', e);
@@ -202,7 +193,6 @@ const resetForm = () => {
       // 同时检查 raw 属性
       if (file && file.raw && file.raw.url && typeof file.raw.url === 'string' && file.raw.url.startsWith('blob:')) {
         try {
-          console.log('🔓 释放 raw blob URL:', file.raw.url);
           URL.revokeObjectURL(file.raw.url);
         } catch (e) {
           console.warn('释放 raw blob URL 失败:', e);
@@ -244,18 +234,28 @@ const handlePublish = async () => {
     // 上传图片
     let imageUrls = [];
     
-    console.log('🔍 检查图片数据...');
-    console.log('   uploadedImageUrls:', uploadedImageUrls.value);
-    console.log('   localImages:', localImages.value);
-    
-    // 使用已上传的 URL 或者上传本地文件
     if (uploadedImageUrls.value && uploadedImageUrls.value.length > 0) {
-      // 已经有上传好的 URLs（自动上传模式）
-      console.log('✅ 使用已上传的图片 URLs:', uploadedImageUrls.value);
+      // 使用已上传的图片 URL
       imageUrls = uploadedImageUrls.value;
-    } else if (localImages.value && localImages.value.length > 0) {
-      // 需要手动上传本地文件
-      console.log('📷 准备上传', localImages.value.length, '张图片');
+    }
+
+    // 获取选中的标签
+    const selectedTagsData = tagSelectorRef.value?.getSelectedTags();
+    
+    // 构建请求数据
+    const topicData = {
+      content: localContent.value,
+      images: imageUrls,  // 使用上传后的 URL
+      level1TagCode: selectedTagsData.level1?.code || null,
+      // 话题标签（level2）
+      topicTagCodes: (selectedTagsData.level2 || []).map(t => t.code),
+      // 地点标签（level3）
+      locationTagCodes: (selectedTagsData.level3 || []).map(t => t.code),
+      anonymous: false
+    };
+    
+    // 如果有本地图片且未上传，现在上传图片
+    if (localImages.value && localImages.value.length > 0) {
       const loading = ElLoading.service({ text: '正在上传图片...' });
       
       try {
@@ -264,50 +264,30 @@ const handlePublish = async () => {
             // 优先使用 raw 属性，如果没有则直接使用 fileItem
             const file = fileItem.raw || fileItem;
             
-            console.log('📝 检查文件对象:', file);
-            console.log('   fileItem:', fileItem);
-            console.log('   fileItem.raw:', fileItem.raw);
-            
             // 确保是有效的 File 对象
             if (!(file instanceof File) && !(file instanceof Blob)) {
               console.warn('⚠️ 文件不是有效的 File/Blob 对象:', file);
-              console.warn('   file type:', typeof file);
-              console.warn('   file constructor:', file?.constructor?.name);
               continue;
             }
             
-            console.log('📤 准备上传图片:', file.name, file.size, file.type);
-            
-            const response = await uploadAPI.uploadImage(file);
-            console.log('✅ 图片上传响应:', response);
-            
-            // 处理不同的响应格式
-            let imageUrl = '';
-            if (response && typeof response === 'string') {
-              // 直接返回字符串路径
-              imageUrl = response;
-            } else if (response && response.data) {
-              // 返回对象包含 data 字段
-              imageUrl = response.data;
-            } else if (response && response.url) {
-              // 返回对象包含 url 字段
-              imageUrl = response.url;
-            }
-            
-            if (imageUrl) {
-              // 确保图片 URL 是完整的
-              // 如果 imageUrl 已经是 http 或 https 开头，直接使用
-              // 否则需要拼接完整的 URL
-              let fullUrl = imageUrl;
-              if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-                // 去除可能的前导斜杠
-                const cleanPath = imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl;
-                fullUrl = `http://localhost:8080${cleanPath}`;
+            try {
+              // 直接传递 file 对象，而不是 formData
+              const response = await uploadAPI.uploadImage(file);
+
+              if (typeof response === 'string') {
+                // 后端返回的是相对路径 /images/xxx.jpg，直接使用，不要拼接 /api
+                imageUrls.push(response);
+              } else if (response && response.url) {
+                // 完整 URL 已经由后端返回
+                imageUrls.push(response.url);
               }
-              console.log('🖼️ 图片 URL:', fullUrl);
-              imageUrls.push(fullUrl);
-            } else {
-              console.error('❌ 图片上传失败：无法获取图片 URL', response);
+            } catch (error) {
+              console.error('❌ 图片上传失败:', error);
+
+              if (error.response) {
+                console.error('响应状态:', error.response.status);
+                console.error('响应数据:', error.response.data);
+              }
             }
           } catch (uploadError) {
             console.error('❌ 单张图片上传失败:', uploadError);
@@ -318,49 +298,66 @@ const handlePublish = async () => {
           }
         }
         
-        console.log('🎉 所有图片上传完成，URLs:', imageUrls);
+        // 所有图片上传完成，更新 topicData
+        if (imageUrls.length > 0) {
+          topicData.images = imageUrls; // 直接传递数组，不要 stringify
+        }
       } finally {
         loading.close();
       }
-    } else {
-      console.log('ℹ️ 没有图片');
     }
     
-    // 获取选中的标签
-    const selectedTagsData = tagSelectorRef.value?.getSelectedTags();
-    
-    // 构建请求数据
-    const topicData = {
-      content: localContent.value,
-      images: imageUrls,  // 使用上传后的 URL
-      level1TagCode: selectedTagsData.level1?.code || null,
-      level2TagCodes: (selectedTagsData.level2 || []).map(t => t.code),
-      level3TagCodes: (selectedTagsData.level3 || []).map(t => t.code),
-      level4TagCodes: (selectedTagsData.level4 || []).map(t => t.code),
-      anonymous: false
-    };
-    
-    // 如果是转发模式，添加转发相关字段
+    // 如果是转发模式，区分商品分享和话题转发
     if (props.isShareMode && props.shareInfo) {
-      topicData.isForwarded = true;
-      
-      // 根据分享类型设置不同的字段
+      // 判断是商品分享还是话题转发
       if (props.shareInfo.sourceType === 'product') {
-        const productId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
-        console.log('🛍️ 设置商品转发 ID:', productId, 'from sourceId:', props.shareInfo.sourceId);
-        if (!isNaN(productId)) {
-          topicData.forwardedFromProductId = productId;
+        // 商品分享：使用创建话题 API，添加 forwardedFromProductId
+        const topicData = {
+          content: localContent.value,
+          images: imageUrls,  // 使用上面处理过的图片 URL
+          level1TagCode: selectedTagsData.level1?.code || null,
+          topicTagCodes: (selectedTagsData.level2 || []).map(t => t.code),
+          locationTagCodes: (selectedTagsData.level3 || []).map(t => t.code),
+          anonymous: false,
+          isForwarded: true,
+          forwardedFromProductId: parseInt(props.shareInfo.sourceId || props.shareInfo.id)
+        };
+        
+        try {
+          const response = await topicAPI.createTopic(topicData);
+          ElMessage.success('发布成功!');
+          emit('published', response.data || response);
+          handleClose();
+          return;
+        } catch (error) {
+          console.error('❌ 商品分享失败:', error.message);
+          throw error;
         }
       } else {
-        // 默认作为话题处理
-        const topicId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
-        console.log('ℹ️ 设置话题转发 ID:', topicId, 'from sourceId:', props.shareInfo.sourceId);
-        if (!isNaN(topicId)) {
-          topicData.forwardedFromTopicId = topicId;
+        // 话题转发：使用转发 API
+        const originalTopicId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
+        
+        if (!isNaN(originalTopicId)) {
+          try {
+            // 使用已上传的图片 URL（如果有本地图片，会在上面的上传逻辑中处理）
+            const response = await topicAPI.forwardTopic(originalTopicId, localContent.value, imageUrls);
+            ElMessage.success('转发成功!');
+            emit('published', response.data || response);
+            handleClose();
+            return;
+          } catch (error) {
+            console.error('❌ 转发失败:', error.message);
+            throw error;
+          }
+        } else {
+          ElMessage.error('无效的话题 ID');
+          publishing.value = false;
+          return;
         }
       }
     }
-
+    
+    // 正常发布流程
     const response = await topicAPI.createTopic(topicData);
     
     // 发布成功（request.js 拦截器已经处理了标准响应，直接返回的是 data 字段）

@@ -127,9 +127,9 @@ public class TopicQueryServiceImpl extends ServiceImpl<TopicsMapper, Topics> imp
             result.put("images", parseJsonToList(topic.getImages()));
             result.put("tags", parseJsonToList(topic.getTags()));
             result.put("level1TagCode", topic.getLevel1TagCode());
-            result.put("level2TagCodes", parseJsonToList(topic.getLevel2TagCodes()));
-            result.put("level3TagCodes", parseJsonToList(topic.getLevel3TagCodes()));
-            result.put("level4TagCodes", parseJsonToList(topic.getLevel4TagCodes()));
+            result.put("topicTagCodes", parseJsonToList(topic.getTopicTagCodes()));
+            result.put("productTagCodes", parseJsonToList(topic.getProductTagCodes()));
+            result.put("locationTagCodes", parseJsonToList(topic.getLocationTagCodes()));
             result.put("likesCount", topic.getLikesCount());
             result.put("commentsCount", topic.getCommentsCount());
             result.put("viewsCount", topic.getViewsCount());
@@ -165,6 +165,11 @@ public class TopicQueryServiceImpl extends ServiceImpl<TopicsMapper, Topics> imp
         map.put("content", topic.getContent());
         map.put("images", parseJsonToList(topic.getImages()));
         map.put("tags", parseJsonToList(topic.getTags()));
+        
+        // 添加标签字段 - 使用扁平化命名
+        map.put("topicTags", parseJsonToList(topic.getTopicTagCodes())); // 话题标签
+        map.put("locationTags", parseJsonToList(topic.getLocationTagCodes())); // 地点标签
+        
         map.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
         map.put("forwardedFromTopicId", topic.getForwardedFromTopicId());
         map.put("forwardedFromProductId", topic.getForwardedFromProductId());

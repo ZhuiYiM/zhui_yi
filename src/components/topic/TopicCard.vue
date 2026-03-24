@@ -55,7 +55,7 @@
         <img
           v-for="(image, index) in post.images.slice(0, 4)"
           :key="index"
-          :src="image"
+          :src="getImageUrl(image)"
           :alt="`图片${index + 1}`"
           class="post-image"
           @click.stop="$emit('preview-image', image)"
@@ -77,41 +77,31 @@
 
       <!-- 标签 -->
       <div class="topic-tags-container">
-        <!-- 一级标签（用户类型）- 始终显示 -->
-        <span v-if="getPostLevel1Tag(post)" class="topic-tag level1-tag">
-          {{ getIdentityTagName(getPostLevel1Tag(post)) }}
+        <!-- 身份标签（话题本身的身份标签） -->
+        <span v-if="post.identityTag" class="topic-tag level1-tag">
+          {{ getIdentityTagName(post.identityTag) }}
         </span>
         
-        <!-- 二级标签（最多 3 个） -->
+        <!-- 话题标签（最多 3 个） -->
         <span
-          v-for="tag in (post.level2Tags || []).slice(0, 3)"
-          :key="'l2-' + (tag.code || tag.name || '')"
+          v-for="(tag, index) in (Array.isArray(post.topicTags) ? post.topicTags : [post.topicTags]).filter(t => t).slice(0, 3)"
+          :key="'topic-' + index"
           class="topic-tag level2-tag"
-          :style="{ backgroundColor: tag.color + '20', borderColor: tag.color }"
         >
-          {{ tag.name || tag }}
+          {{ typeof tag === 'string' ? tag : (tag.name || tag.code || '') }}
         </span>
         
-        <!-- 三级标签（最多 3 个） -->
+        <!-- 地点标签（最多 3 个） -->
         <span
-          v-for="tag in (post.level3Tags || []).slice(0, 3)"
-          :key="'l3-' + (tag.code || tag.name || '')"
+          v-for="(tag, index) in (Array.isArray(post.locationTags) ? post.locationTags : [post.locationTags]).filter(t => t).slice(0, 3)"
+          :key="'location-' + index"
           class="topic-tag level3-tag"
         >
-          📍{{ tag.name || tag }}
-        </span>
-        
-        <!-- 四级标签（自定义标签，最多 3 个） -->
-        <span
-          v-for="tag in (post.level4Tags || []).slice(0, 3)"
-          :key="'l4-' + (tag.code || tag.name || '')"
-          class="topic-tag level4-tag"
-        >
-          #{{ tag.name || tag }}
+          📍{{ typeof tag === 'string' ? tag : (tag.name || tag.code || '') }}
         </span>
         
         <!-- 兼容后端返回的 tags 数组 -->
-        <template v-if="(!post.level2Tags || post.level2Tags.length === 0) && (!post.level3Tags || post.level3Tags.length === 0) && (!post.level4Tags || post.level4Tags.length === 0) && post.tags && post.tags.length > 0">
+        <template v-if="(!post.topicTags || post.topicTags.length === 0) && (!post.locationTags || post.locationTags.length === 0) && post.tags && post.tags.length > 0">
           <span
             v-for="(tag, index) in post.tags.slice(0, 3)"
             :key="'tag-' + index"
@@ -129,6 +119,7 @@
 import { computed, ref, watch } from 'vue';
 import { topicAPI } from '@/api/topic';
 import { ElMessage } from 'element-plus';
+import { API_CONFIG } from '@/config/api';
 import ForwardedTopicCard from './ForwardedTopicCard.vue';
 import ForwardedProductCard from './ForwardedProductCard.vue';
 
@@ -142,16 +133,10 @@ const props = defineProps({
 
 // 调试：监听 post 变化
 watch(() => props.post, (newVal) => {
-  console.log('📝 TopicCard 收到话题数据:', newVal);
   if (newVal && newVal.images) {
     console.log('🖼️ 图片数据:', newVal.images);
     console.log('🖼️ 图片数量:', newVal.images.length);
-    console.log('🖼️ 图片 URLs:', newVal.images);
   }
-  // 添加转发字段调试
-  console.log('🔁 isForwarded:', newVal?.isForwarded);
-  console.log('🔁 forwardedFromTopicId:', newVal?.forwardedFromTopicId);
-  console.log('🔁 forwardedFromProductId:', newVal?.forwardedFromProductId);
 }, { immediate: true, deep: true });
 
 // Emits
@@ -177,6 +162,26 @@ const getAvatarUrl = (author) => {
   const url = author.avatarUrl || author.avatar;
   if (!url || url.trim() === '') return defaultAvatar;
   return url;
+};
+
+// 获取完整的图片 URL（处理相对路径）
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return '';
+  
+  // 如果已经是完整 URL（http 开头），直接返回
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // 如果是相对路径（/images/开头），拼接后端基础地址（不要 /api）
+  if (imagePath.startsWith('/images/')) {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    // 去掉 /api 后缀，因为 /images 是静态资源路径
+    return `${baseUrl.replace('/api', '')}${imagePath}`;
+  }
+  
+  // 其他情况，直接返回
+  return imagePath;
 };
 
 // 本地点赞状态
@@ -273,23 +278,11 @@ const getIdentityTagName = (tagCode) => {
     'student': '认证学生',
     'organization': '认证团体',
     'followed': '已关注',
-    'society': '社会'
+    'society': '社会',
+    'admin': '管理员',
+    'merchant': '商户'
   };
- return tagMap[tagCode] || '';
-};
-
-// 获取帖子的一级标签（用户类型）
-const getPostLevel1Tag = (post) => {
-  // 优先从 author 对象中读取
-  if (post.author?.level1Tag) {
-    return post.author.level1Tag;
-  }
-  // 兼容旧的 identityTag 字段
-  if (post.author?.identityTag) {
-    return post.author.identityTag;
-  }
-  // 最后从 post 本身读取
- return post.level1Tag || null;
+  return tagMap[tagCode] || tagCode;
 };
 
 // 处理头像悬浮

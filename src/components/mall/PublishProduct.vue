@@ -186,14 +186,16 @@
         </el-form>
       </div>
     </main>
+
+
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElLoading } from 'element-plus';
-import { Plus, Delete } from '@element-plus/icons-vue';
+import { Plus, Delete, Close } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import ImageUploader from '@/components/common/ImageUploader.vue';
 import { productAPI } from '@/api/product';
@@ -297,6 +299,8 @@ const fetchCategories = async () => {
     ];
   }
 };
+
+
 
 // 处理图片变化
 const handleImageChange = (data) => {
@@ -655,4 +659,5 @@ onMounted(() => {
 :deep(.el-upload-list__item) {
   border-radius: 8px;
 }
+
 </style>

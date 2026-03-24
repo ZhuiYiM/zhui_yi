@@ -38,94 +38,130 @@
         @ad-click="handleAdClick"
       />
 
-      <!-- 分类导航区域 -->
+      <!-- 分类导航和筛选区域 -->
       <section class="categories-section">
+        <!-- 一级分类和排序 -->
         <div class="section-header">
-          <h2>交易分类</h2>
-        </div>
-
-        <!-- 移动端分类导航 -->
-        <div v-if="isMobile" class="category-mobile-grid">
-          <div
-              v-for="category in categories"
-              :key="category.id"
-              class="category-mobile-item"
-              @click="selectCategory(category.id)"
-          >
-            <div class="category-icon">{{ category.icon }}</div>
-            <span class="category-name">{{ category.name }}</span>
-          </div>
-        </div>
-
-        <!-- 桌面端分类导航 -->
-        <div v-else class="category-grid">
-          <div
-              v-for="category in categories"
-              :key="category.id"
-              class="category-item"
-              @click="selectCategory(category.id)"
-          >
-            <div class="category-icon">{{ category.icon }}</div>
-            <h3>{{ category.name }}</h3>
-            <p>{{ category.description }}</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- 商品列表区域 -->
-      <section class="products-section">
-        <div class="section-header">
-          <h2>全部商品</h2>
-          <div class="header-actions">
-            <!-- 一级标签筛选 -->
-            <el-select 
-              v-model="filters.level1Tag" 
-              placeholder="身份标签" 
-              clearable
-              @change="applyFilters"
-              class="level1-tag-filter"
+          <!-- 一级分类（身份标签） -->
+          <div class="level1-tags-container">
+            <span
+              @click="selectLevel1('')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === '' || !filters.level1Tag }"
             >
-              <el-option label="全部" value="" />
-              <el-option label="学生" value="student" />
-              <el-option label="商家" value="merchant" />
-              <el-option label="管理员" value="admin" />
-              <el-option label="团体" value="organization" />
-              <el-option label="社会" value="society" />
-            </el-select>
-            
-            <button 
-              v-if="!isMobile && showFilters" 
-              class="filter-toggle-btn" 
-              @click="toggleFilters"
+              全部
+            </span>
+            <span
+              @click="selectLevel1('student')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === 'student' }"
             >
-              {{ showFilters ? '隐藏筛选' : '显示筛选' }}
+              👨‍🎓 学生
+            </span>
+            <span
+              @click="selectLevel1('merchant')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === 'merchant' }"
+            >
+              🏪 商家
+            </span>
+            <span
+              @click="selectLevel1('admin')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === 'admin' }"
+            >
+              🛡️ 管理员
+            </span>
+            <span
+              @click="selectLevel1('organization')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === 'organization' }"
+            >
+              👥 团体
+            </span>
+            <span
+              @click="selectLevel1('society')"
+              class="level1-tag-item"
+              :class="{ active: filters.level1Tag === 'society' }"
+            >
+              🌍 社会
+            </span>
+          </div>
+          
+          <div class="sort-options">
+            <button
+              @click="changeSort('newest')"
+              class="sort-btn"
+              :class="{ active: filters.sort === 'newest' }"
+            >
+              最新
             </button>
+            <button
+              @click="changeSort('hotest')"
+              class="sort-btn"
+              :class="{ active: filters.sort === 'hotest' }"
+            >
+              最热
+            </button>
+            <button
+              @click="changeSort('price-asc')"
+              class="sort-btn"
+              :class="{ active: filters.sort === 'price-asc' }"
+            >
+              价格↑
+            </button>
+            <button
+              @click="changeSort('price-desc')"
+              class="sort-btn"
+              :class="{ active: filters.sort === 'price-desc' }"
+            >
+              价格↓
+            </button>
+            
+            <!-- 发布商品按钮 -->
             <button class="publish-btn" @click="createNewTrade">
               ➕ 发布商品
             </button>
           </div>
         </div>
-
-        <!-- 筛选条件 -->
-        <div v-if="showFilters" class="filters-bar">
-          <el-select v-model="filters.categoryId" placeholder="全部分类" clearable @change="applyFilters">
-            <el-option
-              v-for="cat in categories"
-              :key="cat.id"
-              :label="cat.name"
-              :value="cat.id"
-            />
-          </el-select>
+        
+        <!-- 标签筛选栏 -->
+        <section class="tag-selector-section">
+          <!-- 分类筛选 -->
+          <div class="tag-level level-2">
+            <div class="tags-container multi-select">
+              <span
+                v-for="category in categories"
+                :key="category.id"
+                @click="selectCategory(category.id)"
+                class="tag-item chip"
+                :class="{ active: filters.categoryId === category.id }"
+              >
+                {{ category.icon }} {{ category.name }}
+              </span>
+            </div>
+          </div>
           
-          <el-select v-model="filters.sort" placeholder="排序方式" @change="applyFilters">
-            <el-option label="最新发布" value="newest" />
-            <el-option label="最热门" value="hotest" />
-            <el-option label="价格从低到高" value="price-asc" />
-            <el-option label="价格从高到低" value="price-desc" />
-          </el-select>
-        </div>
+          <!-- 清除筛选和自定义标签 -->
+          <div class="filter-actions">
+            <div class="clear-filters" v-if="hasActiveFilters">
+              <button @click="clearAllFilters" class="clear-btn">
+                ✕ 清除所有筛选
+              </button>
+            </div>
+            
+            <!-- 自定义标签按钮 -->
+            <div class="custom-tag-action">
+              <button @click="showProductCustomTagModal = true" class="custom-tag-btn">
+                🏷️ 自定义标签
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
 
-        <!-- 商品列表组件 -->
+      <!-- 商品列表区域 -->
+      <section class="products-section">
         <ProductList
           :products="displayProducts"
           :is-mobile="isMobile"
@@ -153,6 +189,91 @@
         <p>© 2023 校园信息平台 | 服务学生，连接校园</p>
       </footer>
     </main>
+
+    <!-- 自定义商品标签模态框（用于发布商品时选择标签） -->
+    <el-dialog
+      v-model="showProductTagModal"
+      title="选择商品标签"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <div class="product-tag-selector">
+        <!-- 推荐标签 -->
+        <div class="tag-section">
+          <div class="section-title">推荐标签</div>
+          <div class="tag-grid">
+            <el-button
+              v-for="tag in recommendedProductTags"
+              :key="tag.code"
+              :type="selectedProductTags.find(t => t.code === tag.code) ? 'primary' : ''"
+              @click="toggleProductTag(tag)"
+              size="default"
+            >
+              {{ tag.name }}
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 其他标签 -->
+        <div class="tag-section">
+          <div class="section-title">更多标签</div>
+          <div class="tag-grid">
+            <el-button
+              v-for="tag in otherProductTags"
+              :key="tag.code"
+              :type="selectedProductTags.find(t => t.code === tag.code) ? 'primary' : ''"
+              @click="toggleProductTag(tag)"
+              size="default"
+            >
+              {{ tag.name }}
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 自定义标签输入 -->
+        <div class="tag-section">
+          <div class="section-title">自定义标签</div>
+          <div class="custom-tag-input">
+            <el-input
+              v-model="newProductTagName"
+              placeholder="输入新标签名称"
+              maxlength="20"
+              clearable
+              @keyup.enter="addCustomProductTag"
+            />
+            <el-button type="primary" @click="addCustomProductTag" :disabled="!newProductTagName.trim()">
+              添加
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 已选标签 -->
+        <div v-if="selectedProductTags.length > 0" class="selected-tags-section">
+          <div class="section-title">已选标签 ({{ selectedProductTags.length }}/5)</div>
+          <div class="selected-tags-list">
+            <span
+              v-for="(tag, index) in selectedProductTags"
+              :key="index"
+              class="selected-tag-item"
+            >
+              {{ tag.name }}
+              <el-icon @click="removeProductTag(index)"><Close /></el-icon>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <el-button @click="showProductTagModal = false">取消</el-button>
+        <el-button type="primary" @click="applyProductTags">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 自定义商品标签提交弹窗（用于提交新标签到标签池） -->
+    <ProductCustomTagModal
+      v-model="showProductCustomTagModal"
+      @submitted="handleCustomTagSubmitted"
+    />
   </div>
 </template>
 
@@ -160,10 +281,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { Close } from '@element-plus/icons-vue';
 import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UnifiedSearch from '@/components/common/UnifiedSearch.vue';
 import AdBanner from '../mall/AdBanner.vue';
 import ProductList from '../mall/ProductList.vue';
+import ProductCustomTagModal from './ProductCustomTagModal.vue';
 import { productAPI, mallAdAPI } from '@/api/product';
 
 const router = useRouter();
@@ -199,6 +322,35 @@ const mallAds = ref([]);
 
 // 搜索查询（用于 UnifiedSearch 组件）
 const searchQuery = ref('');
+
+// 商品标签相关
+const showProductTagModal = ref(false); // 发布商品时选择标签
+const showProductCustomTagModal = ref(false); // 提交新标签到标签池
+const selectedProductTags = ref([]);
+const newProductTagName = ref('');
+
+// 推荐商品标签
+const recommendedProductTags = computed(() => {
+  return [
+    { code: 'secondhand', name: '二手物品' },
+    { code: 'service', name: '服务需求' },
+    { code: 'parttime', name: '兼职信息' },
+    { code: 'food', name: '美食外卖' },
+    { code: 'digital', name: '数码配件' },
+    { code: 'books', name: '教材出售' }
+  ];
+});
+
+// 其他商品标签
+const otherProductTags = computed(() => {
+  return [
+    { code: 'daily', name: '生活用品' },
+    { code: 'electronics', name: '电子产品' },
+    { code: 'sports', name: '体育用品' },
+    { code: 'virtual', name: '虚拟物品' },
+    { code: 'other', name: '其他' }
+  ];
+});
 
 // 获取广告列表
 const fetchMallAds = async () => {
@@ -316,6 +468,92 @@ const handleAdClick = (ad) => {
   }
 };
 
+// ========== 商品标签相关方法 ==========
+
+// 切换商品标签选中状态
+const toggleProductTag = (tag) => {
+  const index = selectedProductTags.value.findIndex(t => t.code === tag.code);
+  
+  if (index > -1) {
+    // 取消选中
+    selectedProductTags.value.splice(index, 1);
+  } else {
+    // 检查是否超过最大数量
+    if (selectedProductTags.value.length >= 5) {
+      ElMessage.warning('最多只能选择 5 个标签');
+      return;
+    }
+    selectedProductTags.value.push({ ...tag });
+  }
+};
+
+// 移除商品标签
+const removeProductTag = (index) => {
+  selectedProductTags.value.splice(index, 1);
+};
+
+// 清空商品标签
+const clearProductTags = () => {
+  selectedProductTags.value = [];
+};
+
+// 添加自定义商品标签
+const addCustomProductTag = () => {
+  if (!newProductTagName.value.trim()) {
+    ElMessage.warning('请输入标签名称');
+    return;
+  }
+  
+  // 检查是否已存在
+  const exists = selectedProductTags.value.find(
+    t => t.name === newProductTagName.value.trim()
+  );
+  
+  if (exists) {
+    ElMessage.warning('该标签已存在');
+    return;
+  }
+  
+  // 添加到选中列表
+  const newTag = {
+    code: 'custom_' + Date.now(),
+    name: newProductTagName.value.trim()
+  };
+  
+  if (selectedProductTags.value.length >= 5) {
+    ElMessage.warning('最多只能选择 5 个标签');
+    return;
+  }
+  
+  selectedProductTags.value.push(newTag);
+  newProductTagName.value = '';
+  ElMessage.success('标签添加成功');
+};
+
+// 应用商品标签（提交到后端）
+const applyProductTags = async () => {
+  if (selectedProductTags.value.length === 0) {
+    ElMessage.warning('请至少选择一个标签');
+    return;
+  }
+  
+  try {
+    // TODO: 调用后端 API 保存自定义标签并统计使用次数
+    // await productAPI.saveProductTags(selectedProductTags.value);
+    
+    ElMessage.success('标签设置成功，将用于商品筛选和统计');
+    showProductTagModal.value = false;
+  } catch (error) {
+    console.error('保存标签失败:', error);
+    ElMessage.error('保存标签失败，请重试');
+  }
+};
+
+// 处理自定义标签提交成功
+const handleCustomTagSubmitted = (result) => {
+  console.log('🏷️ 自定义商品标签提交成功:', result);
+};
+
 // 商品标签（用于搜索筛选）
 const productTags = computed(() => {
   return [
@@ -367,6 +605,43 @@ const toggleFilters = () => {
 const applyFilters = () => {
   fetchProducts();
 };
+
+// 选择一级标签（身份标签）
+const selectLevel1 = (code) => {
+  filters.level1Tag = code;
+  applyFilters();
+};
+
+// 选择分类
+const selectCategory = (categoryId) => {
+  if (filters.categoryId === categoryId) {
+    filters.categoryId = null; // 取消选择
+  } else {
+    filters.categoryId = categoryId;
+  }
+  applyFilters();
+};
+
+// 排序切换
+const changeSort = (sortType) => {
+  filters.sort = sortType;
+  applyFilters();
+};
+
+// 清除所有筛选
+const clearAllFilters = () => {
+  filters.categoryId = null;
+  filters.level1Tag = '';
+  filters.sort = 'newest';
+  applyFilters();
+};
+
+// 判断是否有激活的筛选
+const hasActiveFilters = computed(() => {
+  return filters.categoryId !== null || 
+         filters.level1Tag !== '' || 
+         filters.sort !== 'newest';
+});
 
 // 商品数据
 const productsLoading = ref(false);
@@ -703,12 +978,6 @@ const loadMockProducts = () => {
   productsLoading.value = false;
 };
 
-// 选择分类
-const selectCategory = (categoryId) => {
-  filters.categoryId = categoryId === filters.categoryId ? null : categoryId;
-  fetchProducts();
-};
-
 // 跳转到商品详情
 const goToProduct = (product) => {
   console.log('🔍 点击商品:', product);
@@ -874,95 +1143,236 @@ watch(() => route.query.tags, (newTags, oldTags) => {
   font-size: 0.9rem;
 }
 
-/* 分类区域 */
+/* 分类和筛选区域 */
 .categories-section {
-  background: white;
   margin: 15px;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+/* 一级分类和排序样式 */
 .categories-section .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 16px 20px 0 20px;
+  background: #fff;
+  border-radius: 8px 8px 0 0;
+  box-shadow: none;
+  margin-bottom: 0;
 }
 
-.categories-section h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.category-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr); /* 从 5 列改为 6 列，确保两行显示完 11 个分类 */
-  gap: 8px; /* 保持紧凑间距 */
-}
-
-.category-item {
-  background: #f8f9fa;
-  border-radius: 4px;
-  padding: 3px; /* 进一步减小 padding 到 3px */
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
-}
-
-.category-item:hover {
-  transform: translateY(-1px); /* 悬停效果更轻微 */
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  background: #e9f7fe;
-  border-color: #4A90E2;
-}
-
-.category-icon {
-  font-size: 1.1rem; /* 图标继续减小 */
-  margin-bottom: 2px; /* 间距更小 */
-  display: block;
-}
-
-.category-item h3 {
-  margin: 2px 0 2px; /* 间距进一步减小 */
-  font-size: 0.65rem; /* 标题文字更小 */
-  color: #333;
-}
-
-.category-item p {
-  margin: 0;
-  font-size: 0.55rem; /* 描述文字极小化 */
-  color: #666;
-}
-
-.category-mobile-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-}
-
-.category-mobile-item {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 10px 5px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.level1-tags-container {
   display: flex;
-  flex-direction: column;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.level1-tag-item {
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  user-select: none;
+}
+
+.level1-tag-item:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.level1-tag-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+}
+
+.sort-options {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
-.category-mobile-item .category-icon {
-  font-size: 1.2rem;
-  margin-bottom: 3px;
+.sort-btn {
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  transition: all 0.3s;
 }
 
-.category-mobile-item .category-name {
-  font-size: 0.7rem;
-  color: #333;
+.sort-btn:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+  color: #409eff;
+}
+
+.sort-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 发布商品按钮 */
+.publish-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.publish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 标签筛选栏样式 */
+.tag-selector-section {
+  background: #fff;
+  padding: 16px 20px 20px 20px;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-top: 0;
+}
+
+.tag-level {
+  margin-bottom: 16px;
+}
+
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tags-container.multi-select {
+  gap: 8px;
+}
+
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  user-select: none;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.tag-item:hover:not(.active) {
+  background: #ecf5ff;
+  border-color: #409eff;
+  color: #2c3e50;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.tag-item.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  transform: translateY(-2px);
+}
+
+.tag-item.chip {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* 筛选操作区域 */
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e4e7ed;
+}
+
+.clear-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.clear-btn {
+  padding: 8px 20px;
+  background: #f5f7fa;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-btn:hover {
+  background: #ecf5ff;
+  border-color: #409eff;
+  color: #409eff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+/* 自定义标签按钮 */
+.custom-tag-action {
+  flex-shrink: 0;
+}
+
+.custom-tag-btn {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.custom-tag-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.custom-tag-btn:active {
+  transform: translateY(0);
 }
 
 /* 商品列表区域 */
@@ -981,64 +1391,10 @@ watch(() => route.query.tags, (newTags, oldTags) => {
   margin-bottom: 20px;
 }
 
-.products-section .header-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.level1-tag-filter {
-  width: 120px;
-}
-
-.publish-btn {
-  padding: 10px 20px;
-  background-color: #4A90E2;
-  color: white;
-  border: none;
-  border-radius: 25px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
-}
-
-.publish-btn:hover {
-  background-color: #5a9fd6;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
-}
-
 .products-section h2 {
   margin: 0;
   font-size: 1.2rem;
   color: #333;
-}
-
-.filters-bar {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-}
-
-.filter-toggle-btn {
-  padding: 8px 15px;
-  background-color: white;
-  color: #4A90E2;
-  border: 2px solid #4A90E2;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-}
-
-.filter-toggle-btn:hover {
-  background-color: #4A90E2;
-  color: white;
 }
 
 /* 移动端悬浮按钮 */
@@ -1086,13 +1442,73 @@ watch(() => route.query.tags, (newTags, oldTags) => {
   margin-bottom: 10px;
 }
 
-.mall-page.mobile .category-grid,
-.mall-page.mobile .category-mobile-grid {
-  gap: 8px;
+/* 移动端筛选栏适配 */
+.mall-page.mobile .categories-section {
+  margin: 10px;
+  padding: 10px;
 }
 
-.mall-page.mobile .filters-bar {
+.mall-page.mobile .section-header {
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
+  padding: 12px 15px;
+}
+
+.mall-page.mobile .level1-tags-container {
+  width: 100%;
+}
+
+.mall-page.mobile .sort-options {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.mall-page.mobile .sort-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.mall-page.mobile .publish-btn {
+  margin-top: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.mall-page.mobile .tag-selector-section {
+  padding: 15px;
+}
+
+.mall-page.mobile .tag-item {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.mall-page.mobile .tag-item.chip {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.mall-page.mobile .filter-actions {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mall-page.mobile .clear-filters {
+  width: 100%;
+}
+
+.mall-page.mobile .clear-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.mall-page.mobile .custom-tag-action {
+  width: 100%;
+}
+
+.mall-page.mobile .custom-tag-btn {
+  width: 100%;
+  justify-content: center;
 }
 </style>

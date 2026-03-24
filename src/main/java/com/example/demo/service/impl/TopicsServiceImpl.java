@@ -14,7 +14,7 @@ import com.example.demo.service.topic.TopicCreateService;
 import com.example.demo.service.topic.TopicQueryService;
 import com.example.demo.service.topic.TopicLikeService;
 import com.example.demo.service.topic.TopicCommentService;
-import com.example.demo.service.topic.TopicTagService;
+import com.example.demo.service.tags.TopicTagService;
 import com.example.demo.service.topic.TopicForwardService;
 import com.example.demo.utils.JwtUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -66,6 +66,12 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
     
     @Autowired
     private TopicTagsMapper topicTagsMapper;
+    
+    @Autowired
+    private TopicTagMapper topicTagMapper;
+    
+    @Autowired
+    private LocationTagMapper locationTagMapper;
     
     @Autowired
     private UserMapper userMapper;
@@ -293,12 +299,12 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             
             // 添加分级标签信息 - 直接返回字符串数组
             result.put("level1TagCode", topic.getLevel1TagCode());
-            result.put("level2TagCodes", parseJsonToList(topic.getLevel2TagCodes()));
-            result.put("level3TagCodes", parseJsonToList(topic.getLevel3TagCodes()));
-            result.put("level4TagCodes", parseJsonToList(topic.getLevel4TagCodes()));
+            result.put("topicTagCodes", parseJsonToList(topic.getTopicTagCodes()));
+            result.put("productTagCodes", parseJsonToList(topic.getProductTagCodes()));
+            result.put("locationTagCodes", parseJsonToList(topic.getLocationTagCodes()));
             
             // 移除 tagsObject，避免返回 Map 对象导致前端类型转换错误
-            // 前端可以直接使用 level2TagCodes、level3TagCodes、level4TagCodes 字符串数组
+            // 前端可以直接使用 topicTagCodes、productTagCodes、locationTagCodes 字符串数组
             
             result.put("likesCount", topic.getLikesCount());
             result.put("commentsCount", topic.getCommentsCount());
@@ -599,17 +605,39 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         }
     }
     
+    /**
+     * 解析 JSON 字符串到列表
+     * 支持两种格式：
+     * 1. 字符串数组：["string1", "string2"]
+     * 2. 对象数组：[{"name": "value1"}, {"name": "value2"}] - 提取 name 字段
+     */
     private List<String> parseJsonToList(String json) {
         if (json == null || json.trim().isEmpty()) {
             return new ArrayList<>();
         }
         try {
-            // 使用 TypeReference 确保返回 List<String>
+            // 先尝试解析为字符串数组
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException e) {
-            System.err.println("❌ 解析 JSON 失败：" + json);
-            e.printStackTrace();
-            return new ArrayList<>();
+            // 如果失败，尝试解析为对象数组并提取 name 字段
+            try {
+                List<Map<String, Object>> objectList = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+                List<String> result = new ArrayList<>();
+                for (Map<String, Object> obj : objectList) {
+                    // 优先提取 name 字段，如果没有则提取 code 字段
+                    Object value = obj.get("name");
+                    if (value == null) {
+                        value = obj.get("code");
+                    }
+                    if (value != null) {
+                        result.add(value.toString());
+                    }
+                }
+                return result;
+            } catch (JsonProcessingException e2) {
+                System.err.println("⚠️ 解析 JSON 失败（两种格式都尝试）: " + json);
+                return new ArrayList<>();
+            }
         }
     }
     
@@ -620,18 +648,53 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         
         // 解析图片
         List<String> images = parseJsonToList(topic.getImages());
-        System.out.println("🔍 从数据库读取话题 " + topic.getId() + " 的图片:");
-        System.out.println("   DB JSON: " + topic.getImages());
-        System.out.println("   Parsed List: " + (images != null ? images.size() + " 张" : "null"));
-        if (images != null && !images.isEmpty()) {
+        // System.out.println("🔍 从数据库读取话题 " + topic.getId() + " 的图片:");
+        // System.out.println("   DB JSON: " + topic.getImages());
+        // System.out.println("   Parsed List: " + (images != null ? images.size() + " 张" : "null"));
+        
+        // 修复图片路径：添加后端 base URL
+        String baseUrl = "http://localhost:8080";
+        List<String> processedImages = new ArrayList<>();
+        if (images != null) {
             for (String url : images) {
-                System.out.println("     - " + url);
+                if (url != null && !url.trim().isEmpty()) {
+                    // 如果 URL 不以 http 开头，添加 base URL
+                    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                        url = baseUrl + url;
+                    }
+                    processedImages.add(url);
+                    // System.out.println("     - " + url);
+                }
             }
         }
-        map.put("images", images);
-        map.put("tags", parseJsonToList(topic.getTags()));
+        map.put("images", processedImages);
         
-            // 添加分级标签 - 直接返回字符串数组，不使用 Map
+        // 解析标签代码
+        List<String> topicTagCodes = parseJsonToList(topic.getTopicTagCodes());
+        List<String> locationTagCodes = parseJsonToList(topic.getLocationTagCodes());
+        String identityTagCode = topic.getLevel1TagCode(); // 话题本身的身份标签
+        
+        // System.out.println("🔍 话题 " + topic.getId() + " 的标签:");
+        // System.out.println("   level1TagCode DB: " + topic.getLevel1TagCode());
+        // System.out.println("   Parsed identityTagCode: " + identityTagCode);
+        // System.out.println("   topicTagCodes DB: " + topic.getTopicTagCodes());
+        // System.out.println("   Parsed topicTagCodes: " + topicTagCodes);
+        // System.out.println("   locationTagCodes DB: " + topic.getLocationTagCodes());
+        // System.out.println("   Parsed locationTagCodes: " + locationTagCodes);
+        
+        // 获取完整的标签对象信息
+        map.put("tags", buildTopicTagsInfo(topicTagCodes)); // 话题标签完整信息
+        map.put("topicTags", buildTopicTagsInfo(topicTagCodes)); // 保持兼容
+        map.put("locationTags", buildLocationTagsInfo(locationTagCodes)); // 地点标签完整信息
+        map.put("identityTag", identityTagCode); // 保持兼容（返回代码）
+        
+        // 添加作者信息
+        User author = userMapper.selectById(topic.getUserId());
+        if (author != null) {
+            Map<String, Object> authorInfo = buildAuthorInfo(author);
+            // System.out.println("   作者身份标签：" + authorInfo.get("identityTag"));
+            map.put("author", authorInfo);
+        }
         
         // 添加转发信息（始终返回，即使为 false）
         map.put("isForwarded", topic.getIsForwarded() != null ? topic.getIsForwarded() : false);
@@ -850,9 +913,9 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
         Map<String, Object> identityInfo = buildIdentityInfo(author);
         authorInfo.put("identity", identityInfo);
         
-        // 直接添加 level1Tag 字段，方便前端读取
-        String level1Tag = determineUserLevel1Tag(author);
-        authorInfo.put("level1Tag", level1Tag);
+        // 直接添加 identityTag 字段，方便前端读取
+        String identityTag = determineUserLevel1Tag(author);
+        authorInfo.put("identityTag", identityTag);
         
         return authorInfo;
     }
@@ -998,6 +1061,83 @@ public class TopicsServiceImpl extends ServiceImpl<TopicsMapper, Topics> impleme
             tagInfo.put("type", "location"); // TODO: 从数据库查询类型
             result.add(tagInfo);
         }
+        return result;
+    }
+    
+    /**
+     * 构建话题标签信息列表（从 topic_tag 表查询）
+     */
+    private List<Map<String, Object>> buildTopicTagsInfo(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String code : codes) {
+            try {
+                // System.out.println("🔍 查询话题标签：" + code);
+                // 查询话题标签（优先使用 name 字段，如果没有则尝试 code 字段）
+                QueryWrapper<TopicTag> wrapper = new QueryWrapper<>();
+                wrapper.and(w -> w.eq("name", code).or().eq("code", code));
+                wrapper.last("LIMIT 1");
+                TopicTag tag = topicTagMapper.selectOne(wrapper);
+                
+                if (tag != null) {
+                    // System.out.println("✅ 找到标签：" + tag.getName() + " (id=" + tag.getId() + ")");
+                    Map<String, Object> tagInfo = new HashMap<>();
+                    tagInfo.put("id", tag.getId());
+                    tagInfo.put("code", tag.getName() != null ? tag.getName() : tag.getCode());
+                    tagInfo.put("name", tag.getName());
+                    tagInfo.put("icon", tag.getIcon());
+                    tagInfo.put("color", tag.getColor());
+                    tagInfo.put("type", tag.getType());
+                    result.add(tagInfo);
+                } else {
+                    // System.out.println("❌ 未找到标签：" + code);
+                }
+            } catch (Exception e) {
+                System.err.println("查询话题标签失败：" + code + ", error: " + e.getMessage());
+            }
+        }
+        // System.out.println("🏷️ 返回话题标签数量：" + result.size());
+        return result;
+    }
+    
+    /**
+     * 构建地点标签信息列表（从 location_tag 表查询）
+     */
+    private List<Map<String, Object>> buildLocationTagsInfo(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String code : codes) {
+            try {
+                // System.out.println("📍 查询地点标签：" + code);
+                // 查询地点标签（使用 name 字段匹配）
+                QueryWrapper<LocationTag> wrapper = new QueryWrapper<>();
+                wrapper.eq("name", code).last("LIMIT 1");
+                LocationTag tag = locationTagMapper.selectOne(wrapper);
+                
+                if (tag != null) {
+                    // System.out.println("✅ 找到地点标签：" + tag.getName() + " (id=" + tag.getId() + ")");
+                    Map<String, Object> tagInfo = new HashMap<>();
+                    tagInfo.put("id", tag.getId());
+                    tagInfo.put("code", tag.getName()); // LocationTag 只有 name 字段
+                    tagInfo.put("name", tag.getName());
+                    tagInfo.put("type", tag.getType());
+                    tagInfo.put("color", tag.getColor());
+                    tagInfo.put("icon", tag.getIcon());
+                    result.add(tagInfo);
+                } else {
+                    // System.out.println("❌ 未找到地点标签：" + code);
+                }
+            } catch (Exception e) {
+                System.err.println("查询地点标签失败：" + code + ", error: " + e.getMessage());
+            }
+        }
+        // System.out.println("🏷️ 返回地点标签数量：" + result.size());
         return result;
     }
     

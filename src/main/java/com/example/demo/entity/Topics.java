@@ -28,10 +28,10 @@ public class Topics {
     private String tags; // JSON 格式存储标签数组
         
     // 分级标签字段
-    private String level1TagCode;      // 一级标签代码
-    private String level2TagCodes;     // JSON 格式存储二级标签代码数组
-    private String level3TagCodes;     // JSON 格式存储三级标签代码数组
-    private String level4TagCodes;     // JSON 格式存储四级标签代码数组
+    private String level1TagCode;      // 一级标签代码（身份标签：student/merchant/organization/admin）
+    private String topicTagCodes;      // JSON 格式存储话题标签代码数组
+    private String productTagCodes;    // JSON 格式存储商品标签代码数组
+    private String locationTagCodes;   // JSON 格式存储地点标签代码数组
         
     private Integer likesCount;
         

@@ -25,10 +25,10 @@ public class TopicCreateDTO {
     private List<String> tags;
     
     // 分级标签字段
-    private String level1TagCode;      // 一级标签代码
-    private List<String> level2TagCodes;  // 二级标签代码列表
-    private List<String> level3TagCodes;  // 三级标签代码列表
-    private List<String> level4TagCodes;  // 四级标签代码列表
+    private String level1TagCode;      // 一级标签代码（身份标签）
+    private List<String> topicTagCodes;   // 话题标签代码列表
+    private List<String> productTagCodes; // 商品标签代码列表
+    private List<String> locationTagCodes; // 地点标签代码列表
     
     // 转发相关字段
     private Boolean isForwarded;  // 是否为转发话题

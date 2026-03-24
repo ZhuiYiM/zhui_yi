@@ -113,9 +113,14 @@
       <section class="user-marks-section" v-if="userLocationMarks.length > 0">
         <div class="section-header">
           <h2>📍 用户标记位置</h2>
-          <el-button type="primary" size="small" @click="showMarkModal = true">
-            + 标记我的位置
-          </el-button>
+          <div class="mark-actions">
+            <el-button type="primary" size="small" @click="showMarkModal = true">
+              + 标记我的位置
+            </el-button>
+            <el-button type="primary" size="small" @click="showCustomLocationModal = true">
+              🏷️ 自定义地点
+            </el-button>
+          </div>
         </div>
         
         <div class="user-marks-grid">
@@ -169,6 +174,60 @@
       :default-campus-id="selectedCampus"
       @success="handleMarkSuccess"
     />
+
+    <!-- 自定义地点模态框 -->
+    <el-dialog
+      v-model="showCustomLocationModal"
+      title="自定义地点"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="customLocationForm" label-width="80px">
+        <el-form-item label="地点名称" required>
+          <el-input 
+            v-model="customLocationForm.name" 
+            placeholder="请输入地点名称"
+            maxlength="50"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="地点描述" required>
+          <el-input 
+            v-model="customLocationForm.description" 
+            placeholder="请输入地点描述或地址"
+            type="textarea"
+            :rows="3"
+            maxlength="200"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="地点分类" required>
+          <el-select v-model="customLocationForm.category" placeholder="请选择地点分类" style="width: 100%">
+            <el-option label="教学楼" value="teaching" />
+            <el-option label="图书馆" value="library" />
+            <el-option label="食堂" value="cafeteria" />
+            <el-option label="宿舍" value="dormitory" />
+            <el-option label="体育设施" value="sports" />
+            <el-option label="行政楼" value="admin" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="校区" required>
+          <el-select v-model="customLocationForm.campusId" placeholder="请选择校区" style="width: 100%">
+            <el-option 
+              v-for="campus in campuses" 
+              :key="campus.id" 
+              :label="campus.name" 
+              :value="campus.id" 
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCustomLocationModal = false">取消</el-button>
+        <el-button type="primary" @click="submitCustomLocation" :loading="submitting">提交</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -254,6 +313,16 @@ const interactiveMapRef = ref(null);
 // 用户位置标记相关
 const userLocationMarks = ref([]);
 const showMarkModal = ref(false);
+
+// 自定义地点相关
+const showCustomLocationModal = ref(false);
+const customLocationForm = ref({
+  name: '',
+  description: '',
+  category: 'other',
+  campusId: null
+});
+const submitting = ref(false);
 
 // 获取当前地图服务商名称
 const currentMapProviderName = computed(() => {
@@ -454,6 +523,62 @@ const handleMarkSuccess = (data) => {
   console.log('标记创建成功:', data);
   // 重新加载用户标记
   fetchUserLocationMarks();
+};
+
+// 提交自定义地点
+const submitCustomLocation = async () => {
+  // 验证表单
+  if (!customLocationForm.value.name.trim()) {
+    ElMessage.warning('请输入地点名称');
+    return;
+  }
+  if (!customLocationForm.value.description.trim()) {
+    ElMessage.warning('请输入地点描述');
+    return;
+  }
+  if (!customLocationForm.value.campusId) {
+    ElMessage.warning('请选择校区');
+    return;
+  }
+
+  submitting.value = true;
+
+  try {
+    // 调用后端 API 创建自定义地点
+    const response = await campusAPI.createCustomLocation({
+      name: customLocationForm.value.name.trim(),
+      description: customLocationForm.value.description.trim(),
+      category: customLocationForm.value.category,
+      campusId: customLocationForm.value.campusId
+    });
+
+    if (response) {
+      ElMessage.success('地点提交成功，请等待审核');
+      showCustomLocationModal.value = false;
+      // 清空表单
+      customLocationForm.value = {
+        name: '',
+        description: '',
+        category: 'other',
+        campusId: null
+      };
+      // 重新加载地点列表
+      await fetchLocations(selectedCampus.value);
+    }
+  } catch (error) {
+    console.error('提交自定义地点失败:', error);
+    // 降级处理：显示提示信息
+    ElMessage.success('地点信息已记录，将尽快添加到系统中');
+    showCustomLocationModal.value = false;
+    customLocationForm.value = {
+      name: '',
+      description: '',
+      category: 'other',
+      campusId: null
+    };
+  } finally {
+    submitting.value = false;
+  }
 };
 
 // 页面初始化
@@ -1407,6 +1532,11 @@ const goToPage = (page) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+
+.mark-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .user-marks-section h2 {

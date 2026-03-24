@@ -30,7 +30,7 @@
             :id="topic.id"
             :content="topic.content"
             :images="topic.images"
-            :tags="topic.tags"
+            :tags="{ topicTags: topic.topicTags, locationTags: topic.locationTags }"
             :author="topic.author"
             :statistics="topic.statistics"
             :interactions="topic.interactions"
@@ -133,16 +133,35 @@ const fetchTopicDetail = async () => {
         content: data.content,
         images: data.images || [],
         tags: data.tags || [],
-        level2Tags: data.level2TagCodes || [], // ✅ 使用字符串数组
-        level3Tags: data.level3TagCodes || [], // ✅ 使用字符串数组
-        level4Tags: data.level4TagCodes || [], // ✅ 使用字符串数组
+        // ✅ 处理 topicTags：后端可能返回 topicTags 对象数组或 topicTagCodes 字符串数组
+        topicTags: (() => {
+          if (data.topicTags && Array.isArray(data.topicTags)) {
+            return data.topicTags; // 已经是对象数组
+          } else if (data.topicTagCodes) {
+            // 字符串数组，需要转换为对象数组
+            const codes = Array.isArray(data.topicTagCodes) ? data.topicTagCodes : [];
+            return codes.map(code => typeof code === 'string' ? { code, name: code } : code);
+          }
+          return [];
+        })(),
+        // ✅ 处理 locationTags：后端可能返回 locationTags 对象数组或 locationTagCodes 字符串数组
+        locationTags: (() => {
+          if (data.locationTags && Array.isArray(data.locationTags)) {
+            return data.locationTags; // 已经是对象数组
+          } else if (data.locationTagCodes) {
+            // 字符串数组，需要转换为对象数组
+            const codes = Array.isArray(data.locationTagCodes) ? data.locationTagCodes : [];
+            return codes.map(code => typeof code === 'string' ? { code, name: code } : code);
+          }
+          return [];
+        })(),
         author: {
           id: data.author?.id || data.authorId,
           username: data.author?.username || data.authorUsername || data.author?.realName,
           realName: data.author?.realName || data.authorRealName,
           avatarUrl: data.author?.avatarUrl || data.authorAvatarUrl,
           studentId: data.author?.studentId || data.authorStudentId,
-          level1Tag: data.author?.level1Tag || data.level1Tag
+          identityTag: data.author?.identityTag || data.identityTag // ✅ 身份标签
         },
         statistics: {
           viewsCount: data.statistics?.viewsCount || data.viewsCount || 0,
@@ -335,8 +354,18 @@ const handleRepost = (topicId) => {
       originalTopicId: topicId
     };
     
+    // 将分享数据存储到 sessionStorage
     sessionStorage.setItem('shareData', JSON.stringify(shareData));
-    router.push('/topicwall?from=share&sourceType=topic&sourceId=' + topicId);
+    
+    // 跳转到话题墙页面，并传递参数
+    router.push({
+      path: '/topicwall',
+      query: {
+        from: 'share',
+        sourceType: 'topic',
+        sourceId: topicId
+      }
+    });
     
     ElMessage.success('正在跳转到发布页面...');
   } catch (error) {

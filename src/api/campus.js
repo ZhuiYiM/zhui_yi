@@ -85,5 +85,12 @@ export const campusAPI = {
     // 点赞标记
     likeLocationMark(markId) {
         return request.post(`/user/location-marks/${markId}/like`);
+    },
+
+    // ========== 自定义地点相关接口 ==========
+    
+    // 创建自定义地点
+    createCustomLocation(data) {
+        return request.post('/campuses/locations/custom', data);
     }
 };

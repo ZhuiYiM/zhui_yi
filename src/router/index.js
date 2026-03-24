@@ -222,14 +222,14 @@ const routes = [
                 component: () => import('../views/admin/TagManagement.vue')
             },
             {
-                path: 'tags-level3',
-                name: 'AdminTagsLevel3',
-                component: () => import('../views/admin/Tag3Management.vue')
+                path: 'location-tags',
+                name: 'AdminLocationTags',
+                component: () => import('../views/admin/LocationTagManagement.vue')
             },
             {
-                path: 'tags-level4',
-                name: 'AdminTagsLevel4',
-                component: () => import('../views/admin/Tag4Management.vue')
+                path: 'product-tags',
+                name: 'AdminProductTags',
+                component: () => import('../views/admin/ProductTagManagement.vue')
             },
             {
                 path: 'logs',

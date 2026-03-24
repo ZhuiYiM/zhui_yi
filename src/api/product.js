@@ -61,6 +61,16 @@ export const productAPI = {
     // 获取我发布的商品
     getMyPublishedProducts(params = {}) {
         return request.get('/products/my', { params });
+    },
+
+    // 提交自定义商品标签
+    submitCustomTag(data) {
+        return request.post('/tags/products/custom/submit', data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
     }
 };
 

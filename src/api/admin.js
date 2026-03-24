@@ -164,84 +164,84 @@ export const adminAPI = {
         return request.put('/admin/settings', data);
     },
 
-    // ========== 标签管理 ==========
-    // 二级标签
-    getLevel2Tags(params) {
-        return request.get('/admin/tags', { params });
+    // ========== 标签管理（基于 identity_tags、product_tag、topic_tag、location_tag） ==========
+    // 身份标签
+    getIdentityTags(params) {
+        return request.get('/admin/tags/identity', { params });
     },
-    createLevel2Tag(data) {
-        return request.post('/admin/tags', data);
+    createIdentityTag(data) {
+        return request.post('/admin/tags/identity', data);
     },
-    updateLevel2Tag(id, data) {
-        return request.put(`/admin/tags/${id}`, data);
+    updateIdentityTag(id, data) {
+        return request.put(`/admin/tags/identity/${id}`, data);
     },
-    deleteLevel2Tag(id) {
-        return request.delete(`/admin/tags/${id}`);
+    deleteIdentityTag(id) {
+        return request.delete(`/admin/tags/identity/${id}`);
     },
-    batchDeleteLevel2Tags(ids) {
-        return request.delete('/admin/tags/batch', { params: { ids } });
+    batchDeleteIdentityTags(ids) {
+        return request.delete('/admin/tags/identity/batch', { params: { ids } });
     },
-    updateLevel2TagStatus(id, isActive) {
-        return request.put(`/admin/tags/${id}/status`, { isActive });
-    },
-
-    // 三级标签
-    getLevel3Tags(params) {
-        return request.get('/admin/tags/level-3', { params });
-    },
-    createLevel3Tag(data) {
-        return request.post('/admin/tags/level-3', data);
-    },
-    updateLevel3Tag(id, data) {
-        return request.put(`/admin/tags/level-3/${id}`, data);
-    },
-    deleteLevel3Tag(id) {
-        return request.delete(`/admin/tags/level-3/${id}`);
-    },
-    batchDeleteLevel3Tags(ids) {
-        return request.delete('/admin/tags/level-3/batch', { params: { ids } });
-    },
-    updateLevel3TagStatus(id, isActive) {
-        return request.put(`/admin/tags/level-3/${id}/status`, { isActive });
+    updateIdentityTagStatus(id, isActive) {
+        return request.put(`/admin/tags/identity/${id}/status`, { isActive });
     },
 
-    // 四级标签
-    getLevel4Tags(params) {
-        return request.get('/admin/tags/level-4', { params });
+    // 话题标签（二级标签）
+    getTopicTags(params) {
+        return request.get('/admin/tags/topic', { params });
     },
-    updateLevel4Tag(id, data) {
-        return request.put(`/admin/tags/level-4/${id}`, data);
+    createTopicTag(data) {
+        return request.post('/admin/tags/topic', data);
     },
-    deleteLevel4Tag(id) {
-        return request.delete(`/admin/tags/level-4/${id}`);
+    updateTopicTag(id, data) {
+        return request.put(`/admin/tags/topic/${id}`, data);
     },
-    batchDeleteLevel4Tags(ids) {
-        return request.delete('/admin/tags/level-4/batch', { params: { ids } });
+    deleteTopicTag(id) {
+        return request.delete(`/admin/tags/topic/${id}`);
     },
-    updateLevel4TagStatus(id, status) {
-        return request.put(`/admin/tags/level-4/${id}/status`, { status });
+    batchDeleteTopicTags(ids) {
+        return request.delete('/admin/tags/topic/batch', { params: { ids } });
+    },
+    updateTopicTagStatus(id, isActive) {
+        return request.put(`/admin/tags/topic/${id}/status`, { isActive });
     },
 
-    // 五级标签（商业标签）
-    getLevel5Tags() {
-        return request.get('/admin/tags/level-5/all');
+    // 地点标签（三级标签）
+    getLocationTags(params) {
+        return request.get('/admin/tags/location', { params });
     },
-    getLevel5TagsAdmin(params) {
-        return request.get('/admin/tags/level-5', { params });
+    createLocationTag(data) {
+        return request.post('/admin/tags/location', data);
     },
-    createLevel5Tag(data) {
-        return request.post('/admin/tags/level-5', data);
+    updateLocationTag(id, data) {
+        return request.put(`/admin/tags/location/${id}`, data);
     },
-    updateLevel5Tag(id, data) {
-        return request.put(`/admin/tags/level-5/${id}`, data);
+    deleteLocationTag(id) {
+        return request.delete(`/admin/tags/location/${id}`);
     },
-    deleteLevel5Tag(id) {
-        return request.delete(`/admin/tags/level-5/${id}`);
+    batchDeleteLocationTags(ids) {
+        return request.delete('/admin/tags/location/batch', { params: { ids } });
     },
-    batchDeleteLevel5Tags(ids) {
-        return request.delete('/admin/tags/level-5/batch', { params: { ids } });
+    updateLocationTagStatus(id, isActive) {
+        return request.put(`/admin/tags/location/${id}/status`, { isActive });
     },
-    updateLevel5TagStatus(id, isActive) {
-        return request.put(`/admin/tags/level-5/${id}/status`, { isActive });
+
+    // 商品标签（四级、五级标签）
+    getProductTags(params) {
+        return request.get('/admin/tags/product', { params });
+    },
+    createProductTag(data) {
+        return request.post('/admin/tags/product', data);
+    },
+    updateProductTag(id, data) {
+        return request.put(`/admin/tags/product/${id}`, data);
+    },
+    deleteProductTag(id) {
+        return request.delete(`/admin/tags/product/${id}`);
+    },
+    batchDeleteProductTags(ids) {
+        return request.delete('/admin/tags/product/batch', { params: { ids } });
+    },
+    updateProductTagStatus(id, status) {
+        return request.put(`/admin/tags/product/${id}/status`, { status });
     }
 };

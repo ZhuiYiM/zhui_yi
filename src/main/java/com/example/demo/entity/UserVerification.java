@@ -13,13 +13,14 @@ public class UserVerification {
     @TableId(type = IdType.AUTO)
     private Integer id;
     private Integer userId;
-    private String verificationType;    // student_id, id_card, real_name
-    private String status;              // pending, approved, rejected
-    private String studentId;
-    private String realName;
-    private String idCard;
-    private String college;
+    private String verificationType;    // 身份类型：student, staff, merchant, organization
+    private String status;              // 状态：pending, approved, rejected
+    private String studentId;           // 学号/工号/负责人（复用字段，优先从 extraInfo 读取）
+    private String realName;            // 姓名/店铺名/组织名（复用字段，优先从 extraInfo 读取）
+    private String idCard;              // 身份证号
+    private String college;             // 学院/部门（复用字段，优先从 extraInfo 读取）
     private String rejectionReason;
+    private String extraInfo;               // JSON 格式存储完整申请材料
     private LocalDateTime submittedAt;
     private LocalDateTime reviewedAt;
     private Integer reviewerId;
@@ -51,6 +52,9 @@ public class UserVerification {
     
     public String getRejectionReason() { return rejectionReason; }
     public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+    
+    public String getExtraInfo() { return extraInfo; }
+    public void setExtraInfo(String extraInfo) { this.extraInfo = extraInfo; }
     
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }

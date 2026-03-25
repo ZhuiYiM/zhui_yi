@@ -82,8 +82,8 @@
         <el-table-column prop="college" label="学院" width="150" />
         <el-table-column label="认证状态" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.isVerified === 1 ? 'success' : 'info'">
-              {{ row.isVerified === 1 ? '已认证' : '未认证' }}
+            <el-tag :type="getIdentityTagType(row)">
+              {{ getIdentityLabel(row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -153,8 +153,8 @@
         </el-descriptions-item>
         <el-descriptions-item label="出生日期">{{ currentUser.birthDate || '-' }}</el-descriptions-item>
         <el-descriptions-item label="身份认证">
-          <el-tag :type="currentUser.isVerified === 1 ? 'success' : 'info'">
-            {{ currentUser.isVerified === 1 ? '已认证' : '未认证' }}
+          <el-tag :type="getIdentityTagType(currentUser)">
+            {{ getIdentityLabel(currentUser) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="实名认证">
@@ -251,6 +251,30 @@ const handleReset = () => {
 const handleViewDetail = (row) => {
   currentUser.value = row;
   dialogVisible.value = true;
+};
+
+// 获取身份标签类型
+const getIdentityTagType = (user) => {
+  if (!user.isVerified || user.isVerified !== 1) {
+    return 'info';
+  }
+  if (user.isStaff === 1) return 'warning'; // 教职工 - 橙色
+  if (user.isMerchant === 1) return 'success'; // 商户 - 绿色
+  if (user.isOrganization === 1) return 'primary'; // 组织 - 蓝色
+  if (user.studentId) return 'success'; // 学生 - 绿色
+  return 'info'; // 默认
+};
+
+// 获取身份标签文本
+const getIdentityLabel = (user) => {
+  if (!user.isVerified || user.isVerified !== 1) {
+    return '未认证';
+  }
+  if (user.isStaff === 1) return '教职工';
+  if (user.isMerchant === 1) return '商户';
+  if (user.isOrganization === 1) return '组织';
+  if (user.studentId) return '学生';
+  return '已认证'; // 兜底
 };
 
 // 切换状态

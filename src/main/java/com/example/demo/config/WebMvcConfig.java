@@ -39,7 +39,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                     "/api/tags/topics",         // 获取话题标签（公开）
                     "/api/tags/locations",      // 获取地点标签（公开）
                     "/api/tags/products",       // 获取商品标签（公开）
-                    "/api/tags/**/hot"          // 获取热门标签（公开）
+                    "/api/tags/**/hot",         // 获取热门标签（公开）
+                    "/api/admin/login",         // 管理员登录
+                    "/api/admin/check-user-admin"  // 检查用户是否是管理员
                 );
     }
 }

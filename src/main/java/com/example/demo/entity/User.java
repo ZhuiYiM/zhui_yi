@@ -42,4 +42,5 @@ public class User {
     private Integer isAdmin;            // 是否管理员：0-否，1-是
     private Integer isMerchant;         // 是否商户：0-否，1-是
     private Integer isOrganization;     // 是否团体：0-否，1-是
+    private Integer isStaff;            // 是否教职工：0-否，1-是
 }

@@ -5,7 +5,7 @@ export const userAPI = {
     
     // 用户登录
     login(data) {
-        // 临时解决方案：添加一个无效的token来绕过后端认证检查
+        // 临时解决方案：添加一个无效的 token 来绕过后端认证检查
         // 这是因为后端错误地要求登录接口也需要认证
         return fetch('http://localhost:8080/user/login', {
             method: 'POST',
@@ -171,6 +171,70 @@ export const userAPI = {
                 'Accept': 'application/json'
             }
         });
+    },
+
+    // ==================== 身份认证相关接口 ====================
+    
+    // 获取用户身份列表
+    getUserIdentities() {
+        return request.get('/user/identity');
+    },
+
+    // 申请身份认证
+    applyIdentity(data) {
+        return request.post('/user/identity/apply', data, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    },
+
+    // 获取身份类型选项
+    getIdentityTypes() {
+        return request.get('/user/identity/types');
+    },
+    
+    // ==================== 管理员身份审核接口 ====================
+    
+    // 获取身份认证列表（管理员）
+    getAdminIdentityList(params = {}) {
+        return request.get('/admin/identity/list', { params });
+    },
+    
+    // 获取认证详情（管理员）
+    getIdentityDetail(id) {
+        return request.get(`/admin/identity/${id}`);
+    },
+    
+    // 批量通过（管理员）
+    batchApprove(ids) {
+        return request.post('/admin/identity/batch-approve', ids, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    },
+    
+    // 批量拒绝（管理员）
+    batchReject(params) {
+        return request.post('/admin/identity/batch-reject', params, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+    },
+    
+    // 撤销认证（管理员）
+    revokeIdentity(id) {
+        return request.post(`/admin/identity/${id}/revoke`);
+    },
+    
+    // 获取统计信息（管理员）
+    getIdentityStats() {
+        return request.get('/admin/identity/stats');
     },
 
     // ==================== 认证相关接口 ====================

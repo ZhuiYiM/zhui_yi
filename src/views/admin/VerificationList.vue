@@ -68,49 +68,55 @@
         style="width: 100%"
       >
         <el-table-column prop="id" label="申请 ID" width="100" />
-        <el-table-column label="申请人" min-width="150">
+        <el-table-column label="用户 ID" width="120" />
+        <el-table-column prop="verificationType" label="认证类型" width="150">
           <template #default="{ row }">
-            <div class="user-info">
-              <el-avatar :src="row.user?.avatarUrl" :size="40" />
-              <div class="info">
-                <div class="username">{{ row.user?.username }}</div>
-                <div class="realname">{{ row.user?.realName }}</div>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="studentId" label="学号" width="120" />
-        <el-table-column prop="type" label="认证类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.type === 'student' ? 'primary' : 'success'">
-              {{ row.type === 'student' ? '学生证认证' : '实名认证' }}
+            <el-tag :type="getTypeTag(row.verificationType)">
+              {{ getTypeName(row.verificationType) }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="认证信息" min-width="200">
           <template #default="{ row }">
             <div class="verification-info">
-              <div v-if="row.type === 'student'">
-                <div>学院：{{ row.college }}</div>
-                <div>专业：{{ row.major }}</div>
+              <!-- 优先显示 extraInfo 中的信息 -->
+              <div v-if="row.extraInfo" style="font-size: 12px;">
+                <div v-if="row.verificationType === 'student'">
+                  <div>学号：{{ row.extraInfo.studentId || '-' }}</div>
+                  <div>手机：{{ row.extraInfo.contactPhone || '-' }}</div>
+                </div>
+                <div v-else-if="row.verificationType === 'staff'">
+                  <div>工号：{{ row.extraInfo.staffId || '-' }}</div>
+                  <div>部门：{{ row.extraInfo.department || '-' }}</div>
+                </div>
+                <div v-else-if="row.verificationType === 'merchant'">
+                  <div>店铺：{{ row.extraInfo.shopName || '-' }}</div>
+                </div>
+                <div v-else-if="row.verificationType === 'organization'">
+                  <div>组织：{{ row.extraInfo.organizationName || '-' }}</div>
+                  <div>负责人：{{ row.extraInfo.leaderName || '-' }}</div>
+                </div>
               </div>
+              <!-- 兼容旧数据 -->
               <div v-else>
-                <div>姓名：{{ row.realName }}</div>
-                <div>身份证：{{ maskIdCard(row.idCard) }}</div>
+                <div v-if="row.studentId">学号：{{ row.studentId }}</div>
+                <div v-if="row.realName">姓名：{{ row.realName }}</div>
+                <div v-if="row.college">学院：{{ row.college }}</div>
+                <div v-if="!row.studentId && !row.realName && !row.college">暂无详细信息</div>
               </div>
             </div>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'pending' ? 'warning' : row.status === 'approved' ? 'success' : 'danger'">
-              {{ row.status === 'pending' ? '待审核' : row.status === 'approved' ? '已通过' : '已拒绝' }}
+            <el-tag :type="getStatusTag(row.status)">
+              {{ getStatusName(row.status) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="申请时间" width="180">
+        <el-table-column prop="submittedAt" label="申请时间" width="180">
           <template #default="{ row }">
-            {{ new Date(row.createTime).toLocaleString() }}
+            {{ formatDateTime(row.submittedAt) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
@@ -159,32 +165,118 @@
     >
       <el-descriptions :column="2" border v-if="currentApplication">
         <el-descriptions-item label="申请 ID">{{ currentApplication.id }}</el-descriptions-item>
-        <el-descriptions-item label="申请人">{{ currentApplication.user?.username }}</el-descriptions-item>
-        <el-descriptions-item label="真实姓名">{{ currentApplication.user?.realName }}</el-descriptions-item>
-        <el-descriptions-item label="学号">{{ currentApplication.studentId }}</el-descriptions-item>
+        <el-descriptions-item label="用户 ID">{{ currentApplication.userId }}</el-descriptions-item>
         <el-descriptions-item label="认证类型">
-          <el-tag :type="currentApplication.type === 'student' ? 'primary' : 'success'">
-            {{ currentApplication.type === 'student' ? '学生证认证' : '实名认证' }}
+          <el-tag :type="getTypeTag(currentApplication.verificationType)">
+            {{ getTypeName(currentApplication.verificationType) }}
           </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="学院">{{ currentApplication.college }}</el-descriptions-item>
-        <el-descriptions-item label="专业">{{ currentApplication.major }}</el-descriptions-item>
-        <el-descriptions-item label="身份证号码" v-if="currentApplication.idCard">
-          {{ maskIdCard(currentApplication.idCard) }}
         </el-descriptions-item>
         <el-descriptions-item label="申请时间">
-          {{ new Date(currentApplication.createTime).toLocaleString() }}
+          {{ formatDateTime(currentApplication.submittedAt) }}
         </el-descriptions-item>
         <el-descriptions-item label="审核状态">
-          <el-tag :type="currentApplication.status === 'pending' ? 'warning' : currentApplication.status === 'approved' ? 'success' : 'danger'">
-            {{ currentApplication.status === 'pending' ? '待审核' : currentApplication.status === 'approved' ? '已通过' : '已拒绝' }}
+          <el-tag :type="getStatusTag(currentApplication.status)">
+            {{ getStatusName(currentApplication.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="审核备注" :span="2" v-if="currentApplication.adminRemark">
-          {{ currentApplication.adminRemark }}
+        
+        <!-- 显示 extraInfo 中的详细信息 -->
+        <template v-if="currentApplication.extraInfo">
+          <el-descriptions-item label="学号" v-if="currentApplication.extraInfo.studentId">
+            {{ currentApplication.extraInfo.studentId }}
+          </el-descriptions-item>
+          <el-descriptions-item label="手机号" v-if="currentApplication.extraInfo.contactPhone">
+            {{ currentApplication.extraInfo.contactPhone }}
+          </el-descriptions-item>
+          <el-descriptions-item label="学生证照片" v-if="currentApplication.extraInfo.studentCardUrl">
+            <el-image 
+              :src="getFullImageUrl(currentApplication.extraInfo.studentCardUrl)"
+              :preview-src-list="[getFullImageUrl(currentApplication.extraInfo.studentCardUrl)]"
+              style="width: 150px; height: 100px;"
+              fit="contain"
+            >
+              <template #placeholder>
+                <div style="width: 150px; height: 100px; display: flex; align-items: center; justify-content: center; background: #f5f7fa;">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+          </el-descriptions-item>
+          <el-descriptions-item label="工号" v-if="currentApplication.extraInfo.staffId">
+            {{ currentApplication.extraInfo.staffId }}
+          </el-descriptions-item>
+          <el-descriptions-item label="所属部门" v-if="currentApplication.extraInfo.department">
+            {{ currentApplication.extraInfo.department }}
+          </el-descriptions-item>
+          <el-descriptions-item label="工作证照片" v-if="currentApplication.extraInfo.workCardUrl">
+            <el-image 
+              :src="getFullImageUrl(currentApplication.extraInfo.workCardUrl)"
+              :preview-src-list="[getFullImageUrl(currentApplication.extraInfo.workCardUrl)]"
+              style="width: 150px; height: 100px;"
+              fit="contain"
+            >
+              <template #placeholder>
+                <div style="width: 150px; height: 100px; display: flex; align-items: center; justify-content: center; background: #f5f7fa;">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+          </el-descriptions-item>
+          <el-descriptions-item label="店铺名称" v-if="currentApplication.extraInfo.shopName">
+            {{ currentApplication.extraInfo.shopName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="营业执照" v-if="currentApplication.extraInfo.businessLicenseUrl">
+            <el-image 
+              :src="getFullImageUrl(currentApplication.extraInfo.businessLicenseUrl)"
+              :preview-src-list="[getFullImageUrl(currentApplication.extraInfo.businessLicenseUrl)]"
+              style="width: 150px; height: 100px;"
+              fit="contain"
+            >
+              <template #placeholder>
+                <div style="width: 150px; height: 100px; display: flex; align-items: center; justify-content: center; background: #f5f7fa;">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+          </el-descriptions-item>
+          <el-descriptions-item label="组织名称" v-if="currentApplication.extraInfo.organizationName">
+            {{ currentApplication.extraInfo.organizationName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="负责人" v-if="currentApplication.extraInfo.leaderName">
+            {{ currentApplication.extraInfo.leaderName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="组织证明文件" v-if="currentApplication.extraInfo.organizationProofUrl">
+            <el-image 
+              :src="getFullImageUrl(currentApplication.extraInfo.organizationProofUrl)"
+              :preview-src-list="[getFullImageUrl(currentApplication.extraInfo.organizationProofUrl)]"
+              style="width: 150px; height: 100px;"
+              fit="contain"
+            >
+              <template #placeholder>
+                <div style="width: 150px; height: 100px; display: flex; align-items: center; justify-content: center; background: #f5f7fa;">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+          </el-descriptions-item>
+          <el-descriptions-item label="备注" v-if="currentApplication.extraInfo.remark">
+            {{ currentApplication.extraInfo.remark }}
+          </el-descriptions-item>
+        </template>
+        
+        <!-- 兼容旧数据 -->
+        <el-descriptions-item label="学号" v-if="currentApplication.studentId && !currentApplication.extraInfo">
+          {{ currentApplication.studentId }}
         </el-descriptions-item>
-        <el-descriptions-item label="拒绝原因" :span="2" v-if="currentApplication.rejectReason">
-          {{ currentApplication.rejectReason }}
+        <el-descriptions-item label="真实姓名" v-if="currentApplication.realName && !currentApplication.extraInfo">
+          {{ currentApplication.realName }}
+        </el-descriptions-item>
+        <el-descriptions-item label="学院" v-if="currentApplication.college && !currentApplication.extraInfo">
+          {{ currentApplication.college }}
+        </el-descriptions-item>
+        
+        <el-descriptions-item label="拒绝原因" :span="2" v-if="currentApplication.rejectionReason">
+          {{ currentApplication.rejectionReason }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -202,7 +294,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { DocumentChecked, Search, Refresh } from '@element-plus/icons-vue';
+import { DocumentChecked, Search, Refresh, Picture } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox, ElInput } from 'element-plus';
 import { adminAPI } from '@/api/admin';
 
@@ -233,11 +325,27 @@ const loadApplicationList = async () => {
       ...searchForm
     };
     const res = await adminAPI.getVerificationApplications(params);
-    if (res.code === 200) {
-      applicationList.value = res.data.records || res.data;
-      pagination.total = res.data.total || 0;
+    
+    // 后端直接返回数据，不是 {code, data} 格式
+    if (res && res.records) {
+      // 解析 extraInfo 字段（JSON 字符串转对象）
+      applicationList.value = res.records.map(record => {
+        if (record.extraInfo && typeof record.extraInfo === 'string') {
+          try {
+            return {
+              ...record,
+              extraInfo: JSON.parse(record.extraInfo)
+            };
+          } catch (e) {
+            console.error('解析 extraInfo 失败:', e);
+            return record;
+          }
+        }
+        return record;
+      });
+      pagination.total = res.total || 0;
     } else {
-      ElMessage.error(res.message || '加载认证申请列表失败');
+      ElMessage.error('数据格式异常');
     }
   } catch (error) {
     console.error('加载认证申请列表失败:', error);
@@ -263,6 +371,14 @@ const handleReset = () => {
 
 // 查看详情
 const handleViewDetail = (row) => {
+  // 确保 extraInfo 已解析
+  if (row.extraInfo && typeof row.extraInfo === 'string') {
+    try {
+      row.extraInfo = JSON.parse(row.extraInfo);
+    } catch (e) {
+      console.error('解析 extraInfo 失败:', e);
+    }
+  }
   currentApplication.value = row;
   dialogVisible.value = true;
 };
@@ -277,17 +393,15 @@ const handleApprove = async (row) => {
       inputErrorMessage: '备注长度不能超过 200 字'
     });
     
-    const res = await adminAPI.approveApplication(row.id, remark || '');
-    if (res.code === 200) {
-      ElMessage.success('已通过认证申请');
-      loadApplicationList();
-      dialogVisible.value = false;
-    } else {
-      ElMessage.error(res.message || '审核失败');
-    }
+    // 拦截器已经处理了 code !== 200 的情况，能到这里说明成功
+    await adminAPI.approveApplication(row.id, remark || '');
+    ElMessage.success('已通过认证申请');
+    loadApplicationList();
+    dialogVisible.value = false;
   } catch (error) {
     if (error !== 'cancel') {
       console.error('审核失败:', error);
+      // 错误消息由拦截器统一显示
     }
   }
 };
@@ -302,17 +416,15 @@ const handleReject = async (row) => {
       inputErrorMessage: '请输入拒绝原因'
     });
     
-    const res = await adminAPI.rejectApplication(row.id, reason);
-    if (res.code === 200) {
-      ElMessage.success('已拒绝认证申请');
-      loadApplicationList();
-      dialogVisible.value = false;
-    } else {
-      ElMessage.error(res.message || '拒绝失败');
-    }
+    // 拦截器已经处理了 code !== 200 的情况，能到这里说明成功
+    await adminAPI.rejectApplication(row.id, reason);
+    ElMessage.success('已拒绝认证申请');
+    loadApplicationList();
+    dialogVisible.value = false;
   } catch (error) {
     if (error !== 'cancel') {
       console.error('拒绝失败:', error);
+      // 错误消息由拦截器统一显示
     }
   }
 };
@@ -321,6 +433,77 @@ const handleReject = async (row) => {
 const maskIdCard = (idCard) => {
   if (!idCard) return '-';
   return idCard.replace(/^(.{6}).*(.{4})$/, '$1****$2');
+};
+
+// 获取类型标签
+const getTypeTag = (type) => {
+  const typeMap = {
+    'student': 'primary',
+    'staff': 'success',
+    'merchant': 'warning',
+    'organization': 'info'
+  };
+  return typeMap[type] || 'info';
+};
+
+// 获取类型名称
+const getTypeName = (type) => {
+  const nameMap = {
+    'student': '学生认证',
+    'staff': '教职工认证',
+    'merchant': '商户认证',
+    'organization': '团体/部门认证'
+  };
+  return nameMap[type] || '未知类型';
+};
+
+// 获取状态标签
+const getStatusTag = (status) => {
+  const statusMap = {
+    'pending': 'warning',
+    'approved': 'success',
+    'rejected': 'danger'
+  };
+  return statusMap[status] || 'info';
+};
+
+// 获取状态名称
+const getStatusName = (status) => {
+  const statusMap = {
+    'pending': '待审核',
+    'approved': '已通过',
+    'rejected': '已拒绝'
+  };
+  return statusMap[status] || '未知状态';
+};
+
+// 格式化时间
+const formatDateTime = (datetime) => {
+  if (!datetime) return '-';
+  const date = new Date(datetime);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// 获取完整的图片 URL
+const getFullImageUrl = (url) => {
+  if (!url) return ''
+  // 如果已经是完整 URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  // 否则拼接后端服务器地址
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  // 确保 baseUrl 不以 / 结尾
+  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
+  // 确保 url 以 / 开头
+  const path = url.startsWith('/') ? url : '/' + url
+  return `${base}${path}`
 };
 
 onMounted(() => {

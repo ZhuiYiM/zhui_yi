@@ -1,9 +1,14 @@
 package com.example.demo.service.admin.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.demo.entity.User;
+import com.example.demo.entity.UserIdentity;
 import com.example.demo.entity.UserVerification;
 import com.example.demo.entity.admin.AdminUser;
 import com.example.demo.mapper.admin.AdminUserMapper;
+import com.example.demo.mapper.UserMapper;
+import com.example.demo.mapper.UserIdentityMapper;
 import com.example.demo.mapper.UserVerificationMapper;
 import com.example.demo.service.admin.AdminUserService;
 import com.example.demo.common.Result;
@@ -26,6 +31,12 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
     private UserVerificationMapper userVerificationMapper;
     
     @Autowired
+    private UserMapper userMapper;
+    
+    @Autowired
+    private UserIdentityMapper userIdentityMapper;
+    
+    @Autowired
     private JwtUtil jwtUtil;
     
     // 使用静态实例，避免 Spring 代理问题
@@ -33,57 +44,26 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
 
     @Override
     public Result login(String username, String password) {
-        System.out.println("🔐 管理员登录请求 - 用户名：" + username);
-        System.out.println("🔐 输入密码：" + password);
-        
         // 查询管理员
         AdminUser adminUser = this.lambdaQuery()
                 .eq(AdminUser::getUsername, username)
                 .one();
         
         if (adminUser == null) {
-            System.out.println("❌ 管理员不存在");
             return Result.error("用户名或密码错误");
         }
-        
-        System.out.println("✅ 找到管理员 - ID: " + adminUser.getId());
-        System.out.println("✅ 数据库密码哈希：" + adminUser.getPassword());
-        System.out.println("✅ 密码哈希长度：" + adminUser.getPassword().length());
         
         // 检查状态
         if (adminUser.getStatus() != 1) {
-            System.out.println("❌ 账号已被禁用");
             return Result.error("账号已被禁用");
         }
         
-        // 验证密码 - 添加调试日志
-        boolean matches = false;
-        try {
-            matches = passwordEncoder.matches(password, adminUser.getPassword());
-            System.out.println("🔍 密码验证结果：" + matches);
-            
-            // 如果验证失败，尝试多种方法
-            if (!matches) {
-                System.out.println("⚠️ BCrypt 验证失败，尝试备用方案...");
-                System.out.println("输入密码：'" + password + "'");
-                System.out.println("数据库密码：'" + adminUser.getPassword() + "'");
-                
-                // 尝试重新生成哈希并比较
-                String testHash = passwordEncoder.encode(password);
-                System.out.println("新生成的哈希：" + testHash);
-                System.out.println("新哈希验证：" + passwordEncoder.matches(password, testHash));
-            }
-        } catch (Exception e) {
-            System.out.println("❌ 密码验证异常：" + e.getMessage());
-            e.printStackTrace();
-        }
+        // 验证密码
+        boolean matches = passwordEncoder.matches(password, adminUser.getPassword());
         
         if (!matches) {
-            System.out.println("❌ 密码不匹配");
             return Result.error("用户名或密码错误");
         }
-        
-        System.out.println("✅ 密码验证成功");
         
         // 生成 Token（使用 adminId 作为 userId 存储）
         String token = jwtUtil.generateToken(adminUser.getUsername(), adminUser.getId());
@@ -100,8 +80,6 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
         result.put("realName", adminUser.getRealName());
         result.put("avatar", adminUser.getAvatar());
         result.put("roleId", adminUser.getRoleId());
-        
-        System.out.println("✅ 登录成功，生成 Token: " + token);
         
         return Result.success("登录成功", result);
     }
@@ -183,12 +161,8 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             return Result.error("账号已被禁用");
         }
         
-        // 验证密码 - 添加调试日志
+        // 验证密码
         boolean matches = passwordEncoder.matches(password, adminUser.getPassword());
-        System.out.println("🔍 密码验证 - 用户名：" + username);
-        System.out.println("🔍 输入密码：" + password);
-        System.out.println("🔍 数据库密码哈希：" + adminUser.getPassword());
-        System.out.println("🔍 验证结果：" + matches);
         
         if (!matches) {
             return Result.error("用户名或密码错误");
@@ -220,9 +194,6 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
         String encodedPassword = passwordEncoder.encode(rawPassword);
         adminUser.setPassword(encodedPassword);
         adminUserMapper.updateById(adminUser);
-        
-        System.out.println("✅ 密码已重置 - 用户名：" + username);
-        System.out.println("✅ 新密码哈希：" + encodedPassword);
         
         return Result.success("密码重置成功，新密码：" + rawPassword);
     }
@@ -327,34 +298,183 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
     
     @Override
     public Result approveApplication(Integer applicationId, String adminRemark) {
+        System.out.println(" 开始审核认证申请，ID: " + applicationId);
         try {
             // 查询待审核的认证申请
             UserVerification verification = userVerificationMapper.selectById(applicationId);
+            System.out.println("📋 查询到的认证申请：" + (verification != null ? "存在" : "不存在"));
+            
             if (verification == null) {
+                System.out.println("❌ 认证申请不存在");
                 return Result.error("认证申请不存在");
             }
             
+            System.out.println("📝 当前状态：" + verification.getStatus());
             if (!"pending".equals(verification.getStatus())) {
+                System.out.println("❌ 该申请已审核过");
                 return Result.error("该申请已审核过");
             }
             
             // 获取当前管理员 ID
             Integer adminId = 1; // TODO: 从登录上下文中获取
+            System.out.println("👤 管理员 ID: " + adminId);
             
             // 通过认证
             verification.setStatus("approved");
             verification.setReviewerId(adminId);
             verification.setReviewedAt(LocalDateTime.now());
-            if (adminRemark != null && !adminRemark.trim().isEmpty()) {
-                // 如果有备注，可以存储在某个字段中
-                // 可以考虑添加 admin_remark 字段到 UserVerification 实体
+            
+            System.out.println("💾 更新认证申请状态...");
+            int updateCount = userVerificationMapper.updateById(verification);
+            System.out.println("✅ 认证申请更新成功，影响行数：" + updateCount);
+            
+            // 更新用户表中的身份信息
+            System.out.println("🔄 开始更新用户身份信息...");
+            updateUserIdentity(verification);
+            System.out.println("✅ 用户身份信息更新完成");
+            
+            // 更新 user_identity 表，设置 verified = 1
+            System.out.println("🔄 开始更新 user_identity 表...");
+            LambdaQueryWrapper<UserIdentity> identityWrapper = new LambdaQueryWrapper<>();
+            identityWrapper.eq(UserIdentity::getUserId, verification.getUserId())
+                          .eq(UserIdentity::getIdentityType, verification.getVerificationType());
+            
+            UserIdentity userIdentity = userIdentityMapper.selectOne(identityWrapper);
+            if (userIdentity != null) {
+                userIdentity.setVerified(1);
+                userIdentity.setVerifiedAt(LocalDateTime.now());
+                userIdentityMapper.updateById(userIdentity);
+                System.out.println("✅ user_identity 表更新成功");
+            } else {
+                System.out.println("⚠️ 未找到对应的 user_identity 记录");
             }
             
-            userVerificationMapper.updateById(verification);
             return Result.success("认证申请已通过");
         } catch (Exception e) {
+            System.err.println("❌ 审核失败：" + e.getMessage());
+            e.printStackTrace();
             return Result.error("审核失败：" + e.getMessage());
         }
+    }
+    
+    /**
+     * 根据认证类型更新用户身份信息
+     */
+    private void updateUserIdentity(UserVerification verification) {
+        System.out.println("🔧 updateUserIdentity 开始执行");
+        System.out.println("📌 用户 ID: " + verification.getUserId());
+        System.out.println("📌 认证类型：" + verification.getVerificationType());
+        
+        User user = userMapper.selectById(verification.getUserId());
+        System.out.println("👤 查询到的用户：" + (user != null ? user.getUsername() : "不存在"));
+        
+        if (user == null) {
+            System.out.println("❌ 用户不存在，跳过更新");
+            return;
+        }
+        
+        // 解析 extraInfo 获取详细信息
+        String extraInfo = verification.getExtraInfo();
+        System.out.println("📄 extraInfo: " + extraInfo);
+        
+        if (extraInfo != null && !extraInfo.trim().isEmpty()) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode jsonNode = 
+                    new com.fasterxml.jackson.databind.ObjectMapper().readTree(extraInfo);
+                
+                // 根据认证类型更新用户信息
+                String verificationType = verification.getVerificationType();
+                System.out.println("🏷️ 认证类型：" + verificationType);
+                
+                // 先清除所有旧的身份标记
+                user.setIsStaff(null);
+                user.setIsMerchant(null);
+                user.setIsOrganization(null);
+                System.out.println("️ 已清除所有旧身份标记");
+                
+                if ("student".equals(verificationType)) {
+                    System.out.println("🎓 处理学生认证...");
+                    String studentId = jsonNode.has("studentId") ? jsonNode.get("studentId").asText() : null;
+                    if (studentId != null && !studentId.trim().isEmpty()) {
+                        user.setStudentId(studentId);
+                        System.out.println("✅ 设置学号：" + studentId);
+                    }
+                    user.setIsVerified(1);
+                    System.out.println("✅ 设置 is_verified = 1");
+                    
+                } else if ("staff".equals(verificationType)) {
+                    System.out.println("👨‍ 处理教职工认证...");
+                    String staffId = jsonNode.has("staffId") ? jsonNode.get("staffId").asText() : null;
+                    String department = jsonNode.has("department") ? jsonNode.get("department").asText() : null;
+                    System.out.println("工号：" + staffId + ", 部门：" + department);
+                    if (staffId != null && !staffId.trim().isEmpty()) {
+                        user.setStudentId(staffId); // 复用 student_id 字段存储工号
+                        System.out.println("✅ 设置工号：" + staffId);
+                    }
+                    if (department != null && !department.trim().isEmpty()) {
+                        user.setDepartment(department);
+                        System.out.println("✅ 设置部门：" + department);
+                    }
+                    user.setIsStaff(1);
+                    user.setIsVerified(1);
+                    System.out.println("✅ 设置 is_staff = 1, is_verified = 1");
+                    
+                } else if ("merchant".equals(verificationType)) {
+                    System.out.println("🏪 处理商户认证...");
+                    String shopName = jsonNode.has("shopName") ? jsonNode.get("shopName").asText() : null;
+                    if (shopName != null && !shopName.trim().isEmpty()) {
+                        user.setRealName(shopName); // 使用 real_name 存储店铺名
+                        System.out.println("✅ 设置店铺名：" + shopName);
+                    }
+                    user.setIsMerchant(1);
+                    user.setIsVerified(1);
+                    System.out.println("✅ 设置 is_merchant = 1, is_verified = 1");
+                    
+                } else if ("organization".equals(verificationType)) {
+                    System.out.println("🏛️ 处理组织认证...");
+                    String organizationName = jsonNode.has("organizationName") ? jsonNode.get("organizationName").asText() : null;
+                    String leaderName = jsonNode.has("leaderName") ? jsonNode.get("leaderName").asText() : null;
+                    if (organizationName != null && !organizationName.trim().isEmpty()) {
+                        user.setRealName(organizationName);
+                        System.out.println("✅ 设置组织名：" + organizationName);
+                    }
+                    if (leaderName != null && !leaderName.trim().isEmpty()) {
+                        user.setDepartment(leaderName);
+                        System.out.println("✅ 设置负责人：" + leaderName);
+                    }
+                    user.setIsOrganization(1);
+                    user.setIsVerified(1);
+                    System.out.println("✅ 设置 is_organization = 1, is_verified = 1");
+                }
+                
+                System.out.println("💾 准备更新用户表...");
+                
+                // 使用 UpdateWrapper 确保 null 值也能被更新
+                com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<User> updateWrapper = new com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper<>();
+                updateWrapper.eq("id", user.getId())
+                    .set("is_staff", user.getIsStaff())
+                    .set("is_merchant", user.getIsMerchant())
+                    .set("is_organization", user.getIsOrganization())
+                    .set("is_verified", user.getIsVerified());
+                
+                // 如果有店铺名，也更新
+                if (user.getRealName() != null) {
+                    updateWrapper.set("real_name", user.getRealName());
+                }
+                
+                int updateCount = userMapper.update(null, updateWrapper);
+                System.out.println("✅ 用户表更新成功，影响行数：" + updateCount);
+                
+            } catch (Exception e) {
+                // JSON 解析失败，记录日志但不影响主流程
+                System.err.println("❌ 解析 extraInfo 失败：" + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠️ extraInfo 为空，跳过更新");
+        }
+        
+        System.out.println("✅ updateUserIdentity 执行完成");
     }
     
     @Override

@@ -20,6 +20,7 @@ import com.example.demo.mapper.TopicCommentsMapper;
 import com.example.demo.service.FileUploadService;
 import com.example.demo.service.MailService;
 import com.example.demo.service.UserService;
+import com.example.demo.service.UserIdentityService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
 import com.example.demo.utils.IdCardValidator;
@@ -60,6 +61,9 @@ public class UserServiceimpl extends ServiceImpl<UserMapper, User> implements Us
     
     @Autowired
     private TopicCommentsMapper topicCommentsMapper;
+    
+    @Autowired
+    private UserIdentityService userIdentityService;
 
     @Override
     public Result register(RegisterDTO registerDTO) {
@@ -105,32 +109,59 @@ public class UserServiceimpl extends ServiceImpl<UserMapper, User> implements Us
                 .eq("username", loginDTO.getUsername())
                 .or()
                 .eq("email", loginDTO.getUsername()));
-
+    
         if (user == null) {
             return Result.error("用户不存在");
         }
-
-        if (!user.getPassword().equals(encryptPassword(loginDTO.getPassword()))) {
+    
+        // 密码验证：数据库存储的是明文，所以直接比较
+        if (!user.getPassword().equals(loginDTO.getPassword())) {
             return Result.error("密码错误");
         }
-
-        // 登录成功，生成Token并返回
+    
+        // 登录成功，生成 Token 并返回
         LoginResponseDTO response = generateLoginResponse(user);
         return Result.success(response);
     }
 
     @Override
     public LoginResponseDTO generateLoginResponse(User user) {
-        // 生成包含用户 ID 的 Token
-        String token = jwtUtil.generateToken(user.getUsername(), user.getId());
-
-        // 返回包含 Token 的响应
-        return new LoginResponseDTO(
-                token,
-                user.getId(),
-                user.getUsername(),
-                user.getEmail()
+        // 获取用户身份信息
+        List<Map<String, Object>> identities = userIdentityService.getIdentityBadges(user.getId().longValue());
+        
+        // 生成包含用户 ID、角色和身份信息的 Token
+        String token = jwtUtil.generateToken(
+            user.getUsername(), 
+            user.getId(), 
+            user.getRole(),
+            identities
         );
+
+        // 构建 UserDTO
+        UserDTO userDTO = new UserDTO();
+        userDTO.setId(user.getId());
+        userDTO.setUsername(user.getUsername());
+        userDTO.setEmail(user.getEmail());
+        userDTO.setPhoneNumber(user.getPhoneNumber());
+        userDTO.setAvatarUrl(user.getAvatarUrl());
+        userDTO.setRealName(user.getRealName());
+        userDTO.setStudentId(user.getStudentId());
+        userDTO.setGender(user.getGender());
+        userDTO.setBirthDate(user.getBirthDate());
+        userDTO.setCollege(user.getCollege());
+        userDTO.setMajor(user.getMajor());
+        userDTO.setBio(user.getBio());
+        userDTO.setHobbies(user.getHobbies());
+        userDTO.setStatus(user.getStatus());
+        userDTO.setIsVerified(user.getIsVerified());
+        userDTO.setIsRealNameVerified(user.getIsRealNameVerified());
+        userDTO.setRole(user.getRole());
+        userDTO.setIsAdmin(user.getIsAdmin());
+        userDTO.setIsMerchant(user.getIsMerchant());
+        userDTO.setIsOrganization(user.getIsOrganization());
+
+        // 返回包含 Token 和用户信息的响应
+        return new LoginResponseDTO(token, userDTO);
     }
 
     @Override

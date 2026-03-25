@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Component
 public class JwtUtil {
@@ -141,7 +144,80 @@ public class JwtUtil {
                 .compact();
     }
 
-    // 从Token中获取用户ID
+    /**
+     * 生成包含用户 ID 和身份信息的 Token
+     */
+    public String generateToken(String username, Integer userId, String role, List<Map<String, Object>> identities) {
+        Date now = new Date();
+        Date expirationDate = new Date(now.getTime() + expiration * 1000);
+    
+        return Jwts.builder()
+                .setSubject(username)
+                .claim("userId", userId)
+                .claim("role", role != null ? role : "user")
+                .claim("identities", identities != null ? identities : Collections.emptyList())
+                .setIssuedAt(now)
+                .setExpiration(expirationDate)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .compact();
+    }
+        
+    /**
+     * 从 Token 中获取角色信息
+     */
+    public String getRoleFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            System.err.println("获取 Token 角色时发生错误：" + e.getMessage());
+            return null;
+        }
+    }
+        
+    /**
+     * 从 Token 中获取身份信息列表
+     */
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getIdentitiesFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return (List<Map<String, Object>>) claims.get("identities");
+        } catch (Exception e) {
+            System.err.println("获取 Token 身份信息时发生错误：" + e.getMessage());
+            return null;
+        }
+    }
+        
+    /**
+     * 检查用户是否具有指定身份
+     */
+    public boolean hasIdentity(String token, String identityType, boolean requireVerified) {
+        try {
+            List<Map<String, Object>> identities = getIdentitiesFromToken(token);
+            if (identities == null || identities.isEmpty()) {
+                return false;
+            }
+                
+            for (Map<String, Object> identity : identities) {
+                String type = (String) identity.get("type");
+                Boolean verified = (Boolean) identity.get("verified");
+                    
+                if (identityType.equals(type)) {
+                    if (!requireVerified || (verified != null && verified)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("检查身份时发生错误：" + e.getMessage());
+            return false;
+        }
+    }
+    /**
+     * 从 Token 中获取用户 ID
+     */
     public Integer getUserIdFromToken(String token) {
         try {
             if (token == null || token.trim().isEmpty()) {
@@ -150,7 +226,7 @@ public class JwtUtil {
             Claims claims = getClaimsFromToken(token);
             return claims.get("userId", Integer.class);
         } catch (Exception e) {
-            System.err.println("获取Token用户ID时发生错误: " + e.getMessage());
+            System.err.println("获取 Token 用户 ID 时发生错误：" + e.getMessage());
             return null;
         }
     }

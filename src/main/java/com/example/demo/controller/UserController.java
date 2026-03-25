@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/user")  // 修改为单数形式，符合 RESTful 规范
+@RequestMapping("/api/user")  // 保持 /api 前缀，与前端路由一致
 @CrossOrigin
 public class UserController {
     @Autowired

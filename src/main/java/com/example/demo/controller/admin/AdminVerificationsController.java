@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.demo.common.Result;
 import com.example.demo.entity.UserVerification;
 import com.example.demo.mapper.UserVerificationMapper;
+import com.example.demo.service.admin.impl.AdminUserServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +18,9 @@ public class AdminVerificationsController {
 
     @Autowired
     private UserVerificationMapper userVerificationMapper;
+    
+    @Autowired
+    private AdminUserServiceImpl adminUserService;
 
     /**
      * 分页查询认证申请列表
@@ -78,23 +82,11 @@ public class AdminVerificationsController {
     @PutMapping("/{id}/approve")
     public Result approve(@PathVariable Integer id, @RequestBody Map<String, String> params) {
         try {
-            UserVerification verification = userVerificationMapper.selectById(id);
-            if (verification == null) {
-                return Result.error("认证申请不存在");
-            }
-            
             String adminRemark = params.get("adminRemark");
             
-            // 通过审核
-            verification.setStatus("approved");
-            verification.setRejectionReason(adminRemark);
-            
-            int rows = userVerificationMapper.updateById(verification);
-            if (rows > 0) {
-                return Result.success("审核通过", verification);
-            } else {
-                return Result.error("审核失败");
-            }
+            // 调用 Service 层处理审核逻辑（包含更新用户身份）
+            Result result = adminUserService.approveApplication(id, adminRemark);
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("审核失败：" + e.getMessage());
@@ -107,23 +99,11 @@ public class AdminVerificationsController {
     @PutMapping("/{id}/reject")
     public Result reject(@PathVariable Integer id, @RequestBody Map<String, String> params) {
         try {
-            UserVerification verification = userVerificationMapper.selectById(id);
-            if (verification == null) {
-                return Result.error("认证申请不存在");
-            }
-            
             String reason = params.get("reason");
             
-            // 拒绝审核
-            verification.setStatus("rejected");
-            verification.setRejectionReason(reason);
-            
-            int rows = userVerificationMapper.updateById(verification);
-            if (rows > 0) {
-                return Result.success("已拒绝", verification);
-            } else {
-                return Result.error("操作失败");
-            }
+            // 调用 Service 层处理拒绝逻辑
+            Result result = adminUserService.rejectApplication(id, reason);
+            return result;
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("操作失败：" + e.getMessage());

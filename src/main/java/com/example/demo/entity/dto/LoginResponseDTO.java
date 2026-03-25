@@ -5,14 +5,10 @@ import lombok.Data;
 @Data
 public class LoginResponseDTO {
     private String token;
-    private Integer userId;
-    private String username;
-    private String email;
+    private UserDTO user;
 
-    public LoginResponseDTO(String token, Integer userId, String username, String email) {
+    public LoginResponseDTO(String token, UserDTO user) {
         this.token = token;
-        this.userId = userId;
-        this.username = username;
-        this.email = email;
+        this.user = user;
     }
 }

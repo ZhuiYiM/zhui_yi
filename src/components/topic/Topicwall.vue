@@ -211,6 +211,7 @@ const quickFilters = ref([]);
 
 // 用户信息
 const currentUser = ref(null);
+const userIdentities = ref([]);
 
 // 标签筛选
 const currentSort = ref('latest');
@@ -693,15 +694,21 @@ const updateDeviceDetection= () => {
 const getUserInfo = () => {
   const token = localStorage.getItem('token');
   if (token) {
-   const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     currentUser.value = {
       id: user.id,
       name: user.name || user.username || '',
       studentId: user.studentId || user.student_id || '',
       avatar: user.avatar || ''
     };
+    
+    // 同时加载用户身份标签
+    const identities = localStorage.getItem('identities');
+    userIdentities.value = identities ? JSON.parse(identities) : [];
+    console.log('🏷️ 当前用户身份标签:', userIdentities.value);
   } else {
     currentUser.value = null;
+    userIdentities.value = [];
   }
 };
 

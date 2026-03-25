@@ -27,7 +27,9 @@ apiClient.interceptors.request.use(
             '/user/send-phone-code',
             '/user/wechat/qrcode',
             '/user/wechat/scan-status',
-            '/user/wechat/confirm-login'
+            '/user/wechat/confirm-login',
+            '/admin/login',              // 管理员登录
+            '/admin/check-user-admin'   // 检查用户是否是管理员
         ];
         
         // 更严格的路径匹配逻辑
@@ -44,10 +46,13 @@ apiClient.interceptors.request.use(
         
         // 对需要认证的接口添加 token（优先使用 admin_token）
         if (requiresAuth) {
-            // 如果是管理员路由，使用 admin_token
+            // 如果是管理员路由，优先使用 admin_token
             if (config.url.startsWith('/admin/')) {
                 if (adminToken) {
                     config.headers.Authorization = `Bearer ${adminToken}`;
+                } else if (token) {
+                    // 如果没有 admin_token，使用普通 token
+                    config.headers.Authorization = `Bearer ${token}`;
                 }
             } else {
                 // 否则使用普通用户 token

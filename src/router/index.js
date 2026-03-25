@@ -252,6 +252,11 @@ const routes = [
                 component: () => import('../views/admin/ChangePassword.vue')
             },
             {
+                path: 'identity-verifications',
+                name: 'AdminIdentityVerifications',
+                component: () => import('../views/admin/IdentityVerificationList.vue')
+            },
+            {
                 path: '',
                 redirect: 'home'
             }

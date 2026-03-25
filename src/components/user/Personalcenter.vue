@@ -186,6 +186,12 @@
         <p>© 2023 校园信息平台 | 服务学生，连接校园</p>
       </footer>
     </main>
+    
+    <!-- 身份认证表单对话框 -->
+    <IdentityVerificationForm 
+      v-model="showIdentityForm"
+      @success="handleIdentityFormSuccess"
+    />
   </div>
 </template>
 
@@ -198,6 +204,7 @@ import UnifiedNav from '@/components/common/UnifiedNav.vue';
 import UserInfoSection from '@/components/user/UserInfoSection.vue';
 import AuthCenter from '@/components/user/AuthCenter.vue';
 import OrderSection from '@/components/user/OrderSection.vue';
+import IdentityVerificationForm from '@/components/user/IdentityVerificationForm.vue';
 import { useUserInfo } from '@/composables/useUserInfo';
 import { useUserOrders } from '@/composables/useUserOrders';
 import { topicAPI } from '@/api/topic';
@@ -238,6 +245,9 @@ const favoriteProducts = ref([]); // 我收藏的商品
 const currentProductTab = ref('published'); // 'published' 或 'favorites'
 const productsLoading = ref(false);
 
+// 身份认证表单
+const showIdentityForm = ref(false);
+
 // 获取当前标签页的商品列表
 const getCurrentProductList = () => {
   if (currentProductTab.value === 'published') {
@@ -274,7 +284,19 @@ const accountManagement = () => {
 
 // 处理认证状态更新（来自 AuthCenter 组件）
 const handleVerificationUpdate = (type, status) => {
-  updateVerificationStatus(type, status);
+  if (type === 'identity') {
+    // 打开身份认证表单
+    showIdentityForm.value = true;
+  } else {
+    updateVerificationStatus(type, status);
+  }
+};
+
+// 身份认证表单提交成功
+const handleIdentityFormSuccess = () => {
+  showIdentityForm.value = false;
+  // 刷新用户信息
+  fetchUserInfo();
 };
 
 

@@ -424,24 +424,29 @@ const autoSelectIdentity = async () => {
       selectedTag = level1Tags.value.find(t => t.code === 'admin');
     }
     
-    // 2. 检查是否为学生认证（学号不为空）
+    // 2. 检查是否为教职工身份（优先级最高）
+    if (!selectedTag && user.isStaff === 1) {
+      selectedTag = level1Tags.value.find(t => t.code === 'staff');
+    }
+    
+    // 3. 检查是否为商户身份（第二优先级）
+    if (!selectedTag && user.isMerchant === 1) {
+      selectedTag = level1Tags.value.find(t => t.code === 'merchant');
+    }
+    
+    // 4. 检查是否为团体身份（第三优先级）
+    if (!selectedTag && user.isOrganization === 1) {
+      selectedTag = level1Tags.value.find(t => t.code === 'organization');
+    }
+    
+    // 5. 检查是否为学生身份（第四优先级，需要学号不为空）
     if (!selectedTag && user.studentId) {
       selectedTag = level1Tags.value.find(t => t.code === 'student');
     }
     
-    // 3. 检查是否为认证商家（待实现）
-    if (!selectedTag && user.isMerchant) {
-      selectedTag = level1Tags.value.find(t => t.code === 'merchant');
-    }
-    
-    // 4. 检查是否为认证团体（待实现）
-    if (!selectedTag && user.isOrganization) {
-      selectedTag = level1Tags.value.find(t => t.code === 'organization');
-    }
-    
-    // 5. 默认为社会用户
+    // 6. 默认为社会用户
     if (!selectedTag) {
-      // 优先显示“社会”标签，如果没有则选第一个
+      // 优先显示"社会"标签，如果没有则选第一个
       selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
     }
     

@@ -418,16 +418,13 @@ const handleSubmit = async () => {
                 }
             }
             
-            // 根据响应 code 判断是否成功
-            if (res.code === 200) {
-                ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
-                dialogVisible.value = false
-                loadData()
-            } else {
-                ElMessage.error(res.message || (isEdit.value ? '更新失败' : '创建失败'))
-            }
+            // 响应拦截器已经处理了错误情况，能执行到这里说明成功
+            ElMessage.success(isEdit.value ? '更新成功' : '创建成功')
+            dialogVisible.value = false
+            loadData()
         } catch (error) {
             console.error('❌ 提交失败:', error)
+            // 错误信息由响应拦截器统一处理，这里只需要提示通用错误
             ElMessage.error(isEdit.value ? '更新失败' : '创建失败')
         } finally {
             submitLoading.value = false

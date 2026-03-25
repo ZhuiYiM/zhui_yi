@@ -9,17 +9,25 @@ export const useAuthStore = defineStore('auth', () => {
     // 状态
     const token = ref(localStorage.getItem('token') || '');
     const userInfo = ref(JSON.parse(localStorage.getItem('user') || '{}'));
+    const userIdentities = ref(JSON.parse(localStorage.getItem('identities') || '[]'));
     const isAuthenticated = computed(() => !!token.value);
 
     // Actions
     const login = async (loginData) => {
         try {
-            // 清理可能存在的旧 Token，避免干扰登录请求
+            // 强制清理所有旧 Token，避免干扰
             const existingToken = localStorage.getItem('token');
             if (existingToken) {
                 localStorage.removeItem('token');
             }
-                
+            const existingAdminToken = localStorage.getItem('admin_token');
+            if (existingAdminToken) {
+                localStorage.removeItem('admin_token');
+            }
+            
+            // 重置 token 状态
+            token.value = '';
+            
             const response = await userAPI.login(loginData);
                 
             // 检查响应数据结构
@@ -34,12 +42,13 @@ export const useAuthStore = defineStore('auth', () => {
                 throw new Error('服务器响应缺少 token');
             }
                 
-            // 保存 token
+            // 保存新 Token
             token.value = userToken;
             localStorage.setItem('token', userToken);
                 
-            // 自动获取完整的用户信息
+            // 自动获取完整的用户信息和身份认证
             await fetchCompleteUserInfo();
+            await fetchUserIdentities();
                 
             ElMessage.success('登录成功');
             return response;
@@ -90,8 +99,10 @@ export const useAuthStore = defineStore('auth', () => {
             // 清除本地存储
             token.value = '';
             userInfo.value = {};
+            userIdentities.value = [];
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            localStorage.removeItem('identities');
             
             // 跳转到登录页
             router.push('/login');
@@ -144,6 +155,55 @@ export const useAuthStore = defineStore('auth', () => {
         }
     };
     
+    // 获取用户身份认证信息
+    const fetchUserIdentities = async () => {
+        try {
+            // 从 API 获取身份信息
+            const response = await userAPI.getUserIdentities();
+            if (response && Array.isArray(response)) {
+                // 转换为徽章格式
+                const badges = response.map(identity => ({
+                    type: identity.identityType,
+                    name: identity.identityName,
+                    verified: identity.verified === 1,
+                    icon: getIdentityIcon(identity.identityType),
+                    color: getIdentityColor(identity.identityType)
+                }));
+                
+                userIdentities.value = badges;
+                localStorage.setItem('identities', JSON.stringify(badges));
+            }
+            return userIdentities.value;
+        } catch (error) {
+            console.error('❌ 获取用户身份信息失败:', error);
+            userIdentities.value = [];
+            localStorage.setItem('identities', JSON.stringify([]));
+            return [];
+        }
+    };
+    
+    // 获取身份图标
+    const getIdentityIcon = (type) => {
+        const iconMap = {
+            student: 'User',
+            staff: 'Suit',
+            merchant: 'Shop',
+            organization: 'OfficeBuilding'
+        };
+        return iconMap[type] || 'User';
+    };
+    
+    // 获取身份颜色
+    const getIdentityColor = (type) => {
+        const colorMap = {
+            student: '#409EFF',
+            staff: '#67C23A',
+            merchant: '#E6A23C',
+            organization: '#909399'
+        };
+        return colorMap[type] || '#909399';
+    };
+    
     // 初始化用户信息（应用启动时调用）
     const initUserInfo = async () => {
         const tokenValue = localStorage.getItem('token');
@@ -166,6 +226,7 @@ export const useAuthStore = defineStore('auth', () => {
         // 状态
         token,
         userInfo,
+        userIdentities,
         isAuthenticated,
         
         // 方法
@@ -174,6 +235,7 @@ export const useAuthStore = defineStore('auth', () => {
         logout,
         refreshUserInfo,
         fetchCompleteUserInfo,
+        fetchUserIdentities,
         initUserInfo,
         checkAuth
     };

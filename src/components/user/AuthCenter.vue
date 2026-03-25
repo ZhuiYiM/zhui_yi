@@ -18,7 +18,7 @@
             <p v-else>未通过</p>
             <p class="status-detail" v-if="!isVerified">(学号未设置)</p>
           </div>
-          <button @click="handleVerification('identity')" class="auth-btn">
+          <button @click="openIdentityForm" class="auth-btn">
             {{ isVerified ? '重新认证' : '立即认证' }}
           </button>
         </div>
@@ -60,6 +60,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['verification-click']);
+
+// 定义事件，用于打开身份认证表单
+const openIdentityForm = () => {
+  emit('verification-click', 'identity', false);
+};
 
 // 处理认证点击
 const handleVerification = async (type) => {

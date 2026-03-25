@@ -229,6 +229,7 @@ public class UserIdentityServiceImpl extends ServiceImpl<UserIdentityMapper, Use
             User user = getUserService().getById(identity.getUserId());
             if (user != null) {
                 // 先清除所有旧的身份标记
+                user.setIsStaff(null);
                 user.setIsMerchant(null);
                 user.setIsOrganization(null);
                 // 根据新身份设置标记
@@ -237,7 +238,7 @@ public class UserIdentityServiceImpl extends ServiceImpl<UserIdentityMapper, Use
                 } else if ("organization".equals(identity.getIdentityType())) {
                     user.setIsOrganization(1);
                 } else if ("staff".equals(identity.getIdentityType())) {
-                    // 教职工身份处理
+                    user.setIsStaff(1);  // 修复：设置教职工身份
                 } else if ("student".equals(identity.getIdentityType())) {
                     // 学生身份处理
                 }
@@ -248,7 +249,8 @@ public class UserIdentityServiceImpl extends ServiceImpl<UserIdentityMapper, Use
             LambdaQueryWrapper<UserIdentity> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(UserIdentity::getUserId, identity.getUserId())
                    .ne(UserIdentity::getId, identityId); // 排除当前这条
-            this.remove(wrapper);
+            boolean deleted = this.remove(wrapper);
+            System.out.println("✅ 已删除其他身份记录：" + deleted);
         } else {
             // 拒绝认证
             identity.setVerified(0);
@@ -272,6 +274,14 @@ public class UserIdentityServiceImpl extends ServiceImpl<UserIdentityMapper, Use
                 verification.setRejectionReason(reason);
             }
             userVerificationMapper.updateById(verification);
+        }
+        
+        // 如果审核通过，返回需要重新登录的提示
+        if (approved) {
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("message", "认证已通过，请重新登录以更新身份信息");
+            responseData.put("force_relogin", true);
+            return Result.success(responseData);
         }
         
         return Result.success(approved ? "认证已通过" : "认证已拒绝");

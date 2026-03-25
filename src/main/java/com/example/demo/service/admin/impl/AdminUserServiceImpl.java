@@ -6,11 +6,14 @@ import com.example.demo.entity.User;
 import com.example.demo.entity.UserIdentity;
 import com.example.demo.entity.UserVerification;
 import com.example.demo.entity.admin.AdminUser;
+import com.example.demo.entity.admin.OperationLog;
 import com.example.demo.mapper.admin.AdminUserMapper;
+import com.example.demo.mapper.admin.OperationLogMapper;
 import com.example.demo.mapper.UserMapper;
 import com.example.demo.mapper.UserIdentityMapper;
 import com.example.demo.mapper.UserVerificationMapper;
 import com.example.demo.service.admin.AdminUserService;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.common.Result;
 import com.example.demo.utils.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,12 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
     
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private OperationLogService operationLogService;
+    
+    @Autowired
+    private OperationLogMapper operationLogMapper;
     
     // 使用静态实例，避免 Spring 代理问题
     private static final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
@@ -346,7 +355,46 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                 userIdentityMapper.updateById(userIdentity);
                 System.out.println("✅ user_identity 表更新成功");
             } else {
-                System.out.println("⚠️ 未找到对应的 user_identity 记录");
+                // 如果 user_identity 表中没有对应的记录，创建新的记录
+                System.out.println("⚠️ 未找到对应的 user_identity 记录，创建新记录...");
+                userIdentity = new UserIdentity();
+                userIdentity.setUserId(verification.getUserId().longValue());
+                userIdentity.setIdentityType(verification.getVerificationType());
+                userIdentity.setIdentityName(getIdentityTypeName(verification.getVerificationType()));
+                userIdentity.setVerified(1);
+                userIdentity.setVerifiedAt(LocalDateTime.now());
+                userIdentity.setExtraInfo(verification.getExtraInfo());
+                userIdentityMapper.insert(userIdentity);
+                System.out.println("✅ 创建新的 user_identity 记录成功");
+            }
+            
+            // 记录操作日志
+            try {
+                OperationLog log = new OperationLog();
+                log.setAdminId(adminId.longValue());
+                log.setAdminName("admin"); // TODO: 从登录上下文获取管理员用户名
+                log.setOperation("APPROVE_IDENTITY");
+                log.setModule("身份认证");
+                log.setTargetId(verification.getId().longValue());
+                log.setDetail(String.format("通过用户 ID=%d 的 %s 认证申请", 
+                    verification.getUserId(), 
+                    getIdentityTypeName(verification.getVerificationType())));
+                log.setCreatedAt(LocalDateTime.now());
+                operationLogMapper.insert(log);
+                System.out.println("📝 操作日志记录成功");
+            } catch (Exception e) {
+                System.err.println("⚠️ 记录操作日志失败：" + e.getMessage());
+            }
+            
+            // 删除该用户的其他身份记录，确保身份唯一性
+            try {
+                LambdaQueryWrapper<UserIdentity> deleteWrapper = new LambdaQueryWrapper<>();
+                deleteWrapper.eq(UserIdentity::getUserId, verification.getUserId())
+                            .ne(UserIdentity::getIdentityType, verification.getVerificationType());
+                int deletedCount = userIdentityMapper.delete(deleteWrapper);
+                System.out.println("✅ 已删除 " + deletedCount + " 个其他身份记录");
+            } catch (Exception e) {
+                System.err.println("⚠️ 删除其他身份记录失败：" + e.getMessage());
             }
             
             return Result.success("认证申请已通过");
@@ -403,7 +451,7 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                     System.out.println("✅ 设置 is_verified = 1");
                     
                 } else if ("staff".equals(verificationType)) {
-                    System.out.println("👨‍ 处理教职工认证...");
+                    System.out.println("👨‍🏫 处理教职工认证...");
                     String staffId = jsonNode.has("staffId") ? jsonNode.get("staffId").asText() : null;
                     String department = jsonNode.has("department") ? jsonNode.get("department").asText() : null;
                     System.out.println("工号：" + staffId + ", 部门：" + department);
@@ -418,6 +466,9 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                     user.setIsStaff(1);
                     user.setIsVerified(1);
                     System.out.println("✅ 设置 is_staff = 1, is_verified = 1");
+                    // 清除学生身份标记
+                    user.setStudentId(null); // 如果是教职工，清除学号
+                    System.out.println("✅ 清除学生身份标记");
                     
                 } else if ("merchant".equals(verificationType)) {
                     System.out.println("🏪 处理商户认证...");
@@ -429,6 +480,9 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                     user.setIsMerchant(1);
                     user.setIsVerified(1);
                     System.out.println("✅ 设置 is_merchant = 1, is_verified = 1");
+                    // 清除学生身份标记
+                    user.setStudentId(null); // 如果是商户，清除学号
+                    System.out.println("✅ 清除学生身份标记");
                     
                 } else if ("organization".equals(verificationType)) {
                     System.out.println("🏛️ 处理组织认证...");
@@ -445,6 +499,9 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                     user.setIsOrganization(1);
                     user.setIsVerified(1);
                     System.out.println("✅ 设置 is_organization = 1, is_verified = 1");
+                    // 清除学生身份标记
+                    user.setStudentId(null); // 如果是团体，清除学号
+                    System.out.println("✅ 清除学生身份标记");
                 }
                 
                 System.out.println("💾 准备更新用户表...");
@@ -500,9 +557,47 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             verification.setReviewedAt(LocalDateTime.now());
             
             userVerificationMapper.updateById(verification);
+            
+            // 记录操作日志
+            try {
+                OperationLog log = new OperationLog();
+                log.setAdminId(adminId.longValue());
+                log.setAdminName("admin"); // TODO: 从登录上下文获取管理员用户名
+                log.setOperation("REJECT_IDENTITY");
+                log.setModule("身份认证");
+                log.setTargetId(verification.getId().longValue());
+                log.setDetail(String.format("拒绝用户 ID=%d 的 %s 认证申请，理由：%s", 
+                    verification.getUserId(), 
+                    getIdentityTypeName(verification.getVerificationType()),
+                    reason != null ? reason : "未提供"));
+                log.setCreatedAt(LocalDateTime.now());
+                operationLogMapper.insert(log);
+                System.out.println("📝 操作日志记录成功");
+            } catch (Exception e) {
+                System.err.println("⚠️ 记录操作日志失败：" + e.getMessage());
+            }
+            
             return Result.success("认证申请已拒绝");
         } catch (Exception e) {
             return Result.error("审核失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取身份类型中文名称
+     */
+    private String getIdentityTypeName(String type) {
+        switch (type) {
+            case "student":
+                return "学生";
+            case "staff":
+                return "教职工";
+            case "merchant":
+                return "商户";
+            case "organization":
+                return "团体/部门";
+            default:
+                return type;
         }
     }
 }

@@ -165,6 +165,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { adminAPI } from '@/api/admin'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const reviewing = ref(false)
@@ -284,18 +288,30 @@ const handleRevoke = (row) => {
 const confirmReview = async () => {
   reviewing.value = true
   try {
-    // TODO: 调用后端 API
-    // await adminAPI.verifyIdentity(currentVerification.value.id, {
-    //   approved: reviewAction.value === 'approve',
-    //   reason: reviewForm.reason
-    // })
+    const response = await adminAPI.verifyIdentity(currentVerification.value.id, {
+      approved: reviewAction.value === 'approve',
+      reason: reviewForm.reason
+    })
     
-    ElMessage.success(reviewAction.value === 'approve' ? '已通过认证' : '已拒绝认证')
+    // 检查是否需要强制重新登录
+    if (reviewAction.value === 'approve' && response.data && response.data.force_relogin) {
+      ElMessageBox.alert(
+        '身份认证已通过，用户需要重新登录才能更新身份信息',
+        '审核成功',
+        {
+          confirmButtonText: '确定',
+          type: 'success'
+        }
+      )
+    } else {
+      ElMessage.success(reviewAction.value === 'approve' ? '已通过认证' : '已拒绝认证')
+    }
+    
     reviewDialogVisible.value = false
     loadVerifications()
   } catch (error) {
     console.error('审核失败:', error)
-    ElMessage.error('审核失败')
+    ElMessage.error(error.response?.data?.message || error.message || '审核失败')
   } finally {
     reviewing.value = false
   }

@@ -416,47 +416,70 @@ const autoSelectIdentity = async () => {
   if (level1Tags.value.length > 0) {
     let selectedTag = null;
     
-    // 从 localStorage 获取用户信息
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    
-    // 1. 检查是否为管理员（需要在数据库中手动设置）
-    if (user.role === 'admin' || user.isAdmin) {
-      selectedTag = level1Tags.value.find(t => t.code === 'admin');
+    // 1. 优先从 JWT Token 中获取身份信息（最准确）
+    const token = localStorage.getItem('token') || '';
+    try {
+      if (token && token.split('.').length === 3) {
+        // 使用更安全的 Base64 解码方式
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const tokenPayload = JSON.parse(decodeURIComponent(escape(window.atob(base64))));
+        const identities = tokenPayload.identities || [];
+        
+        if (identities.length > 0) {
+          // 使用 Token 中的第一个已验证身份
+          const primaryIdentity = identities.find(i => i.verified) || identities[0];
+          selectedTag = level1Tags.value.find(t => t.code === primaryIdentity.type);
+          
+          if (selectedTag) {
+            console.log('✅ 从 JWT Token 中获取身份:', primaryIdentity);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ JWT Token 解析失败，将使用用户对象判断:', e.message);
     }
     
-    // 2. 检查是否为教职工身份（优先级最高）
-    if (!selectedTag && user.isStaff === 1) {
-      selectedTag = level1Tags.value.find(t => t.code === 'staff');
-    }
-    
-    // 3. 检查是否为商户身份（第二优先级）
-    if (!selectedTag && user.isMerchant === 1) {
-      selectedTag = level1Tags.value.find(t => t.code === 'merchant');
-    }
-    
-    // 4. 检查是否为团体身份（第三优先级）
-    if (!selectedTag && user.isOrganization === 1) {
-      selectedTag = level1Tags.value.find(t => t.code === 'organization');
-    }
-    
-    // 5. 检查是否为学生身份（第四优先级，需要学号不为空）
-    if (!selectedTag && user.studentId) {
-      selectedTag = level1Tags.value.find(t => t.code === 'student');
-    }
-    
-    // 6. 默认为社会用户
+    // 2. 如果 Token 解析失败或没有身份，回退到 localStorage
     if (!selectedTag) {
-      // 优先显示"社会"标签，如果没有则选第一个
-      selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // 按优先级检查（与后端 determineLevel1Tag 逻辑一致）
+      // 优先级 1：管理员
+      if (user.role === 'admin' || user.isAdmin) {
+        selectedTag = level1Tags.value.find(t => t.code === 'admin');
+      }
+      // 优先级 2：教职工
+      else if (user.isStaff === 1) {
+        selectedTag = level1Tags.value.find(t => t.code === 'staff');
+      }
+      // 优先级 3：商户（注意：必须在学生之前判断）
+      else if (user.isMerchant === 1) {
+        selectedTag = level1Tags.value.find(t => t.code === 'merchant');
+      }
+      // 优先级 4：团体
+      else if (user.isOrganization === 1) {
+        selectedTag = level1Tags.value.find(t => t.code === 'organization');
+      }
+      // 优先级 5：学生（学号不为空）
+      else if (user.studentId) {
+        selectedTag = level1Tags.value.find(t => t.code === 'student');
+      }
+      // 默认：社会用户
+      else {
+        selectedTag = level1Tags.value.find(t => t.code === 'society') || level1Tags.value[0];
+      }
+      
+      console.log('✅ 从 localStorage 获取身份:', selectedTag);
     }
     
     if (selectedTag && selectedTag.enabled) {
       selectLevel1(selectedTag);
     } else {
-      console.warn('未找到可用的默认身份标签');
+      console.warn('⚠️ 未找到可用的默认身份标签');
     }
   } else {
-    console.error('身份标签加载失败，等待超时');
+    console.error('❌ 身份标签加载失败，等待超时');
     ElMessage.error('身份标签加载失败，请刷新重试');
   }
 };

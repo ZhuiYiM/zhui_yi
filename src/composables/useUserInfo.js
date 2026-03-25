@@ -29,7 +29,13 @@ export function useUserInfo() {
         studentId: userData.studentId || userData.student_id || '未设置',
         college: userData.college || userData.department || '未设置',
         avatar: userData.avatar || userData.avatarUrl || 'https://placehold.co/100x100/4A90E2/FFFFFF?text=U',
-        isVerified: !!userData.studentId,
+        // 身份认证通过判断：有任一已认证身份（学生/商户/团体/教职工）
+        isVerified: !!(
+          (userData.studentId || userData.student_id) ||  // 学生身份
+          (userData.isMerchant === 1) ||  // 商户身份
+          (userData.isOrganization === 1) ||  // 团体/部门身份
+          (userData.isStaff === 1)  // 教职工身份
+        ),
         isRealNameVerified: !!(userData.realName || userData.name),
         realName: userData.realName || userData.name || ''
       };

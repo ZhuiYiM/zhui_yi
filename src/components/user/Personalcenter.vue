@@ -602,6 +602,12 @@ onMounted(async () => {
     return;
   }
   
+  // 从后端获取最新的用户信息（包括身份认证字段）
+  console.log('📡 正在获取最新用户信息...');
+  await authStore.fetchCompleteUserInfo();
+  console.log('✅ 用户信息获取成功');
+  
+  // 更新本地用户信息
   fetchUserInfo();
   console.log('用户信息初始化完成');
   

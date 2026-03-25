@@ -124,6 +124,8 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             const user = await userAPI.getCurrentUser();
             
+            console.log('📡 后端返回的用户数据:', user);
+            
             // 处理用户信息，确保字段兼容性
             const processedUserInfo = {
                 id: user.id || user.userId || '',
@@ -133,8 +135,17 @@ export const useAuthStore = defineStore('auth', () => {
                 avatar: user.avatar || user.profilePicture || '',
                 email: user.email || '',
                 phone: user.phone || user.phoneNumber || '',
-                role: user.role || 'user'
+                role: user.role || 'user',
+                // 身份认证相关字段
+                isStaff: user.isStaff || user.is_staff || 0,
+                isMerchant: user.isMerchant || user.is_merchant || 0,
+                isOrganization: user.isOrganization || user.is_organization || 0,
+                isAdmin: user.isAdmin || user.is_admin || 0,
+                isVerified: user.isVerified || user.is_verified || 0,
+                isRealNameVerified: user.isRealNameVerified || user.is_real_name_verified || 0
             };
+            
+            console.log('✅ 处理后的用户信息:', processedUserInfo);
             
             userInfo.value = processedUserInfo;
             localStorage.setItem('user', JSON.stringify(processedUserInfo));
@@ -147,7 +158,11 @@ export const useAuthStore = defineStore('auth', () => {
                 username: localStorage.getItem('temp_username') || '',
                 name: localStorage.getItem('temp_username') || '用户',
                 studentId: '',
-                avatar: ''
+                avatar: '',
+                isStaff: 0,
+                isMerchant: 0,
+                isOrganization: 0,
+                isAdmin: 0
             };
             userInfo.value = basicInfo;
             localStorage.setItem('user', JSON.stringify(basicInfo));

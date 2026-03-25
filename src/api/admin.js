@@ -243,5 +243,42 @@ export const adminAPI = {
     },
     updateProductTagStatus(id, status) {
         return request.put(`/admin/tags/product/${id}/status`, { status });
+    },
+
+    // ==================== 身份认证审核 ====================
+    
+    // 获取身份认证列表
+    getIdentityVerifications(params) {
+        return request.get('/admin/identity/list', { params });
+    },
+    
+    // 获取认证详情
+    getIdentityDetail(id) {
+        return request.get(`/admin/identity/${id}`);
+    },
+    
+    // 审核身份认证
+    verifyIdentity(id, data) {
+        return request.post(`/admin/identity/${id}/verify`, data);
+    },
+    
+    // 批量通过
+    batchApprove(ids) {
+        return request.post('/admin/identity/batch-approve', ids);
+    },
+    
+    // 批量拒绝
+    batchReject(params) {
+        return request.post('/admin/identity/batch-reject', params);
+    },
+    
+    // 撤销认证
+    revokeIdentity(id) {
+        return request.post(`/admin/identity/${id}/revoke`);
+    },
+    
+    // 获取统计信息
+    getIdentityStats() {
+        return request.get('/admin/identity/stats');
     }
 };

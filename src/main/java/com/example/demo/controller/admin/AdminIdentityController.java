@@ -107,6 +107,34 @@ public class AdminIdentityController {
     }
     
     /**
+     * 审核身份认证
+     */
+    @RequireRole({"admin"})
+    @PostMapping("/{id}/verify")
+    public Result verifyIdentity(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> params,
+            HttpServletRequest request) {
+        try {
+            Long reviewerId = (Long) request.getAttribute("userId");
+            Boolean approved = (Boolean) params.get("approved");
+            String reason = (String) params.get("reason");
+            
+            if (approved == null) {
+                return Result.error("缺少审核结果参数");
+            }
+            
+            // 调用服务进行审核
+            Result result = userIdentityService.verifyIdentity(id, approved, reason, reviewerId);
+            
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("审核失败：" + e.getMessage());
+        }
+    }
+    
+    /**
      * 批量审核通过
      */
     @RequireRole({"admin"})

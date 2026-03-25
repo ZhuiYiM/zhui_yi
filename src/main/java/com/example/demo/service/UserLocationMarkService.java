@@ -22,6 +22,11 @@ public interface UserLocationMarkService {
     Result getMyMarks(Integer page, Integer size, HttpServletRequest request);
     
     /**
+     * 获取当前用户的所有标记（包含所有可见性）
+     */
+    Result getAllMyMarks(HttpServletRequest request);
+    
+    /**
      * 获取校区的公开标记
      */
     Result getCampusMarks(Integer campusId, String markType);

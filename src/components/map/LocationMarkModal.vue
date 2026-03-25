@@ -127,11 +127,33 @@
 
       <!-- 8. 可见性设置 -->
       <el-form-item label="可见性">
-        <el-select v-model="form.visibility">
-          <el-option label="公开（所有人可见）" value="public" />
-          <el-option label="好友可见" value="friends" />
-          <el-option label="仅自己可见" value="private" />
+        <el-select v-model="form.visibility" placeholder="请选择可见性">
+          <el-option 
+            label="公开（主动所有人可见）" 
+            value="public_active" 
+            title="在地图导引、用户对外展示页、个人中心页面可见"
+          />
+          <el-option 
+            label="公开（被动可见）" 
+            value="public_passive" 
+            title="仅在用户对外展示页、个人中心页面可见"
+          />
+          <el-option 
+            label="仅自己可见" 
+            value="private" 
+            title="仅在个人中心页面可见"
+          />
         </el-select>
+        <div class="visibility-tips">
+          <el-icon><InfoFilled /></el-icon>
+          <span>· 公开（主动所有人可见）：在地图导引、用户对外展示页、个人中心页面可见</span>
+        </div>
+        <div class="visibility-tips">
+          <span style="margin-left: 24px;">· 公开（被动可见）：仅在用户对外展示页、个人中心页面可见</span>
+        </div>
+        <div class="visibility-tips">
+          <span style="margin-left: 24px;">· 仅自己可见：仅在个人中心页面可见</span>
+        </div>
       </el-form-item>
 
     </el-form>
@@ -148,7 +170,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Location } from '@element-plus/icons-vue';
+import { Location, InfoFilled } from '@element-plus/icons-vue';
 import ImageUploader from '@/components/common/ImageUploader.vue';
 import { campusAPI } from '@/api/campus';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
@@ -198,7 +220,7 @@ const form = ref({
   startTime: null,
   endTime: null,
   isPermanent: false,
-  visibility: 'public'
+  visibility: 'public_active' // 默认为公开（主动所有人可见）
 });
 
 // 监听时间范围变化
@@ -396,7 +418,7 @@ const handleClosed = () => {
     startTime: null,
     endTime: null,
     isPermanent: false,
-    visibility: 'public'
+    visibility: 'public_active' // 重置为默认值
   };
   timeRange.value = [];
 };
@@ -474,6 +496,20 @@ const handleClosed = () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.visibility-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: #909399;
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.visibility-tips .el-icon {
+  margin-top: 2px;
 }
 
 .radio-with-icon {

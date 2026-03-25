@@ -110,22 +110,47 @@
       </section>
 
       <!-- 用户位置标记区域 -->
-      <section class="user-marks-section" v-if="userLocationMarks.length > 0">
+      <section class="user-marks-section">
         <div class="section-header">
-          <h2>📍 用户标记位置</h2>
+          <h2>📍 我的地点</h2>
           <div class="mark-actions">
             <el-button type="primary" size="small" @click="showMarkModal = true">
               + 标记我的位置
             </el-button>
             <el-button type="primary" size="small" @click="showCustomLocationModal = true">
-              🏷️ 自定义地点
+              🏷️ 提交自定义地点
             </el-button>
           </div>
         </div>
         
-        <div class="user-marks-grid">
+        <!-- 地点标签筛选 -->
+        <div class="location-tags-filter" v-if="userLocationMarks.length > 0">
+          <el-tag
+            v-for="tag in locationTags"
+            :key="tag.code"
+            :type="selectedLocationTag === tag.code ? 'primary' : 'info'"
+            :effect="selectedLocationTag === tag.code ? 'dark' : 'plain'"
+            closable
+            @click="toggleLocationTag(tag.code)"
+            style="margin-right: 8px; margin-bottom: 8px; cursor: pointer;"
+          >
+            {{ tag.name }}
+          </el-tag>
+          <el-tag
+            v-if="selectedLocationTag"
+            type="info"
+            effect="plain"
+            @click="clearLocationTag"
+            style="cursor: pointer;"
+          >
+            清空筛选
+          </el-tag>
+        </div>
+        
+        <!-- 有数据时显示列表 -->
+        <div v-if="userLocationMarks.length > 0" class="user-marks-grid">
           <div
-            v-for="mark in userLocationMarks"
+            v-for="mark in filteredUserLocationMarks"
             :key="mark.id"
             class="user-mark-card"
             @click="handleUserMarkClick(mark)"
@@ -137,10 +162,28 @@
               <div class="mark-meta">
                 <span v-if="mark.verificationStatus === 'pending'" class="status-pending">审核中</span>
                 <span v-else-if="mark.visibility === 'private'" class="status-private">私密</span>
+                <span v-else-if="mark.visibility === 'public_passive'" class="status-passive">被动公开</span>
                 <span v-else class="status-public">公开</span>
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- 空状态提示 -->
+        <div v-else class="empty-tips">
+          <el-empty description="您还没有标记任何地点">
+            <el-button type="primary" size="small" @click="showMarkModal = true">
+              + 标记我的位置
+            </el-button>
+            <el-button type="primary" size="small" @click="showCustomLocationModal = true">
+              🏷️ 提交自定义地点
+            </el-button>
+          </el-empty>
+        </div>
+        
+        <!-- 筛选后无数据的提示 -->
+        <div v-if="userLocationMarks.length > 0 && filteredUserLocationMarks.length === 0" class="empty-tips">
+          <el-empty description="该标签分类下暂无地点" />
         </div>
       </section>
 
@@ -178,10 +221,17 @@
     <!-- 自定义地点模态框 -->
     <el-dialog
       v-model="showCustomLocationModal"
-      title="自定义地点"
-      width="500px"
+      title="提交自定义地点"
+      width="600px"
       :close-on-click-modal="false"
     >
+      <el-alert
+        title="提交地点标签"
+        description="您提交的地点信息将作为地点标签添加到系统中，经过审核后会显示在地图导引页面，供所有用户查看。"
+        type="info"
+        :closable="false"
+        style="margin-bottom: 20px;"
+      />
       <el-form :model="customLocationForm" label-width="80px">
         <el-form-item label="地点名称" required>
           <el-input 
@@ -280,6 +330,12 @@ onMounted(() => {
   
   // 获取用户位置标记
   fetchUserLocationMarks();
+  
+  // 加载校区和地点数据
+  fetchCampuses();
+  if (selectedCampus.value) {
+    fetchLocations(selectedCampus.value);
+  }
 });
 
 onUnmounted(() => {
@@ -313,6 +369,7 @@ const interactiveMapRef = ref(null);
 // 用户位置标记相关
 const userLocationMarks = ref([]);
 const showMarkModal = ref(false);
+const selectedLocationTag = ref(null); // 当前选中的地点标签
 
 // 自定义地点相关
 const showCustomLocationModal = ref(false);
@@ -478,16 +535,18 @@ const searchLocations = async () => {
   }
 };
 
-// 获取用户位置标记
+// 获取用户位置标记（包含所有可见性）
 const fetchUserLocationMarks = async () => {
   try {
-    // 获取当前校区的公开标记
-    const response = await campusAPI.getCampusLocationMarks(selectedCampus.value);
+    // 获取当前用户的所有标记（包含 public_active、public_passive、private）
+    const response = await campusAPI.getUserLocationMarks();
     if (response && Array.isArray(response)) {
-      userLocationMarks.value = response.filter(mark => mark.verificationStatus === 'approved');
+      // 显示所有标记，不仅仅是审核通过的
+      userLocationMarks.value = response;
     }
   } catch (error) {
     console.error('获取用户标记失败:', error);
+    ElMessage.error('加载我的地点失败');
   }
 };
 
@@ -516,6 +575,30 @@ const getMarkTypeName = (markType) => {
     organization_activity: '活动地点'
   };
   return names[markType] || '位置标记';
+};
+
+// 地点标签筛选逻辑
+const filteredUserLocationMarks = computed(() => {
+  if (!selectedLocationTag.value) {
+    return userLocationMarks.value;
+  }
+  
+  // 根据 markCategory 筛选
+  return userLocationMarks.value.filter(mark => mark.markCategory === selectedLocationTag.value);
+});
+
+// 切换地点标签
+const toggleLocationTag = (tagCode) => {
+  if (selectedLocationTag.value === tagCode) {
+    selectedLocationTag.value = null;
+  } else {
+    selectedLocationTag.value = tagCode;
+  }
+};
+
+// 清空地点标签筛选
+const clearLocationTag = () => {
+  selectedLocationTag.value = null;
 };
 
 // 处理标记成功
@@ -580,14 +663,6 @@ const submitCustomLocation = async () => {
     submitting.value = false;
   }
 };
-
-// 页面初始化
-onMounted(() => {
-  fetchCampuses();
-  if (selectedCampus.value) {
-    fetchLocations(selectedCampus.value);
-  }
-});
 
 // 监听校区变化
 watch(selectedCampus, (newCampusId) => {
@@ -1527,6 +1602,14 @@ const goToPage = (page) => {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* 地点标签筛选样式 */
+.location-tags-filter {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
 .user-marks-section .section-header {
   display: flex;
   justify-content: space-between;
@@ -1619,6 +1702,15 @@ const goToPage = (page) => {
 
 .status-public {
   background: rgba(76, 175, 80, 0.3);
+}
+
+.status-passive {
+  background: rgba(33, 150, 243, 0.3);
+}
+
+.empty-tips {
+  margin-top: 20px;
+  text-align: center;
 }
 
 /* 移动端适配 */

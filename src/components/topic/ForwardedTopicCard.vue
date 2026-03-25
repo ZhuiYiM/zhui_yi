@@ -1,13 +1,13 @@
 <template>
-  <div v-if="forwardedTopic || loading" class="forwarded-topic-card" @click="handleClick">
+  <div v-if="forwardedTopic || forwardedLocation || loading" class="forwarded-topic-card" :class="locationType" @click="handleClick">
     <!-- 加载中 -->
-    <div v-if="loading && !forwardedTopic" class="loading-forwarded">
+    <div v-if="loading && !forwardedTopic && !forwardedLocation" class="loading-forwarded">
       <span class="loading-icon">🔄</span>
-      <span class="loading-text">正在加载原话题...</span>
+      <span class="loading-text">正在加载原内容...</span>
     </div>
     
-    <!-- 已加载内容 -->
-    <div v-else-if="forwardedTopic">
+    <!-- 已加载内容：话题类型 -->
+    <div v-else-if="forwardedTopic && locationType === 'topic'">
       <div class="forwarded-header">
         <span class="forwarded-icon">🔁</span>
         <span class="forwarded-label">转发自</span>
@@ -22,8 +22,32 @@
       
       <div class="forwarded-footer">
         <span class="forwarded-time">{{ formatDate(forwardedTopic.createdAt) }}</span>
-        <span class="forwarded-hint" v-if="!isDeleted">点击查看原话题</span>
+        <span class="forwarded-hint" v-if="!isDeleted">📖 点击查看原话题</span>
         <span class="forwarded-hint deleted" v-else>原话题已删除</span>
+      </div>
+    </div>
+    
+    <!-- 已加载内容：地点类型 -->
+    <div v-else-if="forwardedLocation">
+      <div class="forwarded-header">
+        <span class="forwarded-icon">📍</span>
+        <span class="forwarded-label">分享地点</span>
+        <span class="forwarded-name">
+          {{ forwardedLocation.name }}
+        </span>
+      </div>
+      
+      <div class="forwarded-content">
+        <div v-if="forwardedLocation.description" class="location-description">
+          {{ forwardedLocation.description }}
+        </div>
+        <div v-if="forwardedLocation.category" class="location-detail">
+          <span>📍 类型：{{ forwardedLocation.category }}</span>
+        </div>
+      </div>
+      
+      <div class="forwarded-footer">
+        <span class="forwarded-hint">🗺️ 点击查看地点详情</span>
       </div>
     </div>
   </div>
@@ -32,6 +56,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { topicAPI } from '@/api/topic';
+import { campusAPI } from '@/api/campus';
 
 const props = defineProps({
   forwardedFromTopicId: {
@@ -43,49 +68,69 @@ const props = defineProps({
 const emit = defineEmits(['click']);
 
 const forwardedTopic = ref(null);
+const forwardedLocation = ref(null);
+const locationType = ref(null); // 'topic' or 'location'
 const loading = ref(false);
 const isDeleted = ref(false); // 标记原话题是否已删除
 
-// 加载被转发话题信息
-const loadForwardedTopic = async () => {
+// 智能加载：先尝试作为话题加载，失败则尝试作为地点加载
+const loadContent = async () => {
   loading.value = true;
+  const sourceId = props.forwardedFromTopicId;
+  
   try {
-    // 使用自定义配置，不在拦截器中显示 404 错误
-    const response = await topicAPI.getTopicDetail(props.forwardedFromTopicId, { 
-      noGlobalError: true 
-    });
+    // 第一步：尝试作为话题加载
+    try {
+      const response = await topicAPI.getTopicDetail(sourceId, { 
+        noGlobalError: true 
+      });
+      
+      if (response && response.id) {
+        forwardedTopic.value = {
+          id: response.id,
+          authorName: response.author?.username || response.author?.realName || '匿名用户',
+          content: response.content?.substring(0, 100) || '内容已删除',
+          createdAt: response.createdAt
+        };
+        locationType.value = 'topic';
+        isDeleted.value = false;
+        loading.value = false;
+        return;
+      }
+    } catch (topicError) {
+      // 话题加载失败，尝试作为地点加载
+    }
     
-    // ✅ request.js 拦截器已经返回了 responseData.data，直接使用 response
-    const topicData = response;
-    
-    if (topicData && topicData.id) {
-      forwardedTopic.value = {
-        id: topicData.id,
-        authorName: topicData.author?.username || topicData.author?.realName || '匿名用户',
-        content: topicData.content?.substring(0, 100) || '内容已删除',
-        createdAt: topicData.createdAt
-      };
-      isDeleted.value = false;
-    } else {
-      throw new Error('响应数据缺少 id 字段');
+    // 第二步：尝试作为地点加载
+    try {
+      const response = await campusAPI.getLocationDetail(sourceId, { noGlobalError: true });
+      
+      if (response && response.id) {
+        forwardedLocation.value = {
+          id: response.id,
+          name: response.name || '未知地点',
+          description: response.description || '暂无描述',
+          category: response.category
+        };
+        locationType.value = 'location';
+      } else {
+        throw new Error('响应数据缺少 id 字段');
+      }
+    } catch (locationError) {
+      throw locationError;
     }
   } catch (error) {
-    // 如果加载失败，使用默认信息
+    // 如果都加载失败，显示错误信息
     forwardedTopic.value = {
-      id: props.forwardedFromTopicId,
+      id: sourceId,
       authorName: '未知用户',
-      content: '⚠️ 该话题已被删除或无法查看',
+      content: '⚠️ 该内容已被删除或无法查看',
       createdAt: new Date().toISOString()
     };
+    locationType.value = 'topic';
     isDeleted.value = true;
   } finally {
     loading.value = false;
-  }
-};
-
-const handleClick = () => {
-  if (forwardedTopic.value && forwardedTopic.value.id) {
-    emit('click', forwardedTopic.value.id);
   }
 };
 
@@ -111,8 +156,15 @@ const formatDate = (dateString) => {
   }
 };
 
+const handleClick = () => {
+  const targetId = forwardedTopic.value?.id || forwardedLocation.value?.id;
+  if (targetId) {
+    emit('click', targetId);
+  }
+};
+
 onMounted(() => {
-  loadForwardedTopic();
+  loadContent();
 });
 </script>
 
@@ -218,5 +270,33 @@ onMounted(() => {
   color: #999;
   font-style: italic;
   font-size: 0.8rem;
+}
+
+/* 地点类型样式 */
+.forwarded-topic-card.location {
+  background: linear-gradient(135deg, #f0fff4 0%, #e6f7e9 100%);
+  border-left: 4px solid #28a745;
+}
+
+.forwarded-topic-card.location:hover {
+  background: linear-gradient(135deg, #e6f7e9 0%, #d4edda 100%);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+.forwarded-topic-card.location .forwarded-name {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.location-description {
+  margin-bottom: 8px;
+}
+
+.location-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #666;
+  font-size: 0.9rem;
 }
 </style>

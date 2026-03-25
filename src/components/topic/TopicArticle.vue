@@ -53,9 +53,9 @@
     <div class="article-body">
       <p class="content-text">{{ content }}</p>
 
-      <!-- 被转发的话题引用 -->
+      <!-- 被转发的话题引用（智能处理话题和地点） -->
       <ForwardedTopicCard
-        v-if="isForwarded && forwardedFromTopicId"
+        v-if="isForwarded && forwardedFromTopicId && !forwardedFromProductId"
         :forwarded-from-topic-id="forwardedFromTopicId"
         @click="$emit('view-forwarded', forwardedFromTopicId)"
       />

@@ -41,13 +41,17 @@
         </div>
 
         <!-- 分享信息提示 -->
-        <div v-if="isShareMode && shareInfo" :class="['share-info-box', { 'product-share': shareInfo.sourceType === 'product' }]">
-          <div class="info-icon">{{ shareInfo.sourceType === 'product' ? '🛍️' : 'ℹ️' }}</div>
+        <div v-if="isShareMode && shareInfo" :class="['share-info-box', { 
+          'product-share': shareInfo.sourceType === 'product',
+          'location-share': shareInfo.sourceType === 'location'
+        }]">
+          <div class="info-icon">{{ getSourceTypeIcon(shareInfo.sourceType) }}</div>
           <div class="info-content">
-            <p class="info-title">{{ shareInfo.sourceType === 'product' ? '商品信息预览' : '分享内容预览' }}</p>
+            <p class="info-title">{{ getSourceTypeTitle(shareInfo.sourceType) }}</p>
             <p class="info-text">来自用户：<strong>@{{ shareInfo.author }}</strong></p>
             <p v-if="shareInfo.sourceType === 'topic'" class="info-hint">转发时可以添加新图片，不会继承原话题的图片</p>
             <p v-else-if="shareInfo.sourceType === 'product'" class="info-hint">转发时会自动添加"商品分享"标签，无需手动选择</p>
+            <p v-else-if="shareInfo.sourceType === 'location'" class="info-hint">转发时会自动添加"地点推荐"标签，无需手动选择</p>
             <p v-else class="info-hint">{{ shareInfo.sourceType === 'product' ? '转发时会自动添加"商品分享"标签，无需手动选择' : '转发时会自动添加"话题转发"标签，无需手动选择' }}</p>
           </div>
         </div>
@@ -106,6 +110,26 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(['update:visible', 'published', 'closed']);
+
+// 获取分享类型图标
+const getSourceTypeIcon = (sourceType) => {
+  const iconMap = {
+    'topic': 'ℹ️',
+    'product': '🛍️',
+    'location': '📍'
+  };
+  return iconMap[sourceType] || 'ℹ️';
+};
+
+// 获取分享类型标题
+const getSourceTypeTitle = (sourceType) => {
+  const titleMap = {
+    'topic': '分享内容预览',
+    'product': '商品信息预览',
+    'location': '地点推荐预览'
+  };
+  return titleMap[sourceType] || '分享内容预览';
+};
 
 // 本地数据
 const localContent = ref('');
@@ -307,9 +331,9 @@ const handlePublish = async () => {
       }
     }
     
-    // 如果是转发模式，区分商品分享和话题转发
+    // 如果是转发模式，区分商品分享、地点分享和话题转发
     if (props.isShareMode && props.shareInfo) {
-      // 判断是商品分享还是话题转发
+      // 判断是商品分享、地点分享还是话题转发
       if (props.shareInfo.sourceType === 'product') {
         // 商品分享：使用创建话题 API，添加 forwardedFromProductId
         const topicData = {
@@ -331,6 +355,30 @@ const handlePublish = async () => {
           return;
         } catch (error) {
           console.error('❌ 商品分享失败:', error.message);
+          throw error;
+        }
+      } else if (props.shareInfo.sourceType === 'location') {
+        // 地点分享：使用创建话题 API，添加 isForwarded 和 forwardedFromTopicId（地点 ID）
+        const locationId = parseInt(props.shareInfo.sourceId || props.shareInfo.id);
+        const topicData = {
+          content: localContent.value,
+          images: imageUrls,
+          level1TagCode: selectedTagsData.level1?.code || null,
+          topicTagCodes: (selectedTagsData.level2 || []).map(t => t.code),
+          locationTagCodes: (selectedTagsData.level3 || []).map(t => t.code),
+          anonymous: false,
+          isForwarded: true,
+          forwardedFromTopicId: locationId  // 使用地点 ID 作为 forwardedFromTopicId
+        };
+        
+        try {
+          const response = await topicAPI.createTopic(topicData);
+          ElMessage.success('发布成功!');
+          emit('published', response.data || response);
+          handleClose();
+          return;
+        } catch (error) {
+          console.error('❌ 地点分享失败:', error.message);
           throw error;
         }
       } else {
@@ -495,6 +543,12 @@ const handlePublish = async () => {
 .share-info-box.product-share {
   background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
   border-color: #FF6B6B;
+}
+
+/* 地点分享样式 */
+.share-info-box.location-share {
+  background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+  border-color: #38A169;
 }
 
 .info-icon {

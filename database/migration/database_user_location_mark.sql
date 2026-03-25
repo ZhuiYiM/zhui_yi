@@ -47,7 +47,7 @@ CREATE TABLE `user_location_mark` (
   `review_comment` TEXT COMMENT '审核意见',
   
   -- 可见性
-  `visibility` VARCHAR(20) DEFAULT 'public' COMMENT '可见性：public/friends/private',
+  `visibility` VARCHAR(20) DEFAULT 'public_active' COMMENT '可见性：public_active（主动所有人可见）/public_passive（被动可见）/private（仅自己可见）',
   
   -- 统计数据
   `view_count` INT DEFAULT 0 COMMENT '浏览次数',

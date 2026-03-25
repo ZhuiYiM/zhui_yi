@@ -162,10 +162,14 @@ const routes = [
     },
     {
         path: '/admin/dashboard',
-        name: 'AdminDashboard',
         component: AdminDashboard,
         meta: { requiresAdmin: true },  // 需要管理员权限
         children: [
+            {
+                path: '',
+                name: 'AdminDashboard',
+                redirect: 'home'
+            },
             {
                 path: 'home',
                 name: 'DashboardHome',
@@ -255,10 +259,6 @@ const routes = [
                 path: 'identity-verifications',
                 name: 'AdminIdentityVerifications',
                 component: () => import('../views/admin/IdentityVerificationList.vue')
-            },
-            {
-                path: '',
-                redirect: 'home'
             }
         ]
     },

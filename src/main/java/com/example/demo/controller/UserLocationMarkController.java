@@ -39,6 +39,14 @@ public class UserLocationMarkController {
     }
     
     /**
+     * 获取当前用户的所有标记（包含所有可见性）
+     */
+    @GetMapping("/my/all")
+    public Result getAllMyMarks(HttpServletRequest request) {
+        return userLocationMarkService.getAllMyMarks(request);
+    }
+    
+    /**
      * 获取校区的公开标记
      */
     @GetMapping("/campus/{campusId}")

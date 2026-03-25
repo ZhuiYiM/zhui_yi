@@ -53,6 +53,11 @@ export const campusAPI = {
         });
     },
 
+    // 获取当前用户的所有标记（包含所有可见性）
+    getUserLocationMarks() {
+        return request.get('/user/location-marks/my/all');
+    },
+
     // 获取校区的公开标记
     getCampusLocationMarks(campusId, markType = null) {
         return request.get(`/user/location-marks/campus/${campusId}`, {

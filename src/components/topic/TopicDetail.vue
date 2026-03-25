@@ -36,6 +36,7 @@
             :interactions="topic.interactions"
             :is-forwarded="topic.isForwarded"
             :forwarded-from-topic-id="topic.forwardedFromTopicId"
+            :forwarded-from-product-id="topic.forwardedFromProductId"
             :created-at="topic.createdAt"
             :author-public-info="authorPublicInfo"
             :current-user-id="currentUser?.id"

@@ -170,6 +170,17 @@
         <img :src="location.imageUrl" class="preview-large-image" />
       </div>
     </div>
+
+    <!-- 分享弹窗 -->
+    <LocationShareModal
+      v-model:visible="showShareModal"
+      :location-id="location?.id"
+      :location-name="location?.name"
+      :location-url="currentLocationUrl"
+      @copy="handleCopyLink"
+      @repost="handleRepost"
+      @close="handleShareClose"
+    />
   </div>
 </template>
 
@@ -178,6 +189,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
+import LocationShareModal from './LocationShareModal.vue';
 import { campusAPI } from '../../api/campus';
 import { getLocationCategory } from '../../utils/mapHelper';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
@@ -215,6 +227,13 @@ const relatedLocations = ref([]);
 
 // 图片预览
 const showImagePreview = ref(false);
+
+// 分享相关
+const showShareModal = ref(false);
+const currentLocationUrl = computed(() => {
+  if (!location.value?.id) return '';
+  return `${window.location.origin}/location/${location.value.id}`;
+});
 
 // 地图相关
 const miniMapLoaded = ref(false);
@@ -376,16 +395,66 @@ const navigateToLocation = () => {
 
 // 分享地点
 const shareLocation = () => {
-  if (!location.value) return;
+  if (!location.value) {
+    ElMessage.warning('地点信息不完整');
+    return;
+  }
   
-  const shareText = `我发现了一个好地方：${location.value.name}，快来看看吧！`;
-  
-  // 复制到剪贴板
-  navigator.clipboard.writeText(shareText).then(() => {
-    ElMessage.success('分享信息已复制到剪贴板');
-  }).catch(() => {
-    ElMessage.error('复制失败，请手动复制');
-  });
+  showShareModal.value = true;
+};
+
+// 处理复制链接
+const handleCopyLink = (url) => {
+  console.log('已复制地点链接:', url);
+};
+
+// 处理转发到话题墙
+const handleRepost = (shareData) => {
+  try {
+    // 更新分享数据中的作者信息
+    const token = localStorage.getItem('token');
+    let authorName = '匿名用户';
+    
+    if (token) {
+      try {
+        const userPayload = JSON.parse(atob(token.split('.')[1]));
+        authorName = userPayload.realName || userPayload.username || '匿名用户';
+      } catch (e) {
+        console.warn('解析用户信息失败:', e);
+      }
+    }
+    
+    // 重新生成带作者信息的分享数据
+    const updatedShareData = {
+      ...shareData,
+      author: authorName,
+      originalLocationId: location.value.id,
+      originalLocationName: location.value.name
+    };
+    
+    // 更新 sessionStorage
+    sessionStorage.setItem('shareData', JSON.stringify(updatedShareData));
+    
+    // 跳转到话题墙
+    router.push({
+      path: '/topicwall',
+      query: {
+        from: 'share',
+        sourceType: 'location',
+        sourceId: location.value.id
+      }
+    });
+    
+    ElMessage.success('正在跳转到发布页面...');
+  } catch (error) {
+    console.error('转发失败:', error);
+    ElMessage.error('跳转失败，请稍后重试');
+  }
+};
+
+// 处理分享弹窗关闭
+const handleShareClose = () => {
+  showShareModal.value = false;
 };
 
 // 图片预览

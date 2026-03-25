@@ -119,7 +119,7 @@ public class UserLocationMark {
     private String reviewComment;
     
     /**
-     * 可见性：public/friends/private
+     * 可见性：public_active（主动所有人可见）/public_passive（被动可见）/private（仅自己可见）
      */
     private String visibility;
     

@@ -150,6 +150,34 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
     }
     
     @Override
+    public Result getAllMyMarks(HttpServletRequest request) {
+        try {
+            // 从 Token 获取用户 ID
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            Integer userId = jwtUtil.getUserIdFromToken(token);
+            if (userId == null) {
+                return Result.error("用户未登录");
+            }
+            
+            // 查询当前用户的所有标记（包含所有可见性）
+            QueryWrapper<UserLocationMark> wrapper = new QueryWrapper<>();
+            wrapper.eq("user_id", userId)
+                   .orderByDesc("created_at");
+            
+            List<UserLocationMark> marks = userLocationMarkMapper.selectList(wrapper);
+            
+            return Result.success(marks);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取标记列表失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
     public Result getCampusMarks(Integer campusId, String markType) {
         try {
             QueryWrapper<UserLocationMark> wrapper = new QueryWrapper<>();

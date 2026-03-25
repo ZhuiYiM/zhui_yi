@@ -36,18 +36,25 @@
     <div class="post-content">
       <p>{{ post.content }}</p>
 
-      <!-- 被转发的话题引用（使用新组件） -->
+      <!-- 被转发的话题引用 -->
       <ForwardedTopicCard
-        v-if="post.isForwarded && post.forwardedFromTopicId"
+        v-if="post.isForwarded && post.forwardedFromTopicId && !post.forwardedFromProductId && !post.forwardedFromLocationId"
         :forwarded-from-topic-id="post.forwardedFromTopicId"
         @click="(topicId) => emit('view-forwarded-topic', topicId)"
       />
       
-      <!-- 分享的商品引用（使用新组件） -->
+      <!-- 分享的商品引用 -->
       <ForwardedProductCard
         v-if="post.isForwarded && post.forwardedFromProductId"
         :forwarded-from-product-id="post.forwardedFromProductId"
         @click="(productId) => emit('view-forwarded-product', productId)"
+      />
+      
+      <!-- 分享的地点引用 -->
+      <ForwardedTopicCard
+        v-if="post.isForwarded && post.forwardedFromLocationId"
+        :forwarded-from-topic-id="post.forwardedFromLocationId"
+        @click="(locationId) => emit('view-forwarded-location', locationId)"
       />
 
       <!-- 图片展示 -->
@@ -131,14 +138,6 @@ const props = defineProps({
   }
 });
 
-// 调试：监听 post 变化
-watch(() => props.post, (newVal) => {
-  if (newVal && newVal.images) {
-    console.log('🖼️ 图片数据:', newVal.images);
-    console.log('🖼️ 图片数量:', newVal.images.length);
-  }
-}, { immediate: true, deep: true });
-
 // Emits
 const emit = defineEmits([
   'click',
@@ -150,7 +149,8 @@ const emit = defineEmits([
   'hide-popover',
   'like-change', // 新增：点赞状态变化事件
   'view-forwarded-topic', // 查看被转发的话题
-  'view-forwarded-product' // 查看被分享的商品
+  'view-forwarded-product', // 查看被分享的商品
+  'view-forwarded-location' // 查看被分享的地点
 ]);
 
 // 默认头像

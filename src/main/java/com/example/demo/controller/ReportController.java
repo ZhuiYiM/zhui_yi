@@ -26,8 +26,11 @@ public class ReportController {
     @PostMapping
     public ApiResult createReport(@Valid @RequestBody ReportCreateDTO reportDTO,
                                   HttpServletRequest request) {
-        // TODO: 从 token 中获取用户 ID
-        Long userId = 1L; // 临时使用固定值
+        // 从 request attribute 中获取用户 ID（由 TokenInterceptor 设置）
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId == null) {
+            return ApiResult.error(401, "未登录或 Token 无效");
+        }
         return reportService.createReport(reportDTO, userId);
     }
     

@@ -52,9 +52,9 @@
       </el-col>
       <el-col :span="6">
         <el-card class="stat-card">
-          <el-statistic title="已处理" :value="stats.processed">
+          <el-statistic title="已忽略" :value="stats.ignored">
             <template #prefix>
-              <el-icon style="color: #67C23A"><Warning /></el-icon>
+              <el-icon style="color: #909399"><Warning /></el-icon>
             </template>
           </el-statistic>
         </el-card>
@@ -67,12 +67,16 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>按类型统计</span>
+              <span>按被举报对象统计</span>
             </div>
           </template>
           <div class="chart-container">
             <div v-for="item in stats.byType" :key="item.type" class="stat-item">
-              <div class="stat-label">{{ formatType(item.type) }}</div>
+              <div class="stat-label">
+                <el-tag :type="getTypeTag(item.type)" size="small" style="margin-right: 8px">
+                  {{ formatType(item.type) }}
+                </el-tag>
+              </div>
               <el-progress :percentage="calculatePercentage(item.count)" :format="() => item.count + '件'" />
             </div>
           </div>
@@ -84,12 +88,16 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>按状态统计</span>
+              <span>按处理状态统计</span>
             </div>
           </template>
           <div class="chart-container">
             <div v-for="item in stats.byStatus" :key="item.status" class="stat-item">
-              <div class="stat-label">{{ formatStatus(item.status) }}</div>
+              <div class="stat-label">
+                <el-tag :type="getStatusTag(item.status)" size="small" style="margin-right: 8px">
+                  {{ formatStatus(item.status) }}
+                </el-tag>
+              </div>
               <el-progress 
                 :percentage="calculatePercentage(item.count)" 
                 :color="getStatusColor(item.status)"
@@ -106,17 +114,22 @@
       <template #header>
         <div class="card-header">
           <span>最近处理记录</span>
-          <el-button type="primary" size="small" @click="loadStats">刷新</el-button>
+          <el-button type="primary" size="small" @click="loadStats" :loading="loading">刷新</el-button>
         </div>
       </template>
-      <el-table :data="recentReports" border stripe>
+      <el-table :data="recentReports" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="type" label="类型" width="100">
+        <el-table-column prop="targetType" label="被举报对象" width="120">
           <template #default="{ row }">
-            <el-tag :type="getTypeTag(row.type)" size="small">{{ formatType(row.type) }}</el-tag>
+            <el-tag :type="getTypeTag(row.targetType)" size="small">{{ formatType(row.targetType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="原因" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="reportType" label="举报原因" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getReportTypeTag(row.reportType)" size="small">{{ formatReportType(row.reportType) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="举报描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusTag(row.status)" size="small">{{ formatStatus(row.status) }}</el-tag>
@@ -144,21 +157,38 @@ const stats = reactive({
   pending: 0,
   processing: 0,
   processed: 0,
+  ignored: 0,
   byType: [],
   byStatus: []
 });
 
 const recentReports = ref([]);
 
-// 格式化举报类型
+// 格式化举报类型（被举报对象）
 const formatType = (type) => {
   const typeMap = {
     topic: '话题',
     product: '商品',
     user: '用户',
-    comment: '评论'
+    comment: '评论',
+    location: '地点'
   };
   return typeMap[type] || type;
+};
+
+// 格式化举报原因类型
+const formatReportType = (reportType) => {
+  const typeMap = {
+    pornography: '色情低俗',
+    illegal: '违法犯罪',
+    political: '政治敏感',
+    spam: '垃圾广告',
+    fake_info: '虚假信息',
+    copyright: '侵权内容',
+    harassment: '人身攻击',
+    other: '其他违规'
+  };
+  return typeMap[reportType] || reportType;
 };
 
 // 格式化状态
@@ -189,9 +219,25 @@ const getTypeTag = (type) => {
     topic: 'success',
     product: 'warning',
     user: 'danger',
-    comment: 'info'
+    comment: 'info',
+    location: 'primary'
   };
   return typeMap[type] || 'info';
+};
+
+// 获取举报原因标签类型
+const getReportTypeTag = (reportType) => {
+  const typeMap = {
+    pornography: 'danger',
+    illegal: 'danger',
+    political: 'danger',
+    spam: 'warning',
+    fake_info: 'warning',
+    copyright: 'info',
+    harassment: 'danger',
+    other: 'info'
+  };
+  return typeMap[reportType] || 'info';
 };
 
 // 获取状态颜色
@@ -211,49 +257,27 @@ const calculatePercentage = (count) => {
   return Math.round((count / stats.total) * 100);
 };
 
-// 加载统计数据
+// 加载统计
 const loadStats = async () => {
   loading.value = true;
   try {
     const response = await request.get('/admin/reports/stats');
     
-    console.log('📊 举报统计响应:', response);
-    console.log('response.data:', response.data);
-    console.log('response.code:', response.code);
-    
-    // response 已经是后端返回的 data 部分，不需要再访问 response.data
+    // 响应数据已在拦截器中处理，直接赋值
     if (response && response.total !== undefined) {
       const data = response;
       stats.total = data.total || 0;
       stats.pending = data.pending || 0;
       stats.processing = data.processing || 0;
       stats.processed = data.processed || 0;
+      stats.ignored = data.ignored || 0;
       
-      // 将对象转换为数组格式
-      stats.byType = Object.entries(data.byType || {}).map(([type, count]) => ({
-        type,
-        count
-      }));
-      
-      stats.byStatus = Object.entries(data.byStatus || {}).map(([status, count]) => ({
-        status: parseInt(status),
-        count
-      }));
-      
-      recentReports.value = data.recent || [];
-      console.log('✅ 举报统计加载成功');
-      console.log('转换后的 byType:', stats.byType);
-      console.log('转换后的 byStatus:', stats.byStatus);
-      console.log('stats.total:', stats.total);
-      console.log('stats.pending:', stats.pending);
-      console.log('stats.processing:', stats.processing);
-      console.log('stats.processed:', stats.processed);
+      // 数据转换完成
     } else {
       ElMessage.error('数据格式错误');
-      console.error('数据格式错误:', response);
     }
   } catch (error) {
-    console.error('❌ 加载举报统计失败:', error);
+    // 错误已在拦截器中统一处理
     ElMessage.error('加载失败，请稍后重试');
   } finally {
     loading.value = false;

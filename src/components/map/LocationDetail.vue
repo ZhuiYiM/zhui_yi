@@ -124,7 +124,11 @@
               <el-button @click="shareLocation" class="action-btn">
                 📤 分享地点
               </el-button>
-              <el-button @click="showReportModal = true" class="action-btn">
+              <el-button 
+                @click="openReportModal" 
+                class="action-btn"
+                :disabled="!location?.id"
+              >
                 ⚠️ 举报
               </el-button>
             </div>
@@ -221,7 +225,7 @@
 
     <!-- 举报弹窗 -->
     <ReportModal
-      v-model:visible="showReportModal"
+      v-model="showReportModal"
       target-type="location"
       :target-id="location?.id"
       @success="handleReportSuccess"
@@ -285,6 +289,27 @@ const currentLocationUrl = computed(() => {
 
 // 举报相关
 const showReportModal = ref(false);
+
+// 打开举报弹窗
+const openReportModal = () => {
+  console.log('[LocationDetail] 准备打开举报弹窗');
+  console.log('[LocationDetail] 当前 location:', location.value);
+  console.log('[LocationDetail] location.id:', location.value?.id);
+  if (!location.value?.id) {
+    console.error('[LocationDetail] 无法打开举报弹窗：location.id 为空');
+    ElMessage.warning('地点信息未加载完成，请稍后再试');
+    return;
+  }
+  showReportModal.value = true;
+  console.log('[LocationDetail] 举报弹窗已打开，showReportModal:', showReportModal.value);
+};
+
+// 处理举报成功
+const handleReportSuccess = (data) => {
+  console.log('[LocationDetail] 举报成功:', data);
+  showReportModal.value = false;
+  ElMessage.success('举报成功，感谢你的反馈！');
+};
 
 // 地图相关
 const miniMapLoaded = ref(false);
@@ -633,13 +658,6 @@ const goToUserProfile = () => {
   
   // 跳转到用户对外展示页面
   router.push(`/user/profile/${location.value.userId}`);
-};
-
-// 处理举报成功
-const handleReportSuccess = (data) => {
-  console.log('举报成功:', data);
-  showReportModal.value = false;
-  // 可以在这里刷新页面状态或记录日志
 };
 
 // 监听地点数据加载完成

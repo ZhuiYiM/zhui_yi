@@ -57,15 +57,15 @@ public class AdminReportsController {
     public Result list(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer limit,
-            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String targetType,
             @RequestParam(required = false) Integer status
     ) {
         try {
             QueryWrapper<Report> queryWrapper = new QueryWrapper<>();
             
-            // 类型筛选
-            if (type != null && !type.isEmpty()) {
-                queryWrapper.eq("type", type);
+            // 类型筛选（被举报对象类型）
+            if (targetType != null && !targetType.isEmpty()) {
+                queryWrapper.eq("target_type", targetType);
             }
             
             // 状态筛选
@@ -165,12 +165,13 @@ public class AdminReportsController {
             long processed = reportService.count(new QueryWrapper<Report>().eq("status", 2));
             long ignored = reportService.count(new QueryWrapper<Report>().eq("status", 3));
             
-            // 按类型统计
+            // 按类型统计（被举报对象类型）
             Map<String, Object> byType = Map.of(
-                "topic", reportService.count(new QueryWrapper<Report>().eq("type", "topic")),
-                "product", reportService.count(new QueryWrapper<Report>().eq("type", "product")),
-                "user", reportService.count(new QueryWrapper<Report>().eq("type", "user")),
-                "comment", reportService.count(new QueryWrapper<Report>().eq("type", "comment"))
+                "topic", reportService.count(new QueryWrapper<Report>().eq("target_type", "topic")),
+                "product", reportService.count(new QueryWrapper<Report>().eq("target_type", "product")),
+                "user", reportService.count(new QueryWrapper<Report>().eq("target_type", "user")),
+                "comment", reportService.count(new QueryWrapper<Report>().eq("target_type", "comment")),
+                "location", reportService.count(new QueryWrapper<Report>().eq("target_type", "location"))
             );
             
             // 按状态统计
@@ -181,10 +182,10 @@ public class AdminReportsController {
                 "ignored", ignored
             );
             
-            // 最近处理记录
+            // 最近处理记录（按处理时间倒序）
             QueryWrapper<Report> recentWrapper = new QueryWrapper<>();
             recentWrapper.in("status", 2, 3)
-                      .orderByDesc("updated_at")
+                      .orderByDesc("processed_at")
                       .last("LIMIT 10");
             
             return Result.success(Map.of(
@@ -192,6 +193,7 @@ public class AdminReportsController {
                 "pending", pending,
                 "processing", processing,
                 "processed", processed,
+                "ignored", ignored,
                 "byType", byType,
                 "byStatus", byStatus,
                 "recent", reportService.list(recentWrapper)

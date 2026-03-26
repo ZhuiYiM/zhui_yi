@@ -24,12 +24,13 @@
     <el-card class="table-card">
       <!-- 搜索表单 -->
       <el-form :model="searchForm" :inline="true" class="search-form">
-        <el-form-item label="举报类型">
-          <el-select v-model="searchForm.type" placeholder="全部" clearable style="width: 150px">
+        <el-form-item label="被举报对象">
+          <el-select v-model="searchForm.targetType" placeholder="全部" clearable style="width: 150px">
             <el-option label="话题" value="topic" />
             <el-option label="商品" value="product" />
             <el-option label="用户" value="user" />
             <el-option label="评论" value="comment" />
+            <el-option label="地点" value="location" />
           </el-select>
         </el-form-item>
         <el-form-item label="处理状态">
@@ -55,14 +56,18 @@
       <!-- 表格 -->
       <el-table :data="reportList" v-loading="loading" border stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="type" label="举报类型" width="100">
+        <el-table-column prop="targetType" label="被举报对象" width="100">
           <template #default="{ row }">
-            <el-tag :type="getTypeTag(row.type)">{{ formatType(row.type) }}</el-tag>
+            <el-tag :type="getTargetTypeTag(row.targetType)">{{ formatTargetType(row.targetType) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reportType" label="举报原因" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getReportTypeTag(row.reportType)">{{ formatReportType(row.reportType) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="targetId" label="目标 ID" width="100" />
-        <el-table-column prop="reason" label="举报原因" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="description" label="详细描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="reason" label="举报描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="reporterId" label="举报人 ID" width="100" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -111,17 +116,29 @@
     <el-dialog v-model="viewDialogVisible" title="举报详情" width="600px">
       <el-descriptions :column="1" border v-if="currentReport">
         <el-descriptions-item label="举报 ID">{{ currentReport.id }}</el-descriptions-item>
-        <el-descriptions-item label="举报类型">{{ formatType(currentReport.type) }}</el-descriptions-item>
+        <el-descriptions-item label="被举报对象">
+          <el-tag :type="getTargetTypeTag(currentReport.targetType)">{{ formatTargetType(currentReport.targetType) }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="举报原因类型">
+          <el-tag :type="getReportTypeTag(currentReport.reportType)">{{ formatReportType(currentReport.reportType) }}</el-tag>
+        </el-descriptions-item>
         <el-descriptions-item label="目标 ID">{{ currentReport.targetId }}</el-descriptions-item>
-        <el-descriptions-item label="举报原因">{{ currentReport.reason }}</el-descriptions-item>
-        <el-descriptions-item label="详细描述">{{ currentReport.description || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="举报描述">{{ currentReport.reason || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="证据" v-if="currentReport.evidence">
+          {{ currentReport.evidence }}
+        </el-descriptions-item>
         <el-descriptions-item label="举报人 ID">{{ currentReport.reporterId }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ formatStatus(currentReport.status) }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusTag(currentReport.status)">{{ formatStatus(currentReport.status) }}</el-tag>
+        </el-descriptions-item>
         <el-descriptions-item label="举报时间">
           {{ currentReport.createdAt ? new Date(currentReport.createdAt).toLocaleString() : '-' }}
         </el-descriptions-item>
-        <el-descriptions-item label="处理说明" v-if="currentReport.processNote">
-          {{ currentReport.processNote }}
+        <el-descriptions-item label="处理时间" v-if="currentReport.processedAt">
+          {{ new Date(currentReport.processedAt).toLocaleString() }}
+        </el-descriptions-item>
+        <el-descriptions-item label="处理结果" v-if="currentReport.processResult">
+          {{ currentReport.processResult }}
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
@@ -166,7 +183,7 @@ const submitting = ref(false);
 const reportList = ref([]);
 
 const searchForm = reactive({
-  type: '',
+  targetType: '',
   status: null
 });
 
@@ -185,15 +202,31 @@ const processForm = reactive({
   processNote: ''
 });
 
-// 格式化举报类型
-const formatType = (type) => {
+// 格式化举报类型（targetType - 被举报对象类型）
+const formatTargetType = (targetType) => {
   const typeMap = {
     topic: '话题',
     product: '商品',
     user: '用户',
-    comment: '评论'
+    comment: '评论',
+    location: '地点'
   };
-  return typeMap[type] || type;
+  return typeMap[targetType] || targetType;
+};
+
+// 格式化举报原因类型（reportType - 举报原因）
+const formatReportType = (reportType) => {
+  const typeMap = {
+    pornography: '色情低俗',
+    illegal: '违法犯罪',
+    political: '政治敏感',
+    spam: '垃圾广告',
+    fake_info: '虚假信息',
+    copyright: '侵权内容',
+    harassment: '人身攻击',
+    other: '其他违规'
+  };
+  return typeMap[reportType] || reportType;
 };
 
 // 获取状态标签类型
@@ -207,15 +240,31 @@ const getStatusTag = (status) => {
   return statusMap[status] || 'info';
 };
 
-// 获取类型标签类型
-const getTypeTag = (type) => {
+// 获取举报对象标签类型
+const getTargetTypeTag = (targetType) => {
   const typeMap = {
     topic: 'success',
     product: 'warning',
     user: 'danger',
-    comment: 'info'
+    comment: 'info',
+    location: 'primary'
   };
-  return typeMap[type] || 'info';
+  return typeMap[targetType] || 'info';
+};
+
+// 获取举报原因标签类型
+const getReportTypeTag = (reportType) => {
+  const typeMap = {
+    pornography: 'danger',
+    illegal: 'danger',
+    political: 'danger',
+    spam: 'warning',
+    fake_info: 'warning',
+    copyright: 'info',
+    harassment: 'danger',
+    other: 'info'
+  };
+  return typeMap[reportType] || 'info';
 };
 
 // 格式化状态
@@ -241,16 +290,16 @@ const loadReportList = async () => {
       }
     });
     
-    console.log('📋 举报列表响应:', response);
+    // 举报列表响应已在拦截器中处理，这里简化逻辑
     if (response.code === 200 || response.list !== undefined) {
       reportList.value = response.list || [];
       pagination.total = response.total || 0;
-      console.log('✅ 举报列表加载成功:', reportList.value.length, '条记录');
+      // 加载成功，无需额外日志
     } else {
       ElMessage.error(response.message || '加载失败');
     }
   } catch (error) {
-    console.error('❌ 加载举报列表失败:', error);
+    // 错误已在拦截器中统一处理
     ElMessage.error('加载失败，请稍后重试');
   } finally {
     loading.value = false;
@@ -259,13 +308,12 @@ const loadReportList = async () => {
 
 // 搜索
 const handleSearch = () => {
-  console.log('🔍 搜索举报，pagination:', pagination);
   loadReportList();
 };
 
 // 重置
 const handleReset = () => {
-  searchForm.type = '';
+  searchForm.targetType = '';
   searchForm.status = null;
   pagination.page = 1;
   loadReportList();
@@ -294,15 +342,17 @@ const handleSubmitProcess = async () => {
       processNote: processForm.processNote
     });
     
-    if (response.code === 200) {
+    // request 拦截器已经处理了 code 判断，成功时返回的是 data 部分
+    // 所以这里直接判断 response 是否存在即可
+    if (response) {
       ElMessage.success('处理成功');
       processDialogVisible.value = false;
       loadReportList();
     } else {
-      ElMessage.error(response.message || '处理失败');
+      ElMessage.error('处理失败');
     }
   } catch (error) {
-    console.error('处理失败:', error);
+    // 错误已在拦截器中统一处理
     ElMessage.error('处理失败，请稍后重试');
   } finally {
     submitting.value = false;
@@ -327,7 +377,7 @@ const handleDelete = async (row) => {
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除失败:', error);
+      // 错误已在拦截器中统一处理
       ElMessage.error('删除失败，请稍后重试');
     }
   }

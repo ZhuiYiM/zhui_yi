@@ -94,19 +94,43 @@ const props = defineProps({
   targetType: {
     type: String,
     required: true,
-    validator: (value) => ['location', 'product', 'topic', 'review'].includes(value)
+    validator: (value) => {
+      const valid = ['location', 'product', 'topic', 'review', 'user'].includes(value);
+      return valid;
+    }
   },
   targetId: {
-    type: Number,
-    required: true
+    type: [Number, String],
+    required: true,
+    validator: (value) => {
+      // 允许数字或字符串，但不能为 null、undefined 或空字符串
+      if (value === null || value === undefined) {
+        return false;
+      }
+      if (typeof value === 'number') {
+        return true; // 数字都允许（包括 0）
+      }
+      if (typeof value === 'string') {
+        return value.trim() !== '';
+      }
+      return false;
+    }
   }
 });
+
+console.log('[ReportModal] Props 定义完成，当前 props:', props);
 
 const emit = defineEmits(['update:modelValue', 'success']);
 
 const dialogVisible = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val)
+  get: () => {
+    console.log('[ReportModal] dialogVisible get:', props.modelValue);
+    return props.modelValue;
+  },
+  set: (val) => {
+    console.log('[ReportModal] dialogVisible set:', val);
+    emit('update:modelValue', val);
+  }
 });
 
 const submitting = ref(false);
@@ -128,13 +152,13 @@ const form = ref({
   contactInfo: ''
 });
 
-// 获取举报原因选项（如果有后端 API）
+// 加载举报原因
 const loadReportReasons = async () => {
   try {
     // const data = await reportAPI.getReportReasons();
     // reportReasons.value = data || reportReasons.value;
   } catch (error) {
-    console.error('加载举报原因失败:', error);
+    // 静默失败，不影响用户体验
   }
 };
 
@@ -151,6 +175,12 @@ const targetTypeText = computed(() => {
 
 // 提交举报
 const handleSubmit = async () => {
+  // 验证 targetId
+  if (!props.targetId) {
+    ElMessage.warning('举报目标 ID 无效');
+    return;
+  }
+  
   // 验证表单
   if (!form.value.reason) {
     ElMessage.warning('请选择举报原因');
@@ -164,27 +194,28 @@ const handleSubmit = async () => {
   submitting.value = true;
 
   try {
+    // 确保 targetId 是数字或字符串
+    const targetId = typeof props.targetId === 'number' 
+      ? props.targetId 
+      : String(props.targetId).trim();
+    
     const data = {
       targetType: props.targetType,
-      targetId: props.targetId,
-      reason: form.value.reason,
+      targetId: targetId,
+      reportType: form.value.reason, // 举报原因类型（pornography、spam 等）
+      reason: form.value.description.trim(), // 详细描述
       description: form.value.description.trim(),
       images: form.value.images,
       contactInfo: form.value.contactInfo
     };
-
-    // TODO: 调用后端 API 提交举报
-    // await reportAPI.submitReport(data);
     
-    // 模拟提交成功
-    console.log('提交举报:', data);
+    // 调用后端 API 提交举报
+    await reportAPI.submitReport(data);
     
     ElMessage.success('举报提交成功，我们会尽快处理');
-    dialogVisible.value = false;
     emit('success', data);
     
   } catch (error) {
-    console.error('提交举报失败:', error);
     ElMessage.error('提交失败，请稍后重试');
   } finally {
     submitting.value = false;
@@ -202,11 +233,15 @@ const handleClosed = () => {
 };
 
 // 监听弹窗显示状态
-watch(() => props.modelValue, (newVal) => {
+watch(() => props.modelValue, (newVal, oldVal) => {
   if (newVal) {
     loadReportReasons();
+  } else {
+    handleClosed();
   }
-});
+}, { immediate: true });
+
+console.log('[ReportModal] 组件加载完成');
 </script>
 
 <style scoped>

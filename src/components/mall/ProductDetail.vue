@@ -57,7 +57,7 @@
                 @buy="handleProductAction"
                 @favorite="toggleFavorite"
                 @share="shareProduct"
-                @report="showReportModal = true"
+                @report="openReportModal"
               />
             </div>
           </div>
@@ -103,7 +103,7 @@
 
         <!-- 举报弹窗 -->
         <ReportModal
-          v-model:visible="showReportModal"
+          v-model="showReportModal"
           target-type="product"
           :target-id="product?.id"
           @success="handleReportSuccess"
@@ -175,6 +175,27 @@ const productSpecifications = ref({}); // 商品规格数据
 const showShareModal = ref(false);
 const currentShareUrl = ref('');
 const showReportModal = ref(false);
+
+// 打开举报弹窗
+const openReportModal = () => {
+  console.log('[ProductDetail] 准备打开举报弹窗');
+  console.log('[ProductDetail] 当前 product:', product.value);
+  console.log('[ProductDetail] product.id:', product.value?.id);
+  if (!product.value?.id) {
+    console.error('[ProductDetail] 无法打开举报弹窗：product.id 为空');
+    ElMessage.warning('商品信息未加载完成，请稍后再试');
+    return;
+  }
+  showReportModal.value = true;
+  console.log('[ProductDetail] 举报弹窗已打开，showReportModal:', showReportModal.value);
+};
+
+// 处理举报成功
+const handleReportSuccess = (data) => {
+  console.log('[ProductDetail] 举报成功:', data);
+  showReportModal.value = false;
+  ElMessage.success('举报成功，感谢你的反馈！');
+};
 
 // 判断是否是当前用户发布的商品
 const isCurrentProductOwner = computed(() => {
@@ -595,13 +616,6 @@ const replyReview = (review) => {
     return;
   }
   ElMessage.info('回复评价功能开发中');
-};
-
-// 处理举报成功
-const handleReportSuccess = (data) => {
-  console.log('举报成功:', data);
-  showReportModal.value = false;
-  // 可以在这里刷新页面状态或记录日志
 };
 
 // 跳转到商品

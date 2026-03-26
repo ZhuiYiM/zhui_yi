@@ -23,18 +23,34 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
     @Override
     public ApiResult createReport(ReportCreateDTO reportDTO, Long userId) {
         try {
-            // 创建举报记录
             Report report = new Report();
             report.setReporterId(userId);
             report.setTargetId(reportDTO.getTargetId());
-            report.setTargetType("topic"); // 默认举报话题，可根据需要扩展
+            report.setTargetType(reportDTO.getTargetType());
             report.setReportType(reportDTO.getReportType());
-            report.setReason(reportDTO.getReason());
-            report.setEvidence(reportDTO.getEvidence());
-            report.setStatus(0); // 待处理
+            
+            // 合并 description 和 reason 字段
+            String finalReason = reportDTO.getDescription() != null ? reportDTO.getDescription() : reportDTO.getReason();
+            report.setReason(finalReason);
+            
+            // 处理证据和图片
+            StringBuilder evidenceBuilder = new StringBuilder();
+            if (reportDTO.getImages() != null && !reportDTO.getImages().isEmpty()) {
+                evidenceBuilder.append("图片：").append(reportDTO.getImages());
+            }
+            if (reportDTO.getEvidence() != null && !reportDTO.getEvidence().isEmpty()) {
+                if (evidenceBuilder.length() > 0) {
+                    evidenceBuilder.append("; ");
+                }
+                evidenceBuilder.append(reportDTO.getEvidence());
+            }
+            report.setEvidence(evidenceBuilder.toString());
+            
+            report.setStatus(0);
             report.setCreatedAt(LocalDateTime.now());
             
             boolean saved = this.save(report);
+            
             if (saved) {
                 return ApiResult.success("举报成功，我们会尽快处理");
             } else {
@@ -98,7 +114,6 @@ public class ReportServiceImpl extends ServiceImpl<ReportMapper, Report> impleme
             wrapper.eq("status", 0); // 0 表示待处理
             return this.count(wrapper);
         } catch (Exception e) {
-            e.printStackTrace();
             return 0L;
         }
     }

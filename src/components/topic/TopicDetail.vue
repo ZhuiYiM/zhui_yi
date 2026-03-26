@@ -80,6 +80,14 @@
       @copy="handleCopyLink"
     />
     
+    <!-- 举报弹窗 -->
+    <ReportModal
+      v-model="showReportModal"
+      target-type="topic"
+      :target-id="route.params.id"
+      @success="handleReportSuccess"
+    />
+    
     <!-- 图片预览弹窗 -->
     <div v-if="showImagePreview" class="modal-overlay" @click="closeImagePreview">
       <div class="modal-content" @click.stop>
@@ -96,6 +104,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
 import ShareModal from './ShareModal.vue';
+import ReportModal from '../common/ReportModal.vue';
 import TopicArticle from './TopicArticle.vue';
 import CommentsSection from './CommentsSection.vue';
 import { topicAPI } from '@/api/topic';
@@ -113,6 +122,28 @@ const isMobile = ref(window.innerWidth <= 768);
 const showShareModal = ref(false);
 const showImagePreview = ref(false);
 const previewImageUrl = ref('');
+const showReportModal = ref(false);
+
+// 打开举报弹窗
+const openReportModal = () => {
+  console.log('[TopicDetail] 准备打开举报弹窗');
+  console.log('[TopicDetail] 当前 topic:', topic.value);
+  console.log('[TopicDetail] route.params.id:', route.params.id);
+  if (!route.params.id) {
+    console.error('[TopicDetail] 无法打开举报弹窗：route.params.id 为空');
+    ElMessage.warning('话题信息未加载完成，请稍后再试');
+    return;
+  }
+  showReportModal.value = true;
+  console.log('[TopicDetail] 举报弹窗已打开，showReportModal:', showReportModal.value);
+};
+
+// 处理举报成功
+const handleReportSuccess = (data) => {
+  console.log('[TopicDetail] 举报成功:', data);
+  showReportModal.value = false;
+  ElMessage.success('举报成功，感谢你的反馈！');
+};
 
 // 计算属性 - 当前话题 URL
 const currentTopicUrl = computed(() => {
@@ -481,18 +512,7 @@ const deleteTopic = async () => {
 
 // 举报话题
 const reportTopic = () => {
-  ElMessageBox.prompt('请输入举报原因（可选）', '举报话题', {
-    confirmButtonText: '提交',
-    cancelButtonText: '取消',
-    inputPattern: /.{0,200}/,
-    inputErrorMessage: '原因不能超过 200 字',
-    type: 'warning'
-  }).then(({ value }) => {
-    console.log('举报原因:', value);
-    ElMessage.success('举报已提交，我们会尽快处理');
-  }).catch(() => {
-    console.log('用户取消了举报');
-  });
+  showReportModal.value = true;
 };
 
 // 点赞评论

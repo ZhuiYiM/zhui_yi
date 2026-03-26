@@ -630,17 +630,21 @@ const submitReport = async ({ type, reason }) => {
   }
   
   try {
-    await axios.post('/api/reports', {
-      targetId: route.params.userId,
+    // 使用封装的 request，会自动添加 Token
+    const { reportAPI } = await import('@/api/report');
+    await reportAPI.submitReport({
+      targetId: parseInt(route.params.userId),
       targetType: 'user',
       reportType: type,
-      reason: reason
+      reason: reason,
+      description: reason
     });
     
     ElMessage.success('举报成功，我们会尽快处理');
     showReportModal.value = false;
   } catch (error) {
-    ElMessage.error('举报失败，请稍后重试');
+    console.error('举报失败:', error);
+    ElMessage.error(error.response?.data?.message || '举报失败，请稍后重试');
   }
 };
 

@@ -22,6 +22,7 @@ const OrderPayment = () => import('../components/user/OrderPayment.vue');
 const MyOrders = () => import('../components/user/MyOrders.vue');
 const MyProducts = () => import('../components/user/MyProducts.vue');
 const LocationDetail = () => import('../components/map/LocationDetail.vue');
+const UserLocationDetail = () => import('../components/map/UserLocationDetail.vue');
 const SearchResults = () => import('../components/search/SearchResults.vue');
 
 // 管理员页面组件
@@ -149,6 +150,15 @@ const routes = [
         meta: { requiresAuth: false }  // 地点详情页游客也可访问
     },
     {
+        // 兼容旧的用户地点标记路由，重定向到统一的地点详情页
+        path: '/user-location/:id',
+        name: 'UserLocationMarkDetail',
+        redirect: to => {
+            return `/location/${to.params.id}`;
+        },
+        meta: { requiresAuth: false, deprecated: true }
+    },
+    {
         path: '/search/results',
         name: 'SearchResults',
         component: SearchResults,
@@ -198,7 +208,13 @@ const routes = [
             {
                 path: 'locations',
                 name: 'AdminLocations',
-                component: () => import('../views/admin/LocationList.vue')
+                component: () => import('../views/admin/LocationManagement.vue')
+            },
+            {
+                path: 'user-location-marks',
+                name: 'AdminUserLocationMarks',
+                redirect: '/admin/dashboard/locations',  // 重定向到统一的地点管理
+                meta: { deprecated: true }  // 标记为废弃
             },
             {
                 path: 'reports',
@@ -259,6 +275,11 @@ const routes = [
                 path: 'identity-verifications',
                 name: 'AdminIdentityVerifications',
                 component: () => import('../views/admin/IdentityVerificationList.vue')
+            },
+            {
+                path: 'user-location-marks',
+                name: 'AdminUserLocationMarks',
+                component: () => import('../views/admin/UserLocationMarkManagement.vue')
             }
         ]
     },

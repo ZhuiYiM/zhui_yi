@@ -60,7 +60,7 @@
       
       <!-- 话题和商品模块 -->
       <div v-else class="content-sections">
-        <!-- 主标签切换：发布、参与、点赞、商品、商户评价 -->
+        <!-- 主标签切换：发布、参与、点赞、商品、商户评价、地点 -->
         <div class="main-tabs">
           <button 
             @click="currentTab = 'published'"
@@ -97,6 +97,13 @@
           >
             ⭐ 商户评价
           </button>
+          <button 
+            @click="currentTab = 'locations'"
+            class="main-tab-btn"
+            :class="{ active: currentTab === 'locations' }"
+          >
+            📍 TA 的地点
+          </button>
         </div>
         
         <!-- 商品内容 -->
@@ -128,6 +135,37 @@
               @view-product="viewProduct"
               @view-image="viewImage"
             />
+          </div>
+        </div>
+        
+        <!-- 用户地点标记内容 -->
+        <div v-else-if="currentTab === 'locations'" class="user-locations-section">
+          <div v-if="userLocationsLoading" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
+          <div v-else-if="userLocations.length === 0" class="empty-state">
+            <div class="empty-icon">📍</div>
+            <p>暂无公开地点标记</p>
+          </div>
+          <div v-else class="locations-list">
+            <div
+              v-for="location in userLocations"
+              :key="location.id"
+              class="location-card"
+              @click="viewLocation(location)"
+            >
+              <div class="location-image">
+                <img v-if="location.images && location.images.length > 0" :src="location.images[0]" :alt="location.locationName" />
+                <div v-else class="image-placeholder">📍</div>
+              </div>
+              <div class="location-info">
+                <h3 class="location-name">{{ location.locationName }}</h3>
+                <p class="location-type">{{ getMarkTypeName(location.markType) }}</p>
+                <p class="location-category">{{ getMarkCategoryName(location.markCategory) }}</p>
+                <p v-if="location.description" class="location-description">{{ location.description }}</p>
+              </div>
+            </div>
           </div>
         </div>
         
@@ -213,6 +251,7 @@ import { productAPI } from '@/api/product';
 import { messageAPI } from '@/api/message';
 import { blockAPI } from '@/api/block';
 import { reviewAPI } from '@/api/review';
+import { campusAPI } from '@/api/campus';
 import axios from 'axios';
 
 // 导入子组件
@@ -255,6 +294,10 @@ const userPublishedProducts = ref([]);
 // 商户评价相关
 const sellerReviewsLoading = ref(false);
 const sellerReviews = ref([]);
+
+// 用户地点标记相关
+const userLocationsLoading = ref(false);
+const userLocations = ref([]);
 
 // 计算属性
 const currentUserId = computed(() => {
@@ -326,6 +369,7 @@ const loadUserInfo = async () => {
       loadUserTopics();
       loadUserProducts();
       loadSellerReviews();
+      loadUserLocations();
     } else {
       throw new Error('用户信息为空');
     }
@@ -412,6 +456,53 @@ const loadSellerReviews = async () => {
   }
 };
 
+// 加载用户地点标记（public_active 的公开地点）
+const loadUserLocations = async () => {
+  const userId = route.params.userId;
+  if (!userId) return;
+  
+  userLocationsLoading.value = true;
+  
+  try {
+    // 获取该用户的公开地点标记
+    const response = await campusAPI.getUserPublicLocationMarks(userId);
+    const allMarks = response || response?.data || [];
+    
+    // 筛选出该用户的公开地点（public_active 或 public_passive，且审核通过）
+    userLocations.value = allMarks.filter(mark => {
+      return mark.userId === parseInt(userId) && 
+             (mark.visibility === 'public_active' || mark.visibility === 'public_passive') && 
+             mark.verificationStatus === 'approved';
+    });
+  } catch (error) {
+    console.error('加载用户地点标记失败:', error);
+    userLocations.value = [];
+  } finally {
+    userLocationsLoading.value = false;
+  }
+};
+
+// 获取标记类型名称
+const getMarkTypeName = (markType) => {
+  const names = {
+    'meeting_point': '约见地点',
+    'merchant_shop': '店铺位置',
+    'organization_activity': '活动地点'
+  };
+  return names[markType] || '位置标记';
+};
+
+// 获取地点分类名称
+const getMarkCategoryName = (category) => {
+  const names = {
+    'building': '建筑物',
+    'area': '区域',
+    'facility': '设施',
+    'other': '其他'
+  };
+  return names[category] || '';
+};
+
 // 检查拉黑状态
 const checkBlockStatus = async () => {
   const userId = route.params.userId;
@@ -429,6 +520,10 @@ const checkBlockStatus = async () => {
 // 操作处理
 const viewProduct = (product) => {
   router.push(`/product/${product.id}`);
+};
+
+const viewLocation = (location) => {
+  router.push(`/user-location/${location.id}`);
 };
 
 const viewImage = (imageUrl) => {
@@ -758,6 +853,114 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 用户地点标记区域 */
+.user-locations-section {
+  margin-top: 20px;
+}
+
+.user-locations-section .loading-state,
+.user-locations-section .empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.user-locations-section .spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4A90E2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 15px;
+}
+
+.user-locations-section .empty-state .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  color: #ccc;
+}
+
+.user-locations-section .empty-state p {
+  margin: 0;
+  color: #999;
+  font-size: 16px;
+}
+
+.locations-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.location-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.location-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.location-image {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.location-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: #ccc;
+}
+
+.location-info {
+  padding: 16px;
+}
+
+.location-info .location-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-info .location-type,
+.location-info .location-category {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 6px 0;
+}
+
+.location-info .location-description {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .message-dialog-content {

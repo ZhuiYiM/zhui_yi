@@ -181,6 +181,94 @@
         </div>
       </section>
 
+      <!-- 我的地点标记区域 -->
+      <section class="locations-section">
+        <div class="section-header">
+          <h2>📍 我的地点标记</h2>
+        </div>
+
+        <!-- 地点标记标签页 -->
+        <div class="location-tabs">
+          <button 
+            @click="currentLocationTab = 'all'"
+            class="tab-btn"
+            :class="{ active: currentLocationTab === 'all' }"
+          >
+            📍 全部
+          </button>
+          <button 
+            @click="currentLocationTab = 'public_active'"
+            class="tab-btn"
+            :class="{ active: currentLocationTab === 'public_active' }"
+          >
+            🔓 主动公开
+          </button>
+          <button 
+            @click="currentLocationTab = 'public_passive'"
+            class="tab-btn"
+            :class="{ active: currentLocationTab === 'public_passive' }"
+          >
+            🔒 被动公开
+          </button>
+          <button 
+            @click="currentLocationTab = 'private'"
+            class="tab-btn"
+            :class="{ active: currentLocationTab === 'private' }"
+          >
+            👤 仅自己
+          </button>
+        </div>
+
+        <!-- 加载状态 -->
+        <div v-if="locationsLoading" class="loading-state">
+          <div class="spinner-small"></div>
+          <span>加载中...</span>
+        </div>
+
+        <!-- 空状态 -->
+        <div v-else-if="getCurrentLocationList().length === 0" class="empty-locations">
+          <div class="empty-icon">📍</div>
+          <p>{{ 
+            currentLocationTab === 'public_active' ? '暂无主动公开的地点标记' :
+            currentLocationTab === 'public_passive' ? '暂无被动公开的地点标记' :
+            currentLocationTab === 'private' ? '暂无仅自己可见的地点标记' :
+            '暂无地点标记'
+          }}</p>
+          <button class="create-location-btn" @click="goToMapAndMark">
+            + 标记我的位置
+          </button>
+        </div>
+
+        <!-- 地点标记列表 -->
+        <div v-else class="locations-grid">
+          <div
+            v-for="(location, index) in getCurrentLocationList()"
+            :key="'location-' + location.id + '-' + index"
+            class="location-card"
+            @click="viewLocationDetail(location.id)"
+          >
+            <div class="location-image">
+              <img v-if="location.images && location.images.length > 0" :src="location.images[0]" :alt="location.locationName" />
+              <div v-else class="image-placeholder">📍</div>
+            </div>
+            <div class="location-info">
+              <h3 class="location-name">{{ location.locationName }}</h3>
+              <p class="location-type">{{ getMarkTypeName(location.markType) }}</p>
+              <div class="location-meta">
+                <span class="location-category">{{ getMarkCategoryName(location.markCategory) }}</span>
+                <span v-if="location.verificationStatus === 'approved'" class="status-approved">✓ 已审核</span>
+                <span v-else-if="location.verificationStatus === 'pending'" class="status-pending">⏳ 审核中</span>
+              </div>
+              <div class="location-visibility">
+                <span v-if="location.visibility === 'public_active'" class="visibility-public">🔓 主动公开</span>
+                <span v-else-if="location.visibility === 'public_passive'" class="visibility-passive">🔒 被动公开</span>
+                <span v-else-if="location.visibility === 'private'" class="visibility-private">👤 仅自己</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- 桌面端底部版权信息 -->
       <footer v-if="!isMobile" class="desktop-footer">
         <p>© 2023 校园信息平台 | 服务学生，连接校园</p>
@@ -209,6 +297,7 @@ import { useUserInfo } from '@/composables/useUserInfo';
 import { useUserOrders } from '@/composables/useUserOrders';
 import { topicAPI } from '@/api/topic';
 import { productAPI } from '@/api/product';
+import { campusAPI } from '@/api/campus';
 
 const router = useRouter(); // 创建路由实例
 const authStore = useAuthStore();
@@ -245,6 +334,11 @@ const favoriteProducts = ref([]); // 我收藏的商品
 const currentProductTab = ref('published'); // 'published' 或 'favorites'
 const productsLoading = ref(false);
 
+// 用户地点标记数据
+const userLocations = ref([]); // 所有地点标记
+const currentLocationTab = ref('all'); // 'all'、'public_active'、'public_passive'、'private'
+const locationsLoading = ref(false);
+
 // 身份认证表单
 const showIdentityForm = ref(false);
 
@@ -268,6 +362,15 @@ const getCurrentTopicList = () => {
   } else {
    return participatedTopics.value;
   }
+};
+
+// 获取当前标签页的地点列表
+const getCurrentLocationList = () => {
+  if (currentLocationTab.value === 'all') {
+    return userLocations.value;
+  }
+  // 按可见性筛选
+  return userLocations.value.filter(loc => loc.visibility === currentLocationTab.value);
 };
 
 // 编辑个人资料
@@ -355,6 +458,45 @@ const viewProductDetail = (productId) => {
   console.log(`查看商品详情：${productId}`);
   // 跳转到商品详情页面
   router.push(`/product/${productId}`);
+};
+
+// 地点标记相关方法
+const viewAllLocations = () => {
+  console.log('查看全部地点标记');
+  // 可以跳转到专门的地点标记管理页面
+  router.push('/map'); // 暂时跳转到地图页面
+};
+
+const viewLocationDetail = (locationId) => {
+  console.log(`查看地点详情：${locationId}`);
+  // 跳转到地点标记详情页
+  router.push(`/user-location/${locationId}`);
+};
+
+const goToMapAndMark = () => {
+  console.log('去标记位置');
+  router.push('/map');
+};
+
+// 获取标记类型名称
+const getMarkTypeName = (markType) => {
+  const names = {
+    'meeting_point': '约见地点',
+    'merchant_shop': '店铺位置',
+    'organization_activity': '活动地点'
+  };
+  return names[markType] || '位置标记';
+};
+
+// 获取地点分类名称
+const getMarkCategoryName = (category) => {
+  const names = {
+    'building': '建筑物',
+    'area': '区域',
+    'facility': '设施',
+    'other': '其他'
+  };
+  return names[category] || '';
 };
 
 // 加载用户商品
@@ -455,6 +597,50 @@ const loadUserProducts = async () => {
     favoriteProducts.value = [];
   } finally {
     productsLoading.value = false;
+  }
+};
+
+// 加载用户地点标记
+const loadUserLocations = async () => {
+  try {
+    locationsLoading.value = true;
+    
+    // 先检查 token 是否存在
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('ℹ️ 用户未登录，跳过地点标记加载');
+      return;
+    }
+    
+    // 获取当前用户 ID
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = userData.id;
+    
+    if (!userId) {
+      console.log('ℹ️ 用户未登录，跳过地点标记加载');
+      return;
+    }
+    
+    console.log('📡 正在加载用户地点标记，userId:', userId);
+    
+    // 获取用户的所有地点标记
+    const response = await campusAPI.getUserLocationMarks();
+    console.log('✅ 用户地点标记响应:', response);
+    
+    const allMarks = response || response?.data || [];
+    
+    // 过滤出当前用户的地点标记
+    userLocations.value = allMarks.filter(mark => {
+      return mark.userId === userId;
+    });
+    
+    console.log('📍 用户地点标记数量:', userLocations.value.length);
+  } catch (error) {
+    console.error('❌ 加载地点标记失败:', error);
+    ElMessage.error('加载地点标记失败：' + (error.response?.data?.message || error.message));
+    userLocations.value = [];
+  } finally {
+    locationsLoading.value = false;
   }
 };
 
@@ -619,6 +805,9 @@ onMounted(async () => {
   
   // 加载用户的商品
   await loadUserProducts();
+  
+  // 加载用户的地点标记
+  await loadUserLocations();
 });
 
 onUnmounted(() => {
@@ -1383,5 +1572,226 @@ onUnmounted(() => {
 
 .view-more-btn.primary:hover {
   background-color: #4578d9;
+}
+
+/* 我的地点标记区域样式 */
+.locations-section {
+  background: white;
+  margin: 20px;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.locations-section h2 {
+  font-size: 20px;
+  color: #000;
+  margin: 0 0 15px 0;
+}
+
+.location-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  flex-wrap: wrap;
+}
+
+.location-tabs .tab-btn {
+  padding: 8px 16px;
+  background: #f5f7fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.location-tabs .tab-btn:hover {
+  background: #f0f7ff;
+  border-color: #4A90E2;
+  color: #4A90E2;
+}
+
+.location-tabs .tab-btn.active {
+  background: #4A90E2;
+  color: white;
+  border-color: #4A90E2;
+}
+
+.empty-locations {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-locations .empty-icon {
+  font-size: 64px;
+  color: #ccc;
+  margin-bottom: 16px;
+}
+
+.empty-locations p {
+  color: #999;
+  font-size: 16px;
+  margin: 0 0 20px 0;
+}
+
+.create-location-btn {
+  padding: 10px 24px;
+  background: #4A90E2;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.create-location-btn:hover {
+  background: #4578d9;
+  transform: translateY(-2px);
+}
+
+.locations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.location-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.location-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.location-image {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.location-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: #ccc;
+}
+
+.location-info {
+  padding: 16px;
+}
+
+.location-info .location-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-info .location-type {
+  font-size: 14px;
+  color: #000;
+  margin: 0 0 12px 0;
+}
+
+.location-info .location-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.location-category {
+  font-size: 13px;
+  color: #999;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.status-approved {
+  font-size: 13px;
+  color: #4caf50;
+  background: #e8f5e9;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.status-pending {
+  font-size: 13px;
+  color: #ff9800;
+  background: #fff3e0;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.location-visibility {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.visibility-public,
+.visibility-passive,
+.visibility-private {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.visibility-public {
+  color: #4caf50;
+  background: #e8f5e9;
+}
+
+.visibility-passive {
+  color: #2196f3;
+  background: #e3f2fd;
+}
+
+.visibility-private {
+  color: #9e9e9e;
+  background: #f5f5f5;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .locations-section {
+    margin: 15px 10px;
+    padding: 15px;
+  }
+  
+  .locations-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .location-tabs .tab-btn {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
 }
 </style>

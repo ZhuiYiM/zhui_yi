@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/user/location-marks")
-@CrossOrigin(origins = "*")
 public class UserLocationMarkController {
     
     @Autowired
@@ -54,6 +53,14 @@ public class UserLocationMarkController {
             @PathVariable Integer campusId,
             @RequestParam(required = false) String markType) {
         return userLocationMarkService.getCampusMarks(campusId, markType);
+    }
+    
+    /**
+     * 获取指定用户的公开地点标记
+     */
+    @GetMapping("/user/{userId}/public")
+    public Result getUserPublicMarks(@PathVariable Integer userId) {
+        return userLocationMarkService.getUserPublicMarks(userId);
     }
     
     /**

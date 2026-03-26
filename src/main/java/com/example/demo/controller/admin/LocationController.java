@@ -32,9 +32,6 @@ public class LocationController {
             @RequestParam(required = false) String category
     ) {
         try {
-            System.out.println("📍 地点列表分页参数：page=" + page + ", limit=" + limit);
-            System.out.println("📍 地点列表筛选参数：keyword=" + keyword + ", campusId=" + campusId + ", category=" + category);
-            
             QueryWrapper<Location> queryWrapper = new QueryWrapper<>();
             
             // 关键词搜索

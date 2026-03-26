@@ -36,7 +36,7 @@
       <el-upload
         v-model:file-list="fileList"
         list-type="picture-card"
-        :auto-upload="false"
+        :auto-upload="autoUpload"
         :limit="limit"
         :on-change="handleChange"
         :on-remove="handleRemove"
@@ -58,7 +58,7 @@
 
 <script setup>
 import { ref, computed, watch, onBeforeUnmount, nextTick } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElLoading } from 'element-plus';
 import { Plus, CircleClose, Edit } from '@element-plus/icons-vue';
 import { uploadAPI } from '@/api/upload';
 
@@ -120,17 +120,22 @@ const handleFileChange = async (event) => {
   // 验证文件
   if (!validateFile(file)) return;
 
-  // 预览
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    emit('update:modelValue', e.target.result);
-    emit('change', e.target.result);
-  };
-  reader.readAsDataURL(file);
-
-  // 如果需要上传到服务器
+  // 如果需要自动上传
   if (props.autoUpload) {
     await uploadFile(file);
+  } else {
+    // 不自动上传，只保存预览
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // 创建一个包含 file 对象的结构，和多图模式保持一致
+      const fileObj = {
+        raw: file,
+        url: e.target.result // Base64 用于预览
+      };
+      emit('update:modelValue', fileObj);
+      emit('change', fileObj);
+    };
+    reader.readAsDataURL(file);
   }
 
   // 清空 input，允许重复选择同一文件
@@ -138,13 +143,43 @@ const handleFileChange = async (event) => {
 };
 
 // 处理文件变化（多图）
-const handleChange = (file, uploadFileList) => {
+const handleChange = async (file, uploadFileList) => {
   // 验证文件
   if (!validateFile(file.raw)) {
     return;
   }
 
-  // 直接使用 uploadFileList，el-upload 会自动更新 fileList（因为 v-model）
+  // 如果不需要自动上传，直接使用 fileList 中的文件对象
+  if (!props.autoUpload) {
+    // 等待一下让 el-upload 更新 fileList
+    await nextTick();
+    
+    // 提取 URLs 或文件对象
+    const allUrls = fileList.value
+      .filter(f => f.url || f.response?.data)
+      .map(f => f.response?.data || f.url);
+    
+    // 发送数据给父组件（包含 file 对象）
+    emit('update:modelValue', fileList.value);
+    emit('change', { 
+      urls: allUrls,
+      files: fileList.value,
+      allUrls: allUrls
+    });
+    return;
+  }
+  
+  // 如果需要自动上传，等待上传完成
+  if (props.autoUpload && file.raw) {
+    try {
+      await uploadFile(file.raw);
+      // 上传完成后重新获取 fileList
+      uploadFileList = fileList.value;
+    } catch (error) {
+      console.error('上传失败:', error);
+      return;
+    }
+  }
   
   // 提取 URLs
   const uploadedUrls = uploadFileList

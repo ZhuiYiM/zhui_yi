@@ -124,6 +124,7 @@ const getPageTitle = () => {
     'AdminTopics': '话题管理',
     'AdminProducts': '商品管理',
     'AdminLocations': '地点管理',
+    'AdminUserLocationMarks': '用户地点标记管理',
     'AdminComments': '评论管理',
     'AdminAdvertisements': '广告管理',
     'AdminTags': '标签管理',

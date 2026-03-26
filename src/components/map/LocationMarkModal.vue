@@ -8,6 +8,23 @@
   >
     <el-form :model="form" label-width="100px" size="default">
       
+      <!-- 0. 校区选择 -->
+      <el-form-item label="校区">
+        <el-select 
+          v-model="form.campusId" 
+          placeholder="请选择校区"
+          style="width: 100%"
+          @change="handleCampusChange"
+        >
+          <el-option 
+            v-for="campus in campuses" 
+            :key="campus.id" 
+            :label="campus.name" 
+            :value="campus.id" 
+          />
+        </el-select>
+      </el-form-item>
+      
       <!-- 1. 地图选点 -->
       <el-form-item label="选择位置" required>
         <div class="map-picker-container">
@@ -30,7 +47,7 @@
             >
               <!-- 手绘地图底图 -->
               <img 
-                src="@/assets/01.png" 
+                :src="currentMapImage" 
                 alt="校园手绘地图" 
                 class="mini-map-image"
                 :style="mapImageStyle"
@@ -104,8 +121,10 @@
       <el-form-item label="位置图片">
         <ImageUploader 
           v-model="form.images"
-          :max-count="3"
-          tip="最多上传 3 张图片"
+          :multiple="true"
+          :limit="3"
+          :auto-upload="false"
+          tip="最多上传 3 张图片，提交时一起上传"
         />
       </el-form-item>
 
@@ -168,12 +187,14 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ref, computed, watch, onMounted } from 'vue';
+import { ElMessage, ElLoading } from 'element-plus';
 import { Location, InfoFilled } from '@element-plus/icons-vue';
 import ImageUploader from '@/components/common/ImageUploader.vue';
 import { campusAPI } from '@/api/campus';
+import { uploadAPI } from '@/api/upload';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
+import pingyuanMapLocations from '@/data/pingyuan-map-locations.json';
 
 const props = defineProps({
   modelValue: Boolean,
@@ -190,6 +211,54 @@ const dialogVisible = computed({
 const miniMapRef = ref(null);
 const submitting = ref(false);
 const timeRange = ref([]);
+const campuses = ref([]); // 校区列表
+
+// 校区地图映射
+const campusMapImages = {
+  1: new URL('@/assets/01.png', import.meta.url).href, // 本部校区
+  2: new URL('@/assets/10.png', import.meta.url).href, // 平原湖校区
+  3: new URL('@/assets/01.png', import.meta.url).href  // 创新港校区（暂时使用本部地图）
+};
+
+// 校区标点数据映射
+const campusLocations = {
+  1: handdrawnMapLocations, // 本部校区
+  2: pingyuanMapLocations,  // 平原湖校区
+  3: handdrawnMapLocations  // 创新港校区（暂时使用本部数据）
+};
+
+// 当前地图图片
+const currentMapImage = computed(() => {
+  return campusMapImages[form.value.campusId] || campusMapImages[1];
+});
+
+// 当前校区的标点数据
+const currentLocations = computed(() => {
+  return campusLocations[form.value.campusId] || handdrawnMapLocations;
+});
+
+// 加载校区列表
+const loadCampuses = async () => {
+  try {
+    const data = await campusAPI.getCampuses();
+    campuses.value = data || [];
+  } catch (error) {
+    console.error('加载校区列表失败:', error);
+  }
+};
+
+// 处理校区切换
+const handleCampusChange = (campusId) => {
+  // 重置地图位置
+  mapPosition.value = { x: 0, y: 0 };
+  // 清空当前位置信息
+  form.value.locationName = '';
+  form.value.latitude = null;
+  form.value.longitude = null;
+  form.value.addressDetail = '';
+  // 提示用户
+  ElMessage.info('已切换到' + campuses.value.find(c => c.id === campusId)?.name + '，请在地图上选择位置');
+};
 
 // 地图拖拽相关状态
 const mapPosition = ref({ x: 0, y: 0 }); // 地图偏移量
@@ -226,8 +295,20 @@ const form = ref({
 // 监听时间范围变化
 watch(timeRange, (newVal) => {
   if (newVal && newVal.length === 2) {
-    form.value.startTime = newVal[0];
-    form.value.endTime = newVal[1];
+    // 格式化为 "yyyy-MM-dd HH:mm:ss" 格式
+    const formatDateTime = (date) => {
+      if (!date) return null;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+    
+    form.value.startTime = formatDateTime(newVal[0]);
+    form.value.endTime = formatDateTime(newVal[1]);
   } else {
     form.value.startTime = null;
     form.value.endTime = null;
@@ -322,7 +403,10 @@ const handleMapClick = (event) => {
 const findNearestLocation = (percentX, percentY) => {
   const threshold = 5; // 阈值，5% 范围内算匹配
   
-  for (const loc of handdrawnMapLocations) {
+  // 使用当前校区的标点数据
+  const locations = currentLocations.value;
+  
+  for (const loc of locations) {
     const dx = Math.abs(loc.x - percentX);
     const dy = Math.abs(loc.y - percentY);
     
@@ -368,6 +452,33 @@ const handleSubmit = async () => {
   submitting.value = true;
   
   try {
+    let loading = null;
+    
+    // 处理图片：将 File 对象上传到服务器
+    let imageUrls = [];
+    if (form.value.images && Array.isArray(form.value.images) && form.value.images.length > 0) {
+      loading = ElLoading.service({ text: '正在上传图片...' });
+      
+      // 遍历所有图片文件并上传
+      for (const file of form.value.images) {
+        if (file.raw instanceof File) {
+          // 如果是 File 对象，上传到服务器
+          const response = await uploadAPI.uploadImage(file.raw);
+          if (response.code === 200 && response.data) {
+            const fullUrl = `${import.meta.env.VITE_API_BASE_URL || ''}${response.data}`;
+            imageUrls.push(fullUrl);
+          }
+        } else if (typeof file === 'string') {
+          // 如果已经是 URL（可能是之前上传的）
+          imageUrls.push(file);
+        }
+      }
+      
+      if (loading) {
+        loading.close();
+      }
+    }
+    
     const data = {
       campusId: form.value.campusId,
       locationName: form.value.locationName.trim(),
@@ -378,7 +489,7 @@ const handleSubmit = async () => {
       markCategory: form.value.markCategory,
       description: form.value.description,
       contactInfo: form.value.contactInfo,
-      images: form.value.images,
+      images: imageUrls,
       startTime: form.value.startTime,
       endTime: form.value.endTime,
       isPermanent: form.value.isPermanent,
@@ -421,7 +532,14 @@ const handleClosed = () => {
     visibility: 'public_active' // 重置为默认值
   };
   timeRange.value = [];
+  // 重置地图位置
+  mapPosition.value = { x: 0, y: 0 };
 };
+
+// 初始化
+onMounted(() => {
+  loadCampuses();
+});
 </script>
 
 <style scoped>

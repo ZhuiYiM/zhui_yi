@@ -6,9 +6,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.demo.common.Result;
 import com.example.demo.entity.User;
 import com.example.demo.entity.UserLocationMark;
+import com.example.demo.entity.UserVerification;
 import com.example.demo.entity.dto.UserLocationMarkCreateDTO;
 import com.example.demo.entity.enums.IdentityLevel1;
 import com.example.demo.mapper.UserLocationMarkMapper;
+import com.example.demo.mapper.UserMapper;
+import com.example.demo.mapper.UserVerificationMapper;
 import com.example.demo.service.UserLocationMarkService;
 import com.example.demo.utils.JwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +42,12 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
     @Autowired
     private ObjectMapper objectMapper;
     
+    @Autowired
+    private UserVerificationMapper userVerificationMapper;
+    
+    @Autowired
+    private UserMapper userMapper;
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result createMark(UserLocationMarkCreateDTO dto, HttpServletRequest request) {
@@ -53,9 +62,19 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
                 return Result.error("用户未登录");
             }
             
-            // 获取用户身份（简化处理，实际应该查询数据库）
-            User user = new User(); // TODO: 需要从数据库获取完整用户信息
-            String identityType = "student"; // 默认学生身份
+            // 查询用户的认证身份
+            String identityType = null;
+            QueryWrapper<UserVerification> verificationWrapper = new QueryWrapper<>();
+            verificationWrapper.eq("user_id", userId)
+                              .eq("status", "approved")
+                              .in("verification_type", "student", "staff", "merchant", "organization")
+                              .last("LIMIT 1"); // 只取一条记录
+            UserVerification verification = userVerificationMapper.selectOne(verificationWrapper);
+            
+            if (verification != null) {
+                // 有认证身份的用户
+                identityType = verification.getVerificationType();
+            }
             
             // 验证身份和标记类型的匹配
             if ("merchant_shop".equals(dto.getMarkType())) {
@@ -92,8 +111,18 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
             mark.setIsPermanent(dto.getIsPermanent() ? 1 : 0);
             mark.setVisibility(dto.getVisibility());
             
-            // 默认为待审核状态
-            mark.setVerificationStatus("pending");
+            // 根据用户身份决定是否需要审核
+            // 有认证身份的用户（学生、教职、商户、组织）直接通过，无身份认证的需要管理员审核
+            if (identityType != null && List.of("student", "staff", "merchant", "organization").contains(identityType)) {
+                // 有认证身份，直接审核通过
+                mark.setVerificationStatus("approved");
+                mark.setVerifiedAt(LocalDateTime.now());
+                mark.setReviewComment("系统自动审核通过（已认证用户）");
+            } else {
+                // 无身份认证，需要管理员审核
+                mark.setVerificationStatus("pending");
+                mark.setReviewComment("待管理员审核（未认证用户）");
+            }
             mark.setIsActive(1);
             mark.setCreatedAt(LocalDateTime.now());
             
@@ -102,7 +131,11 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
             
             Map<String, Object> data = new HashMap<>();
             data.put("id", mark.getId());
-            data.put("message", "标记创建成功，请等待管理员审核");
+            if ("approved".equals(mark.getVerificationStatus())) {
+                data.put("message", "标记创建成功");
+            } else {
+                data.put("message", "标记创建成功，请等待管理员审核");
+            }
             
             return Result.success(data);
             
@@ -183,7 +216,7 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
             QueryWrapper<UserLocationMark> wrapper = new QueryWrapper<>();
             wrapper.eq("campus_id", campusId)
                    .eq("verification_status", "approved")
-                   .eq("visibility", "public")
+                   .eq("visibility", "public_active")  // 只显示主动公开的标记
                    .eq("is_active", 1);
             
             if (markType != null && !markType.isEmpty()) {
@@ -201,6 +234,27 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
     }
     
     @Override
+    public Result getUserPublicMarks(Integer userId) {
+        try {
+            // 查询指定用户的公开地点标记（public_active 或 public_passive，且审核通过）
+            QueryWrapper<UserLocationMark> wrapper = new QueryWrapper<>();
+            wrapper.eq("user_id", userId)
+                   .eq("verification_status", "approved")
+                   .in("visibility", "public_active", "public_passive")  // 包括主动公开和被动公开
+                   .eq("is_active", 1)
+                   .orderByDesc("created_at");
+            
+            List<UserLocationMark> marks = userLocationMarkMapper.selectList(wrapper);
+            
+            return Result.success(marks);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取用户公开标记失败：" + e.getMessage());
+        }
+    }
+    
+    @Override
     public Result getMarkDetail(Long markId) {
         try {
             UserLocationMark mark = userLocationMarkMapper.selectById(markId);
@@ -212,7 +266,33 @@ public class UserLocationMarkServiceImpl extends ServiceImpl<UserLocationMarkMap
             mark.setViewCount(mark.getViewCount() != null ? mark.getViewCount() + 1 : 1);
             userLocationMarkMapper.updateById(mark);
             
-            return Result.success(mark);
+            // 获取用户信息
+            Map<String, Object> result = new HashMap<>();
+            result.put("mark", mark);
+            
+            // 查询用户的基本信息
+            QueryWrapper<User> userWrapper = new QueryWrapper<>();
+            userWrapper.eq("id", mark.getUserId());
+            User user = userMapper.selectOne(userWrapper);
+            
+            if (user != null) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("userId", user.getId());
+                userInfo.put("username", user.getUsername());
+                userInfo.put("avatarUrl", user.getAvatarUrl());
+                userInfo.put("college", user.getCollege());
+                userInfo.put("studentId", user.getStudentId());
+                result.put("publisher", userInfo);
+            } else {
+                // 用户不存在，返回默认信息
+                Map<String, Object> defaultPublisher = new HashMap<>();
+                defaultPublisher.put("userId", mark.getUserId());
+                defaultPublisher.put("username", "匿名用户");
+                defaultPublisher.put("avatarUrl", null);
+                result.put("publisher", defaultPublisher);
+            }
+            
+            return Result.success(result);
             
         } catch (Exception e) {
             e.printStackTrace();

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.demo.entity.UserLocationMark;
 import com.example.demo.entity.dto.UserLocationMarkCreateDTO;
 import com.example.demo.common.Result;
@@ -9,7 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * 用户位置标记服务接口
  */
-public interface UserLocationMarkService {
+public interface UserLocationMarkService extends IService<UserLocationMark> {
     
     /**
      * 创建位置标记
@@ -30,6 +31,11 @@ public interface UserLocationMarkService {
      * 获取校区的公开标记
      */
     Result getCampusMarks(Integer campusId, String markType);
+    
+    /**
+     * 获取指定用户的公开地点标记
+     */
+    Result getUserPublicMarks(Integer userId);
     
     /**
      * 获取标记详情

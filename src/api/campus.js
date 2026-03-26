@@ -58,6 +58,11 @@ export const campusAPI = {
         return request.get('/user/location-marks/my/all');
     },
 
+    // 获取指定用户的公开地点标记
+    getUserPublicLocationMarks(userId) {
+        return request.get(`/user/location-marks/user/${userId}/public`);
+    },
+
     // 获取校区的公开标记
     getCampusLocationMarks(campusId, markType = null) {
         return request.get(`/user/location-marks/campus/${campusId}`, {

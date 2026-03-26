@@ -42,12 +42,32 @@
             <!-- 标题和分类 -->
             <div class="location-header">
               <div class="location-title-row">
-                <h1 class="location-name">{{ location.name }}</h1>
+                <h1 class="location-name">{{ location.name || location.locationName }}</h1>
                 <span v-if="location.isPopular" class="popular-tag">热门</span>
+                <span v-if="location.verificationStatus === 'approved'" class="approved-tag">✓ 已审核</span>
+                <span v-else-if="location.verificationStatus === 'pending'" class="pending-tag">审核中</span>
               </div>
-              <div class="location-category">
-                <span class="category-icon">{{ getCategoryIcon(location.category) }}</span>
-                <span class="category-name">{{ getCategoryName(location.category) }}</span>
+              <div class="location-meta">
+                <!-- 系统地点 -->
+                <span v-if="location.category" class="category-tag">
+                  <span class="category-icon">{{ getCategoryIcon(location.category) }}</span>
+                  <span class="category-name">{{ getCategoryName(location.category) }}</span>
+                </span>
+                <!-- 用户地点标记 -->
+                <span v-if="location.markType" class="mark-type">{{ getMarkTypeName(location.markType) }}</span>
+                <span v-if="location.markCategory" class="category-tag">{{ getMarkCategoryName(location.markCategory) }}</span>
+              </div>
+            </div>
+
+            <!-- 发布者信息（仅用户地点标记显示） -->
+            <div v-if="location.userId" class="publisher-info">
+              <div class="publisher-avatar" @click="goToUserProfile">
+                <img v-if="publisherAvatar" :src="publisherAvatar" alt="发布者" />
+                <div v-else class="avatar-placeholder">👤</div>
+              </div>
+              <div class="publisher-info-text">
+                <div class="publisher-name" @click="goToUserProfile">{{ publisherName || '匿名用户' }}</div>
+                <div class="publish-time">{{ formatTime(location.createdAt || location.createdTime) }}</div>
               </div>
             </div>
 
@@ -55,7 +75,7 @@
             <div class="info-section">
               <div class="info-row">
                 <span class="info-label">📍 地址：</span>
-                <span class="info-value">{{ location.description || '暂无描述' }}</span>
+                <span class="info-value">{{ location.description || location.addressDetail || '暂无描述' }}</span>
               </div>
               <div v-if="location.openingHours" class="info-row">
                 <span class="info-label">🕐 开放时间：</span>
@@ -64,6 +84,20 @@
               <div v-if="location.contactInfo" class="info-row">
                 <span class="info-label">📞 联系方式：</span>
                 <span class="info-value">{{ location.contactInfo }}</span>
+              </div>
+              <div v-if="location.visibility" class="info-row">
+                <span class="info-label">👁️ 可见性：</span>
+                <span class="info-value">
+                  <span v-if="location.visibility === 'public_active'" class="visibility-public">
+                    公开（主动所有人可见）
+                  </span>
+                  <span v-else-if="location.visibility === 'public_passive'" class="visibility-passive">
+                    公开（被动可见）
+                  </span>
+                  <span v-else-if="location.visibility === 'private'" class="visibility-private">
+                    仅自己可见
+                  </span>
+                </span>
               </div>
             </div>
 
@@ -89,6 +123,9 @@
               </el-button>
               <el-button @click="shareLocation" class="action-btn">
                 📤 分享地点
+              </el-button>
+              <el-button @click="showReportModal = true" class="action-btn">
+                ⚠️ 举报
               </el-button>
             </div>
 
@@ -181,6 +218,14 @@
       @repost="handleRepost"
       @close="handleShareClose"
     />
+
+    <!-- 举报弹窗 -->
+    <ReportModal
+      v-model:visible="showReportModal"
+      target-type="location"
+      :target-id="location?.id"
+      @success="handleReportSuccess"
+    />
   </div>
 </template>
 
@@ -190,6 +235,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import UnifiedNav from '../common/UnifiedNav.vue';
 import LocationShareModal from './LocationShareModal.vue';
+import ReportModal from '../common/ReportModal.vue';
 import { campusAPI } from '../../api/campus';
 import { getLocationCategory } from '../../utils/mapHelper';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
@@ -213,6 +259,8 @@ const currentUser = ref({
 const location = ref(null);
 const loading = ref(true);
 const error = ref(null);
+const publisherName = ref('');
+const publisherAvatar = ref('');
 const facilitiesList = computed(() => {
   if (!location.value?.facilities) return [];
   try {
@@ -234,6 +282,9 @@ const currentLocationUrl = computed(() => {
   if (!location.value?.id) return '';
   return `${window.location.origin}/location/${location.value.id}`;
 });
+
+// 举报相关
+const showReportModal = ref(false);
 
 // 地图相关
 const miniMapLoaded = ref(false);
@@ -316,8 +367,40 @@ const fetchLocationDetail = async () => {
   error.value = null;
   
   try {
-    const response = await campusAPI.getLocationDetail(route.params.id);
-    location.value = response;
+    const locationId = route.params.id;
+    console.log('加载地点详情，ID:', locationId);
+    
+    // 尝试查询用户标记地点详情
+    try {
+      const response = await campusAPI.getLocationMarkDetail(locationId);
+      console.log('用户地点标记响应:', response);
+      
+      // 如果是用户地点标记，后端返回 { mark: {...}, publisher: {...} }
+      if (response && response.mark) {
+        location.value = response.mark;
+        
+        // 加载发布者信息
+        if (response.publisher) {
+          publisherName.value = response.publisher.username || '匿名用户';
+          publisherAvatar.value = response.publisher.avatarUrl || '';
+          
+          console.log('发布者信息:', response.publisher);
+        }
+        
+        console.log('已加载用户地点标记:', location.value);
+      } else {
+        // 如果不是用户地点标记，查询系统地点
+        const systemResponse = await campusAPI.getLocationDetail(locationId);
+        location.value = systemResponse;
+        console.log('已加载系统地点:', location.value);
+      }
+    } catch (markError) {
+      // 如果查询用户标记失败，尝试查询系统地点
+      console.log('用户标记查询失败，尝试查询系统地点:', markError);
+      const systemResponse = await campusAPI.getLocationDetail(locationId);
+      location.value = systemResponse;
+      console.log('已加载系统地点:', location.value);
+    }
     
     // 获取地点数据后，初始化迷你地图
     setTimeout(() => {
@@ -325,8 +408,8 @@ const fetchLocationDetail = async () => {
     }, 100);
     
     // 获取相关地点（附近的地点）
-    if (location.value && location.value.campusId) {
-      fetchRelatedLocations(location.value.campusId);
+    if (location.value && (location.value.campusId || location.value.campus_id)) {
+      fetchRelatedLocations(location.value.campusId || location.value.campus_id);
     }
   } catch (err) {
     console.error('获取地点详情失败:', err);
@@ -360,6 +443,44 @@ const getCategoryName = (categoryCode) => {
 const getCategoryIcon = (categoryCode) => {
   const category = getLocationCategory(categoryCode);
   return category.icon;
+};
+
+// 获取标记类型名称
+const getMarkTypeName = (markType) => {
+  const names = {
+    'meeting_point': '约见地点',
+    'merchant_shop': '店铺位置',
+    'organization_activity': '活动地点'
+  };
+  return names[markType] || '位置标记';
+};
+
+// 获取地点分类名称
+const getMarkCategoryName = (category) => {
+  const names = {
+    'building': '建筑物',
+    'area': '区域',
+    'facility': '设施',
+    'other': '其他'
+  };
+  return names[category] || '';
+};
+
+// 格式化时间
+const formatTime = (date) => {
+  if (!date) return '';
+  
+  const now = new Date();
+  const diff = now - new Date(date);
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  if (hours < 24) return `${hours}小时前`;
+  if (days < 7) return `${days}天前`;
+  return new Date(date).toLocaleDateString();
 };
 
 // 返回上一页
@@ -501,6 +622,24 @@ const openFullMap = () => {
       highlight: location.value.id 
     }
   });
+};
+
+// 跳转到用户主页
+const goToUserProfile = () => {
+  if (!location.value?.userId) {
+    ElMessage.warning('用户信息不可用');
+    return;
+  }
+  
+  // 跳转到用户对外展示页面
+  router.push(`/user/profile/${location.value.userId}`);
+};
+
+// 处理举报成功
+const handleReportSuccess = (data) => {
+  console.log('举报成功:', data);
+  showReportModal.value = false;
+  // 可以在这里刷新页面状态或记录日志
 };
 
 // 监听地点数据加载完成
@@ -730,6 +869,160 @@ onUnmounted(() => {
 }
 
 .category-name {
+  font-weight: 500;
+}
+
+.location-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.mark-type {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.category-tag {
+  background: #f0f0f0;
+  color: #666;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.approved-tag {
+  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pending-tag {
+  background: linear-gradient(135deg, #ff9800, #ffa726);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* 发布者信息 */
+.publisher-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.publisher-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.publisher-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(74, 144, 226, 0.5);
+}
+
+.publisher-avatar::after {
+  content: '👤';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.publisher-avatar:not(:has(img))::after {
+  opacity: 1;
+}
+
+.publisher-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1.5rem;
+}
+
+.publisher-info-text {
+  flex: 1;
+}
+
+.publisher-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+
+.publisher-name:hover {
+  color: #4A90E2;
+  text-decoration: underline;
+}
+
+.publish-time {
+  font-size: 0.85rem;
+  color: #999;
+}
+
+/* 可见性标签 */
+.visibility-public {
+  color: #4caf50;
+  background: #e8f5e9;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.visibility-passive {
+  color: #2196f3;
+  background: #e3f2fd;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.visibility-private {
+  color: #9e9e9e;
+  background: #f5f5f5;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
   font-weight: 500;
 }
 

@@ -76,7 +76,11 @@
           <div v-else class="map-content">
             <!-- 手绘地图 -->
             <div v-if="selectedMapProvider === 'handdrawn'" class="handdrawn-map-wrapper">
-              <InteractiveMap ref="interactiveMapRef" />
+              <InteractiveMap 
+                ref="interactiveMapRef" 
+                :campus-id="selectedCampus" 
+                :campus-name="selectedCampusName" 
+              />
             </div>
             <!-- 其他地图 -->
             <div v-else>
@@ -93,7 +97,7 @@
       <!-- 热门地点和快速导航合并区域 -->
       <section class="combined-nav-section">
         <div class="section-header">
-          <h2>校园导航</h2>
+          <h2>热门地点</h2>
         </div>
 
         <div class="combined-grid">
@@ -112,7 +116,7 @@
       <!-- 用户位置标记区域 -->
       <section class="user-marks-section">
         <div class="section-header">
-          <h2>📍 我的地点</h2>
+          <h2>📍 公开地点标记</h2>
           <div class="mark-actions">
             <el-button type="primary" size="small" @click="showMarkModal = true">
               + 标记我的位置
@@ -159,6 +163,11 @@
             <div class="mark-info">
               <div class="mark-name">{{ mark.locationName }}</div>
               <div class="mark-type">{{ getMarkTypeName(mark.markType) }}</div>
+              <div class="mark-detail">
+                <span class="category-tag">{{ getMarkCategoryName(mark.markCategory) }}</span>
+                <span v-if="mark.campusName" class="campus-tag">{{ mark.campusName }}</span>
+              </div>
+              <div v-if="mark.description" class="mark-description">{{ mark.description }}</div>
               <div class="mark-meta">
                 <span v-if="mark.verificationStatus === 'pending'" class="status-pending">审核中</span>
                 <span v-else-if="mark.visibility === 'private'" class="status-private">私密</span>
@@ -292,6 +301,7 @@ import InteractiveMap from '@/components/map/InteractiveMap.vue';
 import LocationMarkModal from '@/components/map/LocationMarkModal.vue';
 import { MAP_PROVIDERS, loadMapScript, formatLocationData } from '@/utils/mapHelper';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
+import pingyuanMapLocations from '@/data/pingyuan-map-locations.json';
 
 const router = useRouter(); // 创建路由实例
 
@@ -495,7 +505,7 @@ const fetchLocations = async (campusId) => {
     const response = await campusAPI.getCampusLocations(campusId);
     locations.value = response;
     // 加载手绘地图标注点
-    loadHandDrawnLocations(response);
+    loadHandDrawnLocations(campusId);
   } catch (error) {
     console.error('获取地点信息失败:', error);
     ElMessage.error('获取地点信息失败');
@@ -504,17 +514,19 @@ const fetchLocations = async (campusId) => {
   }
 };
 
-// 加载手绘地图地点数据 - 从数据库 locations 转换为 InteractiveMap 可用的格式
-const loadHandDrawnLocations = (locations) => {
-  if (!locations || locations.length === 0) {
+// 加载手绘地图地点数据 - 根据校区加载不同的标点文件
+const loadHandDrawnLocations = (campusId) => {
+  // 根据校区 ID 加载对应的标点数据
+  if (campusId === 1) {
+    // 本部校区
+    handDrawnLocations.value = handdrawnMapLocations;
+  } else if (campusId === 2) {
+    // 平原湖校区
+    handDrawnLocations.value = pingyuanMapLocations;
+  } else {
+    // 其他校区使用空数组
     handDrawnLocations.value = [];
-    return;
   }
-  
-  // 将数据库地点数据转换为 InteractiveMap 可用的格式
-  // 注意：这里需要从数据库的经纬度转换为百分比坐标
-  // 但由于我们已经有 handdrawn-map-locations.json，暂时不使用这个转换
-  handDrawnLocations.value = [];
 };
 
 // 显示地点提示
@@ -538,23 +550,19 @@ const searchLocations = async () => {
 // 获取用户位置标记（包含所有可见性）
 const fetchUserLocationMarks = async () => {
   try {
-    // 获取当前用户的所有标记（包含 public_active、public_passive、private）
-    const response = await campusAPI.getUserLocationMarks();
+    // 获取当前校区的公开标记（public_active）
+    // 这些是所有用户选择主动公开的地点标记
+    const response = await campusAPI.getCampusLocationMarks(selectedCampus.value);
     if (response && Array.isArray(response)) {
-      // 显示所有标记，不仅仅是审核通过的
-      userLocationMarks.value = response;
+      // 只显示公开（主动所有人可见）的标记
+      userLocationMarks.value = response.filter(mark => {
+        return mark.visibility === 'public_active' && mark.verificationStatus === 'approved';
+      });
     }
   } catch (error) {
     console.error('获取用户标记失败:', error);
     ElMessage.error('加载我的地点失败');
   }
-};
-
-// 处理用户标记点击
-const handleUserMarkClick = (mark) => {
-  console.log('点击用户标记:', mark);
-  // TODO: 显示标记详情或跳转到详情页
-  ElMessage.info(`查看：${mark.locationName}`);
 };
 
 // 获取标记类型图标
@@ -570,21 +578,39 @@ const getMarkIcon = (markType) => {
 // 获取标记类型名称
 const getMarkTypeName = (markType) => {
   const names = {
-    meeting_point: '约见地点',
-    merchant_shop: '店铺位置',
-    organization_activity: '活动地点'
+    'meeting_point': '约见地点',
+    'merchant_shop': '店铺位置',
+    'organization_activity': '活动地点'
   };
   return names[markType] || '位置标记';
 };
 
+// 获取地点分类名称
+const getMarkCategoryName = (category) => {
+  const names = {
+    'building': '建筑物',
+    'area': '区域',
+    'facility': '设施',
+    'other': '其他'
+  };
+  return names[category] || '';
+};
+
 // 地点标签筛选逻辑
 const filteredUserLocationMarks = computed(() => {
+  // 先按校区筛选
+  const campusMarks = userLocationMarks.value.filter(mark => {
+    // 兼容 campus_id 和 campusId 两种字段名
+    return (mark.campus_id || mark.campusId) === selectedCampus.value;
+  });
+  
+  // 如果没有选中的标签，返回当前校区的所有标记
   if (!selectedLocationTag.value) {
-    return userLocationMarks.value;
+    return campusMarks;
   }
   
   // 根据 markCategory 筛选
-  return userLocationMarks.value.filter(mark => mark.markCategory === selectedLocationTag.value);
+  return campusMarks.filter(mark => mark.markCategory === selectedLocationTag.value);
 });
 
 // 切换地点标签
@@ -606,6 +632,18 @@ const handleMarkSuccess = (data) => {
   console.log('标记创建成功:', data);
   // 重新加载用户标记
   fetchUserLocationMarks();
+};
+
+// 处理用户标记卡片点击
+const handleUserMarkClick = (mark) => {
+  // 检查是否是已审核通过的标记
+  if (mark.verificationStatus !== 'approved') {
+    ElMessage.info('该标记尚未审核通过，暂时无法查看详情');
+    return;
+  }
+  
+  // 跳转到用户标记地点详情页
+  router.push(`/user-location/${mark.id}`);
 };
 
 // 提交自定义地点
@@ -668,6 +706,7 @@ const submitCustomLocation = async () => {
 watch(selectedCampus, (newCampusId) => {
   if (newCampusId) {
     fetchLocations(newCampusId);
+    fetchUserLocationMarks(); // 切换校区时重新加载用户地点标记
     loadMapConfig(newCampusId);
   }
 });
@@ -1675,6 +1714,32 @@ const goToPage = (page) => {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 6px;
+}
+
+.mark-detail {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.category-tag,
+.campus-tag {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.mark-description {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .mark-meta {

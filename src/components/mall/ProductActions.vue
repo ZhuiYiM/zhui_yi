@@ -17,6 +17,9 @@
     <button class="btn btn-share" @click="$emit('share')">
       🔗 分享
     </button>
+    <button class="btn btn-report" @click="$emit('report')">
+      ⚠️ 举报
+    </button>
   </div>
 </template>
 
@@ -46,7 +49,7 @@ const buttonText = computed(() => {
   return props.productStatus === 2 ? '已售出' : props.productStatus === 0 ? '已下架' : '立即购买';
 });
 
-defineEmits(['buy', 'favorite', 'share']);
+defineEmits(['buy', 'favorite', 'share', 'report']);
 </script>
 
 <style scoped>
@@ -107,6 +110,17 @@ defineEmits(['buy', 'favorite', 'share']);
 
 .btn-share:hover {
   background-color: #4A90E2;
+  color: white;
+}
+
+.btn-report {
+  background-color: white;
+  color: #f56c6c;
+  border: 2px solid #f56c6c;
+}
+
+.btn-report:hover {
+  background-color: #f56c6c;
   color: white;
 }
 

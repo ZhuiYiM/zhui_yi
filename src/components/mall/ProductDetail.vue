@@ -57,6 +57,7 @@
                 @buy="handleProductAction"
                 @favorite="toggleFavorite"
                 @share="shareProduct"
+                @report="showReportModal = true"
               />
             </div>
           </div>
@@ -98,6 +99,14 @@
           source-type="product"
           @repost="handleRepost"
           @copy="handleCopyLink"
+        />
+
+        <!-- 举报弹窗 -->
+        <ReportModal
+          v-model:visible="showReportModal"
+          target-type="product"
+          :target-id="product?.id"
+          @success="handleReportSuccess"
         />
 
         <!-- 猜你喜欢 -->
@@ -143,6 +152,7 @@ import { productAPI } from '@/api/product';
 import { orderAPI } from '@/api/order';
 import { reviewAPI } from '@/api/review';
 import ShareModal from '@/components/topic/ShareModal.vue';
+import ReportModal from '@/components/common/ReportModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -164,6 +174,7 @@ const buyingLoading = ref(false);
 const productSpecifications = ref({}); // 商品规格数据
 const showShareModal = ref(false);
 const currentShareUrl = ref('');
+const showReportModal = ref(false);
 
 // 判断是否是当前用户发布的商品
 const isCurrentProductOwner = computed(() => {
@@ -584,6 +595,13 @@ const replyReview = (review) => {
     return;
   }
   ElMessage.info('回复评价功能开发中');
+};
+
+// 处理举报成功
+const handleReportSuccess = (data) => {
+  console.log('举报成功:', data);
+  showReportModal.value = false;
+  // 可以在这里刷新页面状态或记录日志
 };
 
 // 跳转到商品

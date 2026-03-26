@@ -11,10 +11,10 @@
       :class="{ 'is-dragging': isDragging }"
     >
       <div class="map-content" :style="mapStyle">
-        <!-- 地图底图 -->
+        <!-- 地图底图 - 根据校区显示不同地图 -->
         <img 
-          src="@/assets/01.png" 
-          alt="校园手绘地图" 
+          :src="currentMapImage" 
+          :alt="`${campusName}手绘地图`" 
           class="map-base-image"
           @load="handleImageLoad"
           draggable="false"
@@ -69,16 +69,53 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import handdrawnMapLocations from '@/data/handdrawn-map-locations.json';
+import pingyuanMapLocations from '@/data/pingyuan-map-locations.json';
+
+// 接收父组件传递的校区 ID
+const props = defineProps({
+  campusId: {
+    type: Number,
+    default: 1 // 默认本部校区
+  },
+  campusName: {
+    type: String,
+    default: '本部校区'
+  }
+});
+
+// 地图图片映射
+const MAP_IMAGES = {
+  1: new URL('@/assets/01.png', import.meta.url).href, // 本部校区
+  2: new URL('@/assets/10.png', import.meta.url).href, // 平原湖校区
+};
+
+// 标点数据映射
+const MAP_LOCATIONS = {
+  1: handdrawnMapLocations, // 本部校区
+  2: pingyuanMapLocations,  // 平原湖校区
+};
+
+// 当前地图图片
+const currentMapImage = ref(MAP_IMAGES[props.campusId] || MAP_IMAGES[1]);
 
 // 数据
-const allLocations = ref(handdrawnMapLocations);
+const allLocations = ref(MAP_LOCATIONS[props.campusId] || handdrawnMapLocations);
 const tooltipLocation = ref(null);
 const highlightedIds = ref([]);
 const currentZoom = ref(1);
 const mapWrapper = ref(null);
+
+// 监听校区变化
+watch(() => props.campusId, (newCampusId) => {
+  // 更新地图图片
+  currentMapImage.value = MAP_IMAGES[newCampusId] || MAP_IMAGES[1];
+  // 更新标点数据
+  allLocations.value = MAP_LOCATIONS[newCampusId] || handdrawnMapLocations;
+  console.log(`🗺️ 切换到校区 ID: ${newCampusId}, 地点数：${allLocations.value.length}`);
+}, { immediate: true });
 
 // 拖动相关
 const isDragging = ref(false);

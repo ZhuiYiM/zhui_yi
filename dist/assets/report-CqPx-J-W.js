@@ -1,0 +1,1 @@
+import{O as t}from"./index-BszpAtRa.js";const o={submitReport(r){return t.post("/reports",r)},getReportReasons(){return t.get("/reports/reasons")},getMyReports(r){return t.get("/reports/my",{params:r})}};export{o as reportAPI};

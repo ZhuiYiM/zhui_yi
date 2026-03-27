@@ -16,9 +16,9 @@ export const corsConfig = {
         credentials: true
     },
     
-    // 生产环境CORS配置
+    // 生产环境 CORS 配置
     production: {
-        origin: 'https://your-domain.com', // 实际域名
+        origin: 'http://122.51.79.42', // 服务器地址
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
         allowedHeaders: [
             'Content-Type',

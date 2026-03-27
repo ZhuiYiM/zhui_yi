@@ -1,0 +1,156 @@
+root@VM-0-16-ubuntu:~/CampusInformationPlatform# # 添加 name 字段到 identity_tags 表
+mysql -u root -p123456 campus_db << 'EOF'
+-- 添加 name 字段（别名，指向 tag_name）
+ALTER TABLE identity_tags ADD COLUMN name VARCHAR(100) GENERATED ALWAYS AS (tag_name) VIRTUAL COMMENT '标签名称别名' AFTER code;
+
+-- 验证
+DESC identity_tags;
+EOF
+mysql: [Warning] Using a password on the command line interface can be insecure.
+Field   Type    Null    Key     Default Extra
+id      int     NO      PRI     NULL    auto_increment
+code    varchar(50)     YES             NULL
+name    varchar(100)    YES             NULL    VIRTUAL GENERATED
+tag_code        varchar(50)     NO      UNI     NULL
+tag_name        varchar(100)    NO              NULL
+tag_icon        varchar(255)    YES             NULL
+tag_color       varchar(20)     YES             NULL
+tag_level       int     YES             1
+parent_id       int     YES     MUL     NULL
+sort_order      int     YES             0
+is_active       int     YES             1
+created_at      datetime        YES             CURRENT_TIMESTAMP       DEFAULT_GENERATED
+updated_at      datetime        YES             CURRENT_TIMESTAMP       DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+root@VM-0-16-ubuntu:~/CampusInformationPlatform# # 在服务器上查找所有硬编码的 API 地址
+grep -rn "your-domain.com" /root/CampusInformationPlatform/src/ --include="*.js" --include="*.vue"
+
+# 查找 localhost 的引用
+root@VM-0-16-ubuntu:~/CampusInformationPlatform# # 1. 修复数据库 - 添加 name 字段作为 tag_name 的别名
+mysql -u root -p123456 campus_db << 'EOF'
+ALTER TABLE identity_tags ADD COLUMN name VARCHAR(100) GENERATED ALWAYS AS (tag_name) VIRTUAL COMMENT '标签名称别名' AFTER code;
+DESC identity_tags;
+EOF
+
+# 2. 在本地修改源代码后重新推送
+# 需要修改的文件（在本地 Windows 上）：
+# - src/utils/corsHelper.js
+# - src/config/api.js
+# - 其他包含 your-domain.com 的文件
+
+# 3. 重新构建并部署
+cd /root/CampusInformationPlatform
+npm run build
+cp -r dist/* /var/www/campus-platform/
+systemctl restart nginx
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1060 (42S21) at line 1: Duplicate column name 'name'
+
+> vue-demo@0.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming (683) src/assets/01.png
+new URL("@/assets/10.png", import.meta.url) doesn't exist at build time, it will remain unchanged to be resolved at runtime. If this is intended, you can use the /* @vite-ignore */ comment to suppress this warning.
+transforming (860) node_modules/@vue/devtools-api/lib/esm/api/api.js
+new URL('@/assets/10.png', import.meta.url) doesn't exist at build time, it will remain unchanged to be resolved at runtime. If this is intended, you can use the /* @vite-ignore */ comment to suppress this warning.
+✓ 1866 modules transformed.
+dist/index.html                                          0.46 kB │ gzip:   0.29 kB
+dist/assets/01-BIvXg-yW.png                          1,388.68 kB
+dist/assets/TagManagement-DGIYJJjy.css                   0.19 kB │ gzip:   0.15 kB
+dist/assets/ProductTagManagement-DABIbhKJ.css            0.20 kB │ gzip:   0.15 kB
+dist/assets/LocationTagManagement-C2t3OWfm.css           0.20 kB │ gzip:   0.15 kB
+dist/assets/AdvertisementManagement-TfIFGqxO.css         0.20 kB │ gzip:   0.15 kB
+dist/assets/ReportModal-B66N8EfL.css                     0.22 kB │ gzip:   0.16 kB
+dist/assets/NotFound-RurZW72-.css                        0.37 kB │ gzip:   0.22 kB
+dist/assets/IdentityVerificationList-BYDptSCL.css        0.40 kB │ gzip:   0.25 kB
+dist/assets/SystemSettings--ylf4ksf.css                  0.65 kB │ gzip:   0.34 kB
+dist/assets/ReportList-8yzFLYpA.css                      0.68 kB │ gzip:   0.34 kB
+dist/assets/LocationManagement-4e9ktavP.css              0.73 kB │ gzip:   0.30 kB
+dist/assets/AdminProfile-BqtTvrPB.css                    0.74 kB │ gzip:   0.34 kB
+dist/assets/UserLocationMarkManagement-CKqJrW53.css      0.74 kB │ gzip:   0.31 kB
+dist/assets/ChangePassword-BlRjA5l4.css                  0.78 kB │ gzip:   0.37 kB
+dist/assets/CommentList-DAL1vn1C.css                     0.80 kB │ gzip:   0.37 kB
+dist/assets/OperationLogs-B_bFd4v4.css                   0.81 kB │ gzip:   0.37 kB
+dist/assets/ReportStats-CVDt5txc.css                     0.91 kB │ gzip:   0.38 kB
+dist/assets/UsersList-DpWNATlN.css                       1.02 kB │ gzip:   0.40 kB
+dist/assets/ProductList-BPKeB5sx.css                     1.02 kB │ gzip:   0.43 kB
+dist/assets/TopicList-HA9GQud-.css                       1.06 kB │ gzip:   0.44 kB
+dist/assets/VerificationList-CAbstWwB.css                1.10 kB │ gzip:   0.43 kB
+dist/assets/ShareModal-B-zIHuKn.css                      1.63 kB │ gzip:   0.60 kB
+dist/assets/PublishProduct-DPiRx9J_.css                  1.78 kB │ gzip:   0.62 kB
+dist/assets/WatermarkTest-ttc8D0Y2.css                   1.93 kB │ gzip:   0.64 kB
+dist/assets/AdminLogin-DyxjT4GS.css                      2.52 kB │ gzip:   0.89 kB
+dist/assets/AdminDashboard-gGTwdHFB.css                  2.83 kB │ gzip:   0.88 kB
+dist/assets/OrderPayment-FOmDeVSm.css                    3.48 kB │ gzip:   1.07 kB
+dist/assets/DashboardHome-CJEWfhwl.css                   4.08 kB │ gzip:   1.07 kB
+dist/assets/OrderConfirmation-X4PE9w9C.css               4.23 kB │ gzip:   1.17 kB
+dist/assets/WriteReviewModal-DYBT5Wav.css                4.87 kB │ gzip:   1.20 kB
+dist/assets/MyProducts-rvWulEAt.css                      5.38 kB │ gzip:   1.32 kB
+dist/assets/MyOrders-Bm1sOxYa.css                        7.17 kB │ gzip:   1.53 kB
+dist/assets/SearchResults-BrjYPuxj.css                   7.20 kB │ gzip:   1.76 kB
+dist/assets/TopicDetail-rW7D4fk2.css                     7.63 kB │ gzip:   1.87 kB
+dist/assets/LocationDetail-DkzeKyjq.css                 10.82 kB │ gzip:   2.36 kB
+dist/assets/ProductDetail-CuuE3nL2.css                  17.12 kB │ gzip:   3.56 kB
+dist/assets/index-CNateiEP.css                         527.56 kB │ gzip:  72.74 kB
+dist/assets/report-Dnd2scbj.js                           0.23 kB │ gzip:   0.17 kB
+dist/assets/NotFound-D5Ro8XdL.js                         0.49 kB │ gzip:   0.42 kB
+dist/assets/ShareModal-E7N9MMF9.js                       1.66 kB │ gzip:   0.89 kB
+dist/assets/AdminLogin-M4YzZYZK.js                       2.60 kB │ gzip:   1.32 kB
+dist/assets/AdminProfile-hpfhyyOo.js                     3.61 kB │ gzip:   1.50 kB
+dist/assets/ChangePassword-VSxhSS9d.js                   4.08 kB │ gzip:   1.78 kB
+dist/assets/OperationLogs-DrTux2R0.js                    4.13 kB │ gzip:   1.90 kB
+dist/assets/WriteReviewModal-BxevuRcp.js                 4.16 kB │ gzip:   2.15 kB
+dist/assets/admin-BzEoCcur.js                            4.26 kB │ gzip:   0.94 kB
+dist/assets/SystemSettings-DELOL8S5.js                   4.29 kB │ gzip:   1.69 kB
+dist/assets/ReportModal-BbufirFu.js                      4.50 kB │ gzip:   2.13 kB
+dist/assets/CommentList-DuBfey8X.js                      4.59 kB │ gzip:   2.18 kB
+dist/assets/AdminDashboard-COHakmuy.js                   5.57 kB │ gzip:   2.09 kB
+dist/assets/ReportStats-CdEKOux9.js                      5.90 kB │ gzip:   2.28 kB
+dist/assets/OrderPayment-cxymdH-f.js                     6.49 kB │ gzip:   2.65 kB
+dist/assets/IdentityVerificationList-Bl_JRthg.js         6.75 kB │ gzip:   2.77 kB
+dist/assets/DashboardHome-DCoM1Cbi.js                    7.17 kB │ gzip:   1.87 kB
+dist/assets/TopicList-fSnQhyVF.js                        7.56 kB │ gzip:   2.77 kB
+dist/assets/OrderConfirmation-BN-c5e0C.js                8.05 kB │ gzip:   3.35 kB
+dist/assets/UsersList-IWJ6zzeC.js                        8.21 kB │ gzip:   3.05 kB
+dist/assets/ProductTagManagement-BkRCfOf2.js             8.23 kB │ gzip:   3.05 kB
+dist/assets/ProductList-Cfl10qls.js                      8.63 kB │ gzip:   3.12 kB
+dist/assets/ReportList-HikSK0hk.js                       8.91 kB │ gzip:   3.19 kB
+dist/assets/SearchResults-B6Lghj7Y.js                    9.22 kB │ gzip:   3.41 kB
+dist/assets/PublishProduct-BqBtYFhf.js                   9.94 kB │ gzip:   3.97 kB
+dist/assets/LocationTagManagement-DXQjD5ig.js           10.08 kB │ gzip:   3.42 kB
+dist/assets/TagManagement-DnYpmifu.js                   10.17 kB │ gzip:   3.62 kB
+dist/assets/MyProducts-DCBLciHO.js                      10.42 kB │ gzip:   3.79 kB
+dist/assets/MyOrders-CfZgu6j0.js                        10.55 kB │ gzip:   4.08 kB
+dist/assets/WatermarkTest-CQRwc1yM.js                   11.05 kB │ gzip:   4.13 kB
+dist/assets/UserLocationMarkManagement-DMRjxLfx.js      12.16 kB │ gzip:   3.99 kB
+dist/assets/AdvertisementManagement-CTupB3Zi.js         12.29 kB │ gzip:   3.99 kB
+dist/assets/VerificationList-DhZZIF-n.js                12.92 kB │ gzip:   4.02 kB
+dist/assets/LocationDetail-Daak0xT2.js                  14.82 kB │ gzip:   5.74 kB
+dist/assets/TopicDetail-BBewFtjv.js                     18.54 kB │ gzip:   6.35 kB
+dist/assets/LocationManagement-D22c7ZhT.js              21.56 kB │ gzip:   5.67 kB
+dist/assets/ProductDetail-DbLUCf7q.js                   24.49 kB │ gzip:   9.00 kB
+dist/assets/index-En-nUqwT.js                        1,525.05 kB │ gzip: 479.75 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 16.24s
+root@VM-0-16-ubuntu:~/CampusInformationPlatform# # 实时查看最新日志（推荐）
+tail -f /root/CampusInformationPlatform/app.log
+
+# 查看最近 100 行日志
+tail -100 /root/CampusInformationPlatform/app.log
+
+# 查看最近 50 行并过滤错误
+tail -50 /root/CampusInformationPlatform/app.log | grep -i "error\|exception"
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:154) ~[mybatis-3.5.16.jar!/:3.5.16]
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:147) ~[mybatis-3.5.16.jar!/:3.5.16]
+        at org.apache.ibatis.session.defaults.DefaultSqlSession.selectList(DefaultSqlSession.java:142) ~[mybatis-3.5.16.jar!/:3.5.16]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+        at java.base/java.lang.reflect.Method.invoke(Method.java:569) ~[na:na]
+        at org.mybatis.spring.SqlSessionTemplate$SqlSessionInterceptor.invoke(SqlSessionTemplate.java:333) ~[mybatis-spring-3.0.4.jar!/:3.0.4]
+        ... 71 common frames omitted
+

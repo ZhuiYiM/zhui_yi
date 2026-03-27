@@ -5,9 +5,9 @@ export const userAPI = {
     
     // 用户登录
     login(data) {
-        // 临时解决方案：添加一个无效的 token 来绕过后端认证检查
-        // 这是因为后端错误地要求登录接口也需要认证
-        return fetch('http://localhost:8080/user/login', {
+        // 使用环境变量配置 API 地址
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+        return fetch(`${baseUrl}/user/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

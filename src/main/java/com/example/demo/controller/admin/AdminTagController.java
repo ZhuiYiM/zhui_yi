@@ -6,7 +6,9 @@ import com.example.demo.entity.LocationTag;
 import com.example.demo.entity.ProductTag;
 import com.example.demo.entity.TopicTag;
 import com.example.demo.entity.admin.OperationLog;
+import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.tags.TagManagementService;
+import com.example.demo.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +32,12 @@ public class AdminTagController {
     private final TagManagementService tagManagementService;
     
     @Autowired
+    private OperationLogService operationLogService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    @Autowired
     private HttpServletRequest request;
     
     /**
@@ -38,14 +46,15 @@ public class AdminTagController {
     private void logOperation(String operation, String module, Long targetId, String detail) {
         try {
             OperationLog log = new OperationLog();
-            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
-            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setAdminId(jwtUtil.getCurrentAdminId());
+            log.setAdminName(jwtUtil.getCurrentAdminUsername());
             log.setOperation(operation);
             log.setModule(module);
             log.setTargetId(targetId);
             log.setDetail(detail);
             log.setIpAddress(request.getRemoteAddr());
             log.setCreatedAt(LocalDateTime.now());
+            operationLogService.save(log);
         } catch (Exception e) {
             log.error("记录操作日志失败：{}", e.getMessage());
         }

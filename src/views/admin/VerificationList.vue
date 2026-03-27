@@ -497,8 +497,10 @@ const getFullImageUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url
   }
-  // 否则拼接后端服务器地址
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+  // 注意：图片访问不需要 /api 前缀，直接使用后端服务器地址
+  const baseUrl = import.meta.env.VITE_API_BASE_URL 
+    ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
+    : 'http://localhost:8080';
   // 确保 baseUrl 不以 / 结尾
   const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
   // 确保 url 以 / 开头

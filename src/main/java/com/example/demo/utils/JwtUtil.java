@@ -4,8 +4,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.crypto.SecretKey;
 import java.util.Collections;
@@ -283,17 +286,71 @@ public class JwtUtil {
     }
 
     /**
-     * 检查Token是否需要刷新（接近过期时）
+     * 检查 Token 是否需要刷新（接近过期时）
      */
     public boolean shouldRefreshToken(String token) {
         try {
             Date expirationDate = getExpirationDateFromToken(token);
             Date now = new Date();
-            // 如果距离过期还有不到1天，建议刷新
+            // 如果距离过期还有不到 1 天，建议刷新
             long timeToExpire = expirationDate.getTime() - now.getTime();
-            return timeToExpire < 24 * 60 * 60 * 1000; // 24小时
+            return timeToExpire < 24 * 60 * 60 * 1000; // 24 小时
         } catch (Exception e) {
             return true; // 出错时也建议刷新
+        }
+    }
+    
+    /**
+     * 从当前请求中获取管理员 ID
+     * @return 管理员 ID，如果未登录或不是管理员则返回 null
+     */
+    public Long getCurrentAdminId() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+            HttpServletRequest request = attributes.getRequest();
+            
+            // 从 request attribute 中获取 userId（由 TokenInterceptor 设置）
+            Object userIdAttr = request.getAttribute("userId");
+            if (userIdAttr != null) {
+                return ((Number) userIdAttr).longValue();
+            }
+            
+            // 如果 attribute 中没有，尝试从 Token 中提取
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                Integer userId = getUserIdFromToken(token);
+                if (userId != null) {
+                    return userId.longValue();
+                }
+            }
+            
+            return null;
+        } catch (Exception e) {
+            System.err.println("获取当前管理员 ID 失败：" + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 从当前请求中获取管理员用户名
+     * @return 管理员用户名，如果未登录则返回 null
+     */
+    public String getCurrentAdminUsername() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
+            HttpServletRequest request = attributes.getRequest();
+            
+            String token = request.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+                return getUsernameFromToken(token);
+            }
+            
+            return null;
+        } catch (Exception e) {
+            System.err.println("获取当前管理员用户名失败：" + e.getMessage());
+            return null;
         }
     }
 }

@@ -416,7 +416,10 @@ const getImageUrl = (msg) => {
     
     // 如果 URL 不以 http 开头，需要添加后端地址
     if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+      // 注意：图片访问不需要 /api 前缀，直接使用后端服务器地址
+      const baseUrl = import.meta.env.VITE_API_BASE_URL 
+        ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
+        : 'http://localhost:8080';
       url = baseUrl + url;
     }
     

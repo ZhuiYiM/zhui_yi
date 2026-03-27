@@ -31,9 +31,10 @@ public class WebConfig implements WebMvcConfigurer {
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 映射图片资源
+        // 映射图片资源 - 使用绝对路径
+        String uploadPath = System.getProperty("user.dir") + "/uploads/images/";
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:uploads/images/");
+                .addResourceLocations("file:" + uploadPath);
         
         // 可以添加更多资源映射，如视频、文档等
         // registry.addResourceHandler("/videos/**")

@@ -28,6 +28,7 @@ public class TokenInterceptor implements HandlerInterceptor {
         if (uri.startsWith("/auth/") || 
             uri.startsWith("/number/") || 
             uri.startsWith("/upload/") ||
+            uri.startsWith("/images/") ||  // 放行图片资源
             // 排除所有非 /api/ 开头的路径（前端路由不拦截）
             (!uri.startsWith("/api/") && !uri.startsWith("/products/") && 
              !uri.startsWith("/topics/") && !uri.startsWith("/messages/") && 

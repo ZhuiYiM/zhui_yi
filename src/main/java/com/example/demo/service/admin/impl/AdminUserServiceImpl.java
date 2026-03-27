@@ -250,13 +250,16 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                 return Result.error("该申请已审核过");
             }
             
-            // 获取当前管理员 ID（从上下文或参数中获取，这里暂时硬编码）
-            Integer adminId = 1; // TODO: 从登录上下文中获取
+            // 获取当前管理员 ID（从登录上下文中获取）
+            Long adminId = jwtUtil.getCurrentAdminId();
+            if (adminId == null) {
+                adminId = 1L; // 降级方案：如果无法获取，使用默认值
+            }
             
             if (pass) {
                 // 通过认证
                 verification.setStatus("approved");
-                verification.setReviewerId(adminId);
+                verification.setReviewerId(adminId.intValue()); // 转换为 Integer
                 verification.setReviewedAt(LocalDateTime.now());
                 
                 // 根据认证类型更新用户表
@@ -282,7 +285,7 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
                 // 拒绝认证
                 verification.setStatus("rejected");
                 verification.setRejectionReason(reason);
-                verification.setReviewerId(adminId);
+                verification.setReviewerId(adminId.intValue()); // 转换为 Integer
                 verification.setReviewedAt(LocalDateTime.now());
                 
                 userVerificationMapper.updateById(verification);
@@ -325,12 +328,15 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             }
             
             // 获取当前管理员 ID
-            Integer adminId = 1; // TODO: 从登录上下文中获取
+            Long adminId = jwtUtil.getCurrentAdminId();
+            if (adminId == null) {
+                adminId = 1L; // 降级方案：如果无法获取，使用默认值
+            }
             System.out.println("👤 管理员 ID: " + adminId);
             
             // 通过认证
             verification.setStatus("approved");
-            verification.setReviewerId(adminId);
+            verification.setReviewerId(adminId.intValue()); // 转换为 Integer
             verification.setReviewedAt(LocalDateTime.now());
             
             System.out.println("💾 更新认证申请状态...");
@@ -371,8 +377,8 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             // 记录操作日志
             try {
                 OperationLog log = new OperationLog();
-                log.setAdminId(adminId.longValue());
-                log.setAdminName("admin"); // TODO: 从登录上下文获取管理员用户名
+                log.setAdminId(adminId);
+                log.setAdminName(jwtUtil.getCurrentAdminUsername());
                 log.setOperation("APPROVE_IDENTITY");
                 log.setModule("身份认证");
                 log.setTargetId(verification.getId().longValue());
@@ -548,12 +554,15 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             }
             
             // 获取当前管理员 ID
-            Integer adminId = 1; // TODO: 从登录上下文中获取
+            Long adminId = jwtUtil.getCurrentAdminId();
+            if (adminId == null) {
+                adminId = 1L; // 降级方案：如果无法获取，使用默认值
+            }
             
             // 拒绝认证
             verification.setStatus("rejected");
             verification.setRejectionReason(reason);
-            verification.setReviewerId(adminId);
+            verification.setReviewerId(adminId.intValue()); // 转换为 Integer
             verification.setReviewedAt(LocalDateTime.now());
             
             userVerificationMapper.updateById(verification);
@@ -561,8 +570,8 @@ public class AdminUserServiceImpl extends ServiceImpl<AdminUserMapper, AdminUser
             // 记录操作日志
             try {
                 OperationLog log = new OperationLog();
-                log.setAdminId(adminId.longValue());
-                log.setAdminName("admin"); // TODO: 从登录上下文获取管理员用户名
+                log.setAdminId(adminId);
+                log.setAdminName(jwtUtil.getCurrentAdminUsername());
                 log.setOperation("REJECT_IDENTITY");
                 log.setModule("身份认证");
                 log.setTargetId(verification.getId().longValue());

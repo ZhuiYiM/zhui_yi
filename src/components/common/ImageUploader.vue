@@ -228,7 +228,11 @@ const uploadFile = async (file) => {
     
     if (response.code === 200 && response.data) {
       // 返回的是相对路径，需要拼接完整 URL
-      const fullUrl = `${import.meta.env.VITE_API_BASE_URL || ''}${response.data}`;
+      // 注意：图片访问不需要 /api 前缀，直接使用后端服务器地址
+      const baseUrl = import.meta.env.VITE_API_BASE_URL 
+        ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
+        : 'http://localhost:8080';
+      const fullUrl = `${baseUrl}${response.data}`;
       emit('update:modelValue', fullUrl);
       emit('change', fullUrl);
       ElMessage.success('上传成功');

@@ -138,8 +138,7 @@ public class UserController {
     // 获取用户认证状态
     @GetMapping("/{userId}/auth-status")
   public Result getAuthStatus(@PathVariable Integer userId) {
-       // TODO: 实现认证状态查询
-    return Result.success("获取认证状态功能待实现");
+    return userService.getAuthStatus(userId);
     }
 
     // 申请身份认证

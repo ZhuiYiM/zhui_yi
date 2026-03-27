@@ -7,6 +7,7 @@ import com.example.demo.entity.Report;
 import com.example.demo.entity.admin.OperationLog;
 import com.example.demo.service.admin.OperationLogService;
 import com.example.demo.service.ReportService;
+import com.example.demo.utils.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,9 @@ public class AdminReportsController {
     private OperationLogService operationLogService;
 
     @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
     private HttpServletRequest request;
 
     /**
@@ -36,8 +40,8 @@ public class AdminReportsController {
     private void logOperation(String operation, String module, Long targetId, String detail) {
         try {
             OperationLog log = new OperationLog();
-            log.setAdminId(1L); // TODO: 从 Session 获取管理员 ID
-            log.setAdminName("admin"); // TODO: 从 Session 获取管理员名称
+            log.setAdminId(jwtUtil.getCurrentAdminId());
+            log.setAdminName(jwtUtil.getCurrentAdminUsername());
             log.setOperation(operation);
             log.setModule(module);
             log.setTargetId(targetId);

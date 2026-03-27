@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
+import { userAPI } from '@/api/user';
 
 /**
  * 用户信息管理 composable
@@ -39,6 +40,9 @@ export function useUserInfo() {
         isRealNameVerified: !!(userData.realName || userData.name),
         realName: userData.realName || userData.name || ''
       };
+      
+      // 从后端获取最新的用户身份认证状态
+      loadUserIdentities();
     } catch (error) {
       console.error('获取用户信息失败:', error);
       userInfo.value = {
@@ -50,6 +54,39 @@ export function useUserInfo() {
         isRealNameVerified: false,
         realName: ''
       };
+    }
+  };
+  
+  /**
+   * 从后端加载用户身份认证状态
+   */
+  const loadUserIdentities = async () => {
+    try {
+      const response = await userAPI.getUserIdentities();
+      console.log('📦 用户身份信息:', response);
+      
+      if (response && Array.isArray(response) && response.length > 0) {
+        // 检查是否有已认证的身份
+        const hasVerifiedIdentity = response.some(item => item.verified === 1 || item.verified === true);
+        
+        if (hasVerifiedIdentity) {
+          userInfo.value.isVerified = true;
+          console.log('✅ 用户身份认证状态已更新：已通过');
+          
+          // 同时更新 localStorage 中的用户信息
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          // 根据认证的身份类型设置对应字段
+          const verifiedIdentity = response.find(item => item.verified === 1 || item.verified === true);
+          if (verifiedIdentity) {
+            if (verifiedIdentity.type === 'student') {
+              userData.studentId = verifiedIdentity.studentId || verifiedIdentity.extraInfo?.studentId;
+            }
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('加载用户身份信息失败:', error);
     }
   };
 

@@ -181,7 +181,10 @@ const uploadUrl = computed(() => {
 // 处理上传成功
 const handleUploadSuccess = (response) => {
   if (response.code === 200 && response.data) {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+    // 注意：图片访问不需要 /api 前缀，直接使用后端服务器地址
+    const baseUrl = import.meta.env.VITE_API_BASE_URL 
+      ? import.meta.env.VITE_API_BASE_URL.replace('/api', '') 
+      : window.location.origin;
     uploadedImageUrl.value = `${baseUrl}${response.data}`;
     ElMessage.success('上传成功！图片已嵌入水印');
   } else {

@@ -804,7 +804,7 @@ CREATE TABLE `admin_custom_columns` (
 -- ========================================
 
 -- 1. 插入默认管理员账户（密码：admin123，BCrypt 加密）
-INSERT INTO `users` (`username`, `password`, `email`, `role`, `is_admin`, `status`, `created_at`) VALUES
+INSERT INTO `users` (`username`, `password`, `email`, `role`, `is_admin`, `status`, `create_time`) VALUES
 ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8Qe6mCYYqQ1B6zKZ8qXZJ5YqKZ5qG', 'admin@campus.com', 'admin', 1, 1, NOW());
 
 -- 2. 插入默认校区
